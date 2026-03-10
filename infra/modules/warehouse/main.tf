@@ -60,3 +60,27 @@ resource "google_bigquery_dataset_iam_member" "dashboard_marts_viewer" {
   role       = "roles/bigquery.dataViewer"
   member     = "serviceAccount:${var.dashboard_service_account}"
 }
+
+resource "google_project_iam_member" "ingestion_job_user" {
+  count = var.ingestion_service_account == "" ? 0 : 1
+
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${var.ingestion_service_account}"
+}
+
+resource "google_project_iam_member" "dbt_job_user" {
+  count = var.dbt_service_account == "" ? 0 : 1
+
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${var.dbt_service_account}"
+}
+
+resource "google_project_iam_member" "dashboard_job_user" {
+  count = var.dashboard_service_account == "" ? 0 : 1
+
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${var.dashboard_service_account}"
+}

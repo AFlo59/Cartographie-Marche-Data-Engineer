@@ -22,6 +22,8 @@ But: permet au provider Terraform Google d'utiliser les credentials ADC sans cl�
 
 Note: le conteneur utilise `GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json`.
 
+Option clé JSON (si autorisée par policy): définir `GOOGLE_APPLICATION_CREDENTIALS_DOCKER=/workspace/secrets/gcp-sa.json` dans `.env` et déposer la clé dans `secrets/gcp-sa.json`.
+
 ## 3) Vérifier les outils dans le conteneur
 
 ```bash
