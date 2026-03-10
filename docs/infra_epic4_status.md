@@ -11,6 +11,7 @@
 - 🟡 **INFRA-07** : Partiel (IAM dataset et bucket; IAM service accounts complet à faire).
 - 🟡 **INFRA-08** : Non implémenté (`docs/cost_estimation.md` à créer).
 - 🟡 **INFRA-09** : Non implémenté (workflows GitHub Actions à créer).
+- 🟡 **INFRA-09** : Partiel (workflow Code Scanning CodeQL ajouté, reste lint/dbt/terraform CI complet à ajouter).
 - ✅ **INFRA-10** : Partiellement couvert (structure repo + `.gitignore` + `.env.example` créés; branch protection à configurer sur GitHub UI).
 
 ## Détail infra conteneurisée
@@ -34,10 +35,15 @@ Guides d'exécution:
 4. Finaliser IAM par rôles de service account dédiés.
 5. Mettre en place CI/CD GitHub Actions (PR checks + main deploy).
 
+## CI Security
+
+- Workflow CodeQL ajouté : `.github/workflows/codeql.yml`
+- Couvre `push` et `pull_request` sur `main`/`develop` + scan hebdomadaire.
+
 ## Validation exécution (INFRA-01/02/03)
 
 - `terraform plan` et `terraform apply` exécutés avec succès via le conteneur `infra-iac`.
 - Outputs Terraform confirmés:
-	- Bucket: `datatalent-dev-cartographie-data-engineer-raw`
-	- Datasets: `raw`, `staging`, `marts`
+  - Bucket: `datatalent-dev-cartographie-data-engineer-raw`
+  - Datasets: `raw`, `staging`, `marts`
 - Vérification GCP confirmée via `gcloud storage buckets list` et `bq ls`.
