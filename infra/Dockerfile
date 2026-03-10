@@ -1,11 +1,21 @@
-FROM alpine:3.20
+FROM debian:bookworm-slim
 
 ARG TERRAFORM_VERSION=1.9.8
 ARG OPENTOFU_VERSION=1.8.3
 
-RUN apk add --no-cache bash curl unzip git jq ca-certificates \
-    && update-ca-certificates \
-    && curl -fsSL -o /tmp/terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
+RUN apt-get update \
+        && apt-get install -y --no-install-recommends \
+            bash curl unzip git jq ca-certificates gnupg apt-transport-https python3 python3-pip \
+        && mkdir -p /etc/apt/keyrings \
+        && curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+            | gpg --dearmor -o /etc/apt/keyrings/google-cloud.gpg \
+        && echo "deb [signed-by=/etc/apt/keyrings/google-cloud.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+            > /etc/apt/sources.list.d/google-cloud-sdk.list \
+        && apt-get update \
+        && apt-get install -y --no-install-recommends google-cloud-cli \
+        && python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel --break-system-packages \
+        && rm -rf /var/lib/apt/lists/* \
+        && curl -fsSL -o /tmp/terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
     && unzip /tmp/terraform.zip -d /usr/local/bin \
     && chmod +x /usr/local/bin/terraform \
     && rm -f /tmp/terraform.zip \
@@ -17,7 +27,9 @@ RUN apk add --no-cache bash curl unzip git jq ca-certificates \
 WORKDIR /workspace/infra
 
 COPY infra/scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i '1s/^\xEF\xBB\xBF//' /entrypoint.sh \
+    && sed -i 's/\r$//' /entrypoint.sh \
+    && chmod +x /entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["sh", "/entrypoint.sh"]
 CMD ["terraform", "version"]

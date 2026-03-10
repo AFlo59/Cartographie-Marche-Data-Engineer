@@ -3,8 +3,8 @@
 ## Résumé
 
 - ✅ **INFRA-01** : Choix du cloud (GCP) documenté dans le README.
-- ✅ **INFRA-02** : Module bucket raw en place (`infra/modules/storage`).
-- ✅ **INFRA-03** : Module datasets raw/staging/marts en place (`infra/modules/warehouse`).
+- ✅ **INFRA-02** : Module bucket raw en place (`infra/modules/storage`) **et bucket créé dans GCP**.
+- ✅ **INFRA-03** : Module datasets raw/staging/marts en place (`infra/modules/warehouse`) **et datasets créés dans GCP**.
 - 🟡 **INFRA-04** : Non implémenté (module compute serverless à créer).
 - 🟡 **INFRA-05** : Non implémenté (module scheduler à créer).
 - 🟡 **INFRA-06** : Non implémenté (module Secret Manager à créer).
@@ -17,9 +17,14 @@
 
 Un conteneur dédié IaC est disponible pour éviter une installation locale directe de Terraform/OpenTofu :
 
-- `infra/Dockerfile` : image outillée (`terraform` + `tofu`)
+- `infra/Dockerfile` : image outillée (`terraform` + `tofu` + `gcloud`)
 - `infra/scripts/entrypoint.sh` : commandes d'aide (`fmt`, `validate`)
 - `docker-compose.yml` : service `infra-iac`
+
+Guides d'exécution:
+
+- `docs/docker_run_commands.md` (commandes via Docker)
+- `docs/manual_commands.md` (commandes manuelles local/Cloud Shell)
 
 ## Actions restantes prioritaires
 
@@ -28,3 +33,11 @@ Un conteneur dédié IaC est disponible pour éviter une installation locale dir
 3. Créer `infra/modules/scheduler` (3 jobs cron France Travail / Sirene / Géo).
 4. Finaliser IAM par rôles de service account dédiés.
 5. Mettre en place CI/CD GitHub Actions (PR checks + main deploy).
+
+## Validation exécution (INFRA-01/02/03)
+
+- `terraform plan` et `terraform apply` exécutés avec succès via le conteneur `infra-iac`.
+- Outputs Terraform confirmés:
+	- Bucket: `datatalent-dev-cartographie-data-engineer-raw`
+	- Datasets: `raw`, `staging`, `marts`
+- Vérification GCP confirmée via `gcloud storage buckets list` et `bq ls`.
