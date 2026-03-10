@@ -1,0 +1,20 @@
+project_id = "my-gcp-project-id"
+region     = "europe-west1"
+location   = "EU"
+
+environment    = "dev"
+project_prefix = "datatalent"
+# raw_bucket_name = "datatalent-dev-my-raw-bucket"
+
+bucket_versioning_enabled        = true
+bucket_force_destroy             = false
+bucket_lifecycle_delete_age_days = 365
+
+raw_dataset_id     = "raw"
+staging_dataset_id = "staging"
+marts_dataset_id   = "marts"
+
+# Renseigner au fur et à mesure de la création des comptes de service
+ingestion_service_account_email = ""
+dbt_service_account_email       = ""
+dashboard_service_account_email = ""
