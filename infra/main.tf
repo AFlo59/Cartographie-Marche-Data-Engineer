@@ -1,5 +1,9 @@
 locals {
-  bucket_name = "${var.project_prefix}-${var.environment}-${var.project_id}-raw"
+  bucket_name_base = lower("${var.project_prefix}-${var.environment}-${var.project_id}-raw")
+  bucket_name_default = length(local.bucket_name_base) <= 63
+    ? local.bucket_name_base
+    : "${substr(local.bucket_name_base, 0, 52)}-${substr(md5(local.bucket_name_base), 0, 10)}"
+  bucket_name = var.raw_bucket_name != "" ? var.raw_bucket_name : local.bucket_name_default
 }
 
 module "storage" {

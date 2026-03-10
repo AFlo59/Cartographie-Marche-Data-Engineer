@@ -27,6 +27,12 @@ variable "project_prefix" {
   default     = "datatalent"
 }
 
+variable "raw_bucket_name" {
+  description = "Optional explicit bucket name override for raw storage (must be globally unique and GCS-compliant)"
+  type        = string
+  default     = ""
+}
+
 variable "bucket_versioning_enabled" {
   description = "Enable object versioning on raw bucket"
   type        = bool
