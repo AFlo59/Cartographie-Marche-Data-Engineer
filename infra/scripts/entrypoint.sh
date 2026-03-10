@@ -13,7 +13,7 @@ fi
 if [ "${1:-}" = "validate" ]; then
   shift
   terraform init -backend=false "$@"
-  exec terraform validate
+  exec terraform validate "$@"
 fi
 
 exec "$@"
