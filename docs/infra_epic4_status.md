@@ -8,9 +8,8 @@
 - 🟡 **INFRA-04** : Non implémenté (module compute serverless à créer).
 - 🟡 **INFRA-05** : Non implémenté (module scheduler à créer).
 - 🟡 **INFRA-06** : Non implémenté (module Secret Manager à créer).
-- 🟡 **INFRA-07** : Partiel (IAM dataset et bucket; IAM service accounts complet à faire).
+- 🟡 **INFRA-07** : Partiel (IAM dataset et bucket en place, + BigQuery projet-level `roles/bigquery.jobUser`; IAM service accounts complet à finaliser).
 - 🟡 **INFRA-08** : Non implémenté (`docs/cost_estimation.md` à créer).
-- 🟡 **INFRA-09** : Non implémenté (workflows GitHub Actions à créer).
 - 🟡 **INFRA-09** : Partiel (workflow Code Scanning CodeQL ajouté, reste lint/dbt/terraform CI complet à ajouter).
 - ✅ **INFRA-10** : Partiellement couvert (structure repo + `.gitignore` + `.env.example` créés; branch protection à configurer sur GitHub UI).
 
