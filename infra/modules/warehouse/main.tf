@@ -25,12 +25,12 @@ resource "google_bigquery_dataset_iam_member" "ingestion_raw_editor" {
   member     = "serviceAccount:${var.ingestion_service_account}"
 }
 
-resource "google_bigquery_dataset_iam_member" "dbt_raw_editor" {
+resource "google_bigquery_dataset_iam_member" "dbt_raw_viewer" {
   count = var.dbt_service_account == "" ? 0 : 1
 
   project    = var.project_id
   dataset_id = google_bigquery_dataset.raw.dataset_id
-  role       = "roles/bigquery.dataEditor"
+  role       = "roles/bigquery.dataViewer"
   member     = "serviceAccount:${var.dbt_service_account}"
 }
 
