@@ -47,7 +47,11 @@ infra/
 
 1. Copier `.env.example` en `.env`.
 
-1. Renseigner au minimum : `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_LOCATION`, `GOOGLE_APPLICATION_CREDENTIALS` (chemin local vers la clé JSON du service account).
+1. Renseigner au minimum : `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_LOCATION`.
+
+1. Auth Docker recommandée : `gcloud auth login` + `gcloud auth application-default login` dans le conteneur (ADC).
+
+1. Auth Docker alternative (clé JSON) : définir `GOOGLE_APPLICATION_CREDENTIALS_DOCKER=/workspace/secrets/gcp-sa.json` et placer la clé dans `secrets/gcp-sa.json`.
 
 1. Les variables `TF_VAR_*` dans `.env` permettent d'alimenter Terraform automatiquement.
 
@@ -65,12 +69,9 @@ pip install -r requirements.txt
 
 ### Exécuter l'IaC dans un conteneur dédié
 
-Le projet inclut un conteneur `infra-iac` (Terraform + OpenTofu) pour éviter d'installer ces outils en local.
+Le projet inclut un conteneur `infra-iac` (Terraform + OpenTofu + gcloud) pour éviter d'installer ces outils en local.
 
-Préparer les secrets :
-
-- Créer un dossier `secrets/`
-- Ajouter la clé JSON du service account GCP dans `secrets/gcp-sa.json`
+Mode recommandé : authentification ADC dans le conteneur (`gcloud auth application-default login`).
 
 Commandes principales :
 
