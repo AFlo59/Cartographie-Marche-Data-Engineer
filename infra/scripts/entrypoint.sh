@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 set -eu
 
 if [ "${1:-}" = "terraform" ] || [ "${1:-}" = "tofu" ]; then

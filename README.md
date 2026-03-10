@@ -90,6 +90,12 @@ docker compose run --rm infra-iac validate
 
 Le statut détaillé des tickets Epic 4 est suivi dans `docs/infra_epic4_status.md`.
 
+Le guide des commandes Cloud Shell (setup projet, service accounts, récupération des infos `.env`) est disponible dans `docs/gcp_terminal_setup.md`.
+
+Le guide des commandes Docker (run du conteneur infra) est disponible dans `docs/docker_run_commands.md`.
+
+Le guide des commandes manuelles (terminal local + Cloud Shell) est disponible dans `docs/manual_commands.md`.
+
 ### Déploiement (exemple)
 
 ```bash
