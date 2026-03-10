@@ -4,6 +4,7 @@ location   = "EU"
 
 environment    = "dev"
 project_prefix = "datatalent"
+# raw_bucket_name = "datatalent-dev-my-raw-bucket"
 
 bucket_versioning_enabled        = true
 bucket_force_destroy             = false
