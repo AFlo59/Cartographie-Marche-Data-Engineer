@@ -43,6 +43,53 @@ infra/
 - APIs activées : `storage.googleapis.com`, `bigquery.googleapis.com`
 - Auth locale GCP (ex: `gcloud auth application-default login`)
 
+### Configuration locale (.env)
+
+1. Copier `.env.example` en `.env`.
+
+1. Renseigner au minimum : `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_LOCATION`, `GOOGLE_APPLICATION_CREDENTIALS` (chemin local vers la clé JSON du service account).
+
+1. Les variables `TF_VAR_*` dans `.env` permettent d'alimenter Terraform automatiquement.
+
+### Dépendances Python
+
+Le fichier `requirements.txt` est prêt pour les scripts d'ingestion (API + GCS + BigQuery).
+
+Exemple d'installation :
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Exécuter l'IaC dans un conteneur dédié
+
+Le projet inclut un conteneur `infra-iac` (Terraform + OpenTofu) pour éviter d'installer ces outils en local.
+
+Préparer les secrets :
+
+- Créer un dossier `secrets/`
+- Ajouter la clé JSON du service account GCP dans `secrets/gcp-sa.json`
+
+Commandes principales :
+
+```bash
+docker compose build infra-iac
+docker compose run --rm infra-iac terraform init
+docker compose run --rm infra-iac terraform plan
+docker compose run --rm infra-iac terraform apply
+```
+
+Validation/FMT :
+
+```bash
+docker compose run --rm infra-iac fmt -check
+docker compose run --rm infra-iac validate
+```
+
+Le statut détaillé des tickets Epic 4 est suivi dans `docs/infra_epic4_status.md`.
+
 ### Déploiement (exemple)
 
 ```bash
