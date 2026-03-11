@@ -1,5 +1,6 @@
 # Commandes manuelles — local & Cloud Shell
 
+A FAIRE EN PREMIER.
 Ce fichier regroupe les commandes manuelles hors exécution Docker.
 
 ## A) Terminal local (PowerShell)
@@ -33,6 +34,7 @@ But: contrôler `GCP_PROJECT_ID`, `TF_VAR_project_id`, `TF_VAR_*_service_account
 ## 1) Cibler le projet
 
 ```bash
+gcloud auth login
 gcloud config set project cartographie-data-engineer
 ```
 
