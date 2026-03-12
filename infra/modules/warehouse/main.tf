@@ -62,7 +62,7 @@ resource "google_bigquery_dataset_iam_member" "dashboard_marts_viewer" {
 }
 
 resource "google_project_iam_member" "ingestion_job_user" {
-  count = var.ingestion_service_account == "" ? 0 : 1
+  count = var.manage_project_job_user_bindings && var.ingestion_service_account != "" ? 1 : 0
 
   project = var.project_id
   role    = "roles/bigquery.jobUser"
@@ -70,7 +70,7 @@ resource "google_project_iam_member" "ingestion_job_user" {
 }
 
 resource "google_project_iam_member" "dbt_job_user" {
-  count = var.dbt_service_account == "" ? 0 : 1
+  count = var.manage_project_job_user_bindings && var.dbt_service_account != "" ? 1 : 0
 
   project = var.project_id
   role    = "roles/bigquery.jobUser"
@@ -78,7 +78,7 @@ resource "google_project_iam_member" "dbt_job_user" {
 }
 
 resource "google_project_iam_member" "dashboard_job_user" {
-  count = var.dashboard_service_account == "" ? 0 : 1
+  count = var.manage_project_job_user_bindings && var.dashboard_service_account != "" ? 1 : 0
 
   project = var.project_id
   role    = "roles/bigquery.jobUser"

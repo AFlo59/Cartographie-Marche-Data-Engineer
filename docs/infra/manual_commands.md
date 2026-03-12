@@ -106,6 +106,44 @@ terraform apply
 
 Pourquoi : crée ou met à jour l'infrastructure dans GCP.
 
+## Gérer une erreur `409 already exists` (drift d'état)
+
+Quand Terraform tente de créer une ressource qui existe déjà dans GCP, il faut **adopter la ressource dans le state** avec `terraform import`.
+
+### Règle de décision
+
+- Ressource existe dans GCP et doit rester gérée par Terraform → **import**.
+- Ressource existe mais configuration Terraform doit changer → **import**, puis `terraform plan/apply` pour converger.
+- Ressource existe mais ne doit pas être gérée par ce state → ne pas importer (ou `terraform state rm` si déjà importée).
+- Ressource créée hors-plan et inutile → suppression manuelle possible, **uniquement** si impact maîtrisé.
+
+### Important
+
+- Ne jamais supprimer un bucket sensible (ex: bucket backend tfstate) sans plan de migration/backup.
+- Ne pas importer le bucket backend tfstate dans le state de cette stack applicative.
+
+### Imports utiles pour ce projet
+
+```powershell
+# Depuis le dossier infra/
+terraform import module.storage.google_storage_bucket.raw datatalent-dev-cartographie-data-engineer-raw
+
+terraform import module.warehouse.google_bigquery_dataset.raw cartographie-data-engineer:raw
+terraform import module.warehouse.google_bigquery_dataset.staging cartographie-data-engineer:staging
+terraform import module.warehouse.google_bigquery_dataset.marts cartographie-data-engineer:marts
+
+terraform import 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_ID"]' projects/cartographie-data-engineer/secrets/FT_CLIENT_ID
+terraform import 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_SECRET"]' projects/cartographie-data-engineer/secrets/FT_CLIENT_SECRET
+terraform import 'module.secrets.google_secret_manager_secret.secrets["DATAGOUV_API_KEY"]' projects/cartographie-data-engineer/secrets/DATAGOUV_API_KEY
+```
+
+Puis revalider :
+
+```powershell
+terraform plan
+terraform apply
+```
+
 ### 8. Vérifier les ressources déployées
 
 ```powershell
