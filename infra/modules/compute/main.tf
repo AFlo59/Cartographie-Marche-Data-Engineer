@@ -42,6 +42,11 @@ resource "google_cloud_run_v2_job" "ingestion" {
       }
     }
   }
+
+  depends_on = [
+    google_project_iam_member.ingestion_artifact_registry_reader,
+    google_project_iam_member.cloud_run_service_agent_artifact_registry_reader
+  ]
 }
 
 data "google_project" "current" {
