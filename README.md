@@ -148,4 +148,3 @@ Copier `infra/terraform.tfvars.example` vers `infra/terraform.tfvars` puis rense
 - INFRA-04 à INFRA-07 : compute serverless, scheduler, secrets, IAM avancé
 - INFRA-09 : pipelines CI/CD GitHub Actions
 - Intégration des modules infra avec l'ingestion et dbt
-
