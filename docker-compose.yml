@@ -20,6 +20,24 @@ services:
       TF_VAR_raw_dataset_id: ${TF_VAR_raw_dataset_id:-raw}
       TF_VAR_staging_dataset_id: ${TF_VAR_staging_dataset_id:-staging}
       TF_VAR_marts_dataset_id: ${TF_VAR_marts_dataset_id:-marts}
+      TF_VAR_ingestion_france_travail_prefix: ${TF_VAR_ingestion_france_travail_prefix:-raw/france_travail/}
+      TF_VAR_ingestion_sirene_prefix: ${TF_VAR_ingestion_sirene_prefix:-raw/sirene/}
+      TF_VAR_ingestion_geo_prefix: ${TF_VAR_ingestion_geo_prefix:-raw/geo/}
+      TF_VAR_compute_job_name: ${TF_VAR_compute_job_name:-datatalent-ingestion-job}
+      TF_VAR_compute_image: ${TF_VAR_compute_image:-}
+      TF_VAR_compute_memory: ${TF_VAR_compute_memory:-512Mi}
+      TF_VAR_compute_cpu: ${TF_VAR_compute_cpu:-1}
+      TF_VAR_compute_timeout_seconds: ${TF_VAR_compute_timeout_seconds:-1800}
+      TF_VAR_compute_max_retries: ${TF_VAR_compute_max_retries:-1}
+      TF_VAR_scheduler_service_account_email: ${TF_VAR_scheduler_service_account_email:-}
+      TF_VAR_scheduler_job_name_prefix: ${TF_VAR_scheduler_job_name_prefix:-datatalent-ingestion}
+      TF_VAR_scheduler_time_zone: ${TF_VAR_scheduler_time_zone:-Europe/Paris}
+      TF_VAR_scheduler_france_travail_schedule: ${TF_VAR_scheduler_france_travail_schedule:-0 6 * * *}
+      TF_VAR_scheduler_sirene_schedule: ${TF_VAR_scheduler_sirene_schedule:-0 3 1 * *}
+      TF_VAR_scheduler_geo_schedule: ${TF_VAR_scheduler_geo_schedule:-0 4 1 * *}
+      TF_VAR_secret_ft_client_id_name: ${TF_VAR_secret_ft_client_id_name:-FT_CLIENT_ID}
+      TF_VAR_secret_ft_client_secret_name: ${TF_VAR_secret_ft_client_secret_name:-FT_CLIENT_SECRET}
+      TF_VAR_secret_datagouv_api_key_name: ${TF_VAR_secret_datagouv_api_key_name:-DATAGOUV_API_KEY}
       TF_VAR_ingestion_service_account_email: ${TF_VAR_ingestion_service_account_email:-}
       TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
       TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}

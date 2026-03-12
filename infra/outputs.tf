@@ -16,3 +16,18 @@ output "datasets" {
     marts   = module.warehouse.marts_dataset_id
   }
 }
+
+output "compute_job_name" {
+  description = "Cloud Run ingestion job name"
+  value       = module.compute.job_name
+}
+
+output "scheduler_job_names" {
+  description = "Cloud Scheduler job names"
+  value       = module.scheduler.job_names
+}
+
+output "secret_ids" {
+  description = "Secret Manager secret IDs managed by Terraform"
+  value       = module.secrets.secret_ids
+}

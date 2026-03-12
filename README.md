@@ -1,8 +1,8 @@
-# Cartographie-Marche-Data-Engineer
+﻿# Cartographie-Marche-Data-Engineer
 
 Pipeline de données end-to-end : cartographie du marché Data Engineer en France.
 
-## Epic 4 — Démarrage infra (INFRA-01, INFRA-02, INFRA-03)
+## Epic 4 — État infra actuel (INFRA-01 à INFRA-06 + INFRA-09 partiel)
 
 ### Choix du cloud : GCP
 
@@ -15,12 +15,15 @@ Le projet démarre sur **Google Cloud Platform (GCP)** pour les raisons suivante
 
 ### Ressources couvertes dans ce repo
 
-Cette première itération IaC provisionne :
+Cette itération IaC provisionne :
 
 - Un bucket raw GCS (module `infra/modules/storage`)
 - Trois datasets BigQuery (`raw`, `staging`, `marts`) via module `infra/modules/warehouse`
-- Des permissions IAM dataset-level paramétrables pour ingestion/dbt/dashboard
-- Des permissions IAM projet-level BigQuery `roles/bigquery.jobUser` pour permettre l'exécution des jobs (requêtes/loads)
+- Un Cloud Run Job d'ingestion (module `infra/modules/compute`)
+- Trois jobs Cloud Scheduler (module `infra/modules/scheduler`)
+- Les secrets API dans Secret Manager + binding `secretAccessor` ingestion (module `infra/modules/secrets`)
+- Les IAM dataset-level et `roles/bigquery.jobUser` pour ingestion/dbt/dashboard
+- Un workflow CI infra WIF (`.github/workflows/infra-deploy.yml`) pour plan/apply Terraform
 
 ### Arborescence infra
 
@@ -35,30 +38,47 @@ infra/
   modules/
     storage/
     warehouse/
+    compute/
+    scheduler/
+    secrets/
 ```
 
-### Prérequis
+### Structure applicative visée
 
-- Terraform >= 1.6 (ou OpenTofu compatible)
-- Un projet GCP existant
-- APIs activées : `storage.googleapis.com`, `bigquery.googleapis.com`
-- Auth locale GCP (ex: `gcloud auth application-default login`)
+Le repo suit maintenant une séparation par domaine technique :
 
-### Configuration locale (.env)
+```text
+src/
+  ingestion/
+dbt/
+  transformation/
+    Dockerfile
+    models/
+    macros/
+    tests/
+    seeds/
+    analyses/
+infra/
+docs/
+```
 
-1. Copier `.env.example` en `.env`.
+Notes :
+- `src/ingestion/` porte les scripts Python d'ingestion,
+- `dbt/transformation/` est le futur emplacement du projet dbt de l'EPIC 2,
+- le dossier racine `models/` n'est plus retenu pour éviter l'ambiguïté entre modèles dbt et autres artefacts du projet.
 
-1. Renseigner au minimum les variables réellement utilisées par le flux Docker/Terraform : `TF_VAR_project_id`, `TF_VAR_region`, `TF_VAR_location`.
+### Documentation d'entrée
 
-1. Les variables `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_LOCATION` sont conservées comme alias de lisibilité et pour les commandes/documentation GCP, mais ce sont bien les `TF_VAR_*` qui pilotent l'exécution Terraform.
+Le point d'entrée principal de la documentation infra est : [docs/setup_guide.md](docs/setup_guide.md)
 
-1. Auth Docker recommandée (par défaut) : `gcloud auth login` + `gcloud auth application-default login` dans le conteneur (ADC). Dans ce mode, **aucun fichier clé JSON n'est requis**.
+Cette structure évite les doublons et sépare les parcours :
 
-1. Auth Docker alternative (optionnelle, si policy autorise les clés) : définir `GOOGLE_APPLICATION_CREDENTIALS=/workspace/secrets/gcp-sa.json` et placer la clé dans `secrets/gcp-sa.json`.
-
-1. Les autres `TF_VAR_*` (`environment`, `project_prefix`, datasets, emails SA, etc.) permettent de compléter le paramétrage de l'infra.
-
-1. Nom du bucket raw : par défaut, le nom est calculé automatiquement avec une logique compatible limite GCS (63 caractères max, avec troncature + suffixe hash si nécessaire). Pour forcer un nom explicite globalement unique, définir `TF_VAR_raw_bucket_name`.
+- [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md) pour le setup manuel GCP,
+- [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md) pour l'exécution via Docker,
+- [docs/infra/manual_commands.md](docs/infra/manual_commands.md) pour l'exécution avec outils installés localement,
+- [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md) pour les secrets runtime,
+- [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md) pour la CI GitHub ↔ GCP,
+- [docs/infra/iam_roles.md](docs/infra/iam_roles.md) pour les rôles et permissions.
 
 ### Dépendances Python
 
@@ -72,65 +92,21 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Exécuter l'IaC dans un conteneur dédié
+### Exécuter l'IaC
 
-Le projet inclut un conteneur `infra-iac` (Terraform + OpenTofu + gcloud) pour éviter d'installer ces outils en local.
+Le projet inclut un conteneur `infra-iac` pour éviter d'installer Terraform/OpenTofu/gcloud localement.
 
-Lancer les commandes depuis la racine du repo :
+Le chemin principal de déploiement visé dans le périmètre infra actuel est le workflow GitHub Actions après merge sur `main` pour l'infrastructure Terraform.
+Les exécutions Docker et terminal local servent surtout au développement, à la validation manuelle et au debug.
 
-```bash
-cd D:/PROJETS/Cartographie-Marche-Data-Engineer
-```
+Deux parcours sont documentés séparément :
 
-Vérifier que `.env` existe (sinon copier `.env.example`) :
+- via Docker : [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
+- via outils installés localement : [docs/infra/manual_commands.md](docs/infra/manual_commands.md)
 
-```bash
-ls -l .env
-```
+Le futur projet dbt est désormais scaffoldé dans `dbt/transformation/`, avec son propre `Dockerfile` dédié pour préparer l'EPIC 2.
 
-Deux chemins d'authentification sont supportés :
-
-- Option A (token OAuth) : robuste en cas d'échec ADC
-- Option B (ADC) : mode standard
-
-Par défaut, `docker-compose.yml` utilise `GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json` (ADC). Vous ne devez configurer `secrets/gcp-sa.json` que si vous choisissez explicitement le mode clé JSON.
-
-Option A — Token OAuth :
-
-```bash
-docker compose run --rm infra-iac gcloud auth login
-docker compose run --rm infra-iac gcloud config set project cartographie-data-engineer
-docker compose run --rm infra-iac sh -lc 'export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) && terraform init -backend=false && terraform validate && terraform plan'
-docker compose run --rm infra-iac sh -lc 'export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) && terraform apply'
-```
-
-Option B — ADC :
-
-```bash
-docker compose build infra-iac
-docker compose run --rm infra-iac gcloud auth login
-docker compose run --rm infra-iac gcloud auth application-default login
-docker compose run --rm infra-iac gcloud config set project cartographie-data-engineer
-docker compose run --rm infra-iac terraform init -backend=false
-docker compose run --rm infra-iac terraform validate
-docker compose run --rm infra-iac terraform plan
-docker compose run --rm infra-iac terraform apply
-```
-
-Validation/FMT :
-
-```bash
-docker compose run --rm infra-iac terraform fmt -check -recursive
-docker compose run --rm infra-iac terraform validate
-```
-
-Le statut détaillé des tickets Epic 4 est suivi dans `docs/infra_epic4_status.md`.
-
-Le guide des commandes Cloud Shell (setup projet, service accounts, récupération des infos `.env`) est disponible dans `docs/gcp_terminal_setup.md`.
-
-Le guide des commandes Docker (run du conteneur infra) est disponible dans `docs/docker_run_commands.md`.
-
-Le guide des commandes manuelles (terminal local + Cloud Shell) est disponible dans `docs/manual_commands.md`.
+Le statut détaillé des tickets Epic 4 reste suivi dans [docs/infra/infra_epic4_status.md](docs/infra/infra_epic4_status.md).
 
 ### Déploiement (exemple)
 
@@ -145,7 +121,8 @@ Copier `infra/terraform.tfvars.example` vers `infra/terraform.tfvars` puis rense
 
 ## Prochaines étapes
 
-- INFRA-04 à INFRA-07 : compute serverless, scheduler, secrets, IAM avancé
-- INFRA-09 : pipelines CI/CD GitHub Actions
-- Intégration des modules infra avec l'ingestion et dbt
+- INFRA-07 : finaliser le durcissement IAM (moindre privilège)
+- INFRA-08 : document de coûts `docs/cost_estimation.md`
+- INFRA-09 : compléter CI avec lint Python + dbt (compile/run/test)
+- Intégration applicative ingestion/dbt sur les ressources désormais provisionnées
 
