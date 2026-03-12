@@ -1,0 +1,48 @@
+services:
+  infra-iac:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    container_name: datatalent-infra-iac
+    working_dir: /workspace/infra
+    env_file:
+      - .env
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
+      TF_VAR_project_id: ${TF_VAR_project_id:-}
+      TF_VAR_region: ${TF_VAR_region:-}
+      TF_VAR_location: ${TF_VAR_location:-}
+      TF_VAR_environment: ${TF_VAR_environment:-dev}
+      TF_VAR_project_prefix: ${TF_VAR_project_prefix:-datatalent}
+      TF_VAR_bucket_versioning_enabled: ${TF_VAR_bucket_versioning_enabled:-true}
+      TF_VAR_bucket_force_destroy: ${TF_VAR_bucket_force_destroy:-false}
+      TF_VAR_bucket_lifecycle_delete_age_days: ${TF_VAR_bucket_lifecycle_delete_age_days:-365}
+      TF_VAR_raw_dataset_id: ${TF_VAR_raw_dataset_id:-raw}
+      TF_VAR_staging_dataset_id: ${TF_VAR_staging_dataset_id:-staging}
+      TF_VAR_marts_dataset_id: ${TF_VAR_marts_dataset_id:-marts}
+      TF_VAR_ingestion_france_travail_prefix: ${TF_VAR_ingestion_france_travail_prefix:-raw/france_travail/}
+      TF_VAR_ingestion_sirene_prefix: ${TF_VAR_ingestion_sirene_prefix:-raw/sirene/}
+      TF_VAR_ingestion_geo_prefix: ${TF_VAR_ingestion_geo_prefix:-raw/geo/}
+      TF_VAR_compute_job_name: ${TF_VAR_compute_job_name:-datatalent-ingestion-job}
+      TF_VAR_compute_image: ${TF_VAR_compute_image:-}
+      TF_VAR_compute_memory: ${TF_VAR_compute_memory:-512Mi}
+      TF_VAR_compute_cpu: ${TF_VAR_compute_cpu:-1}
+      TF_VAR_compute_timeout_seconds: ${TF_VAR_compute_timeout_seconds:-1800}
+      TF_VAR_compute_max_retries: ${TF_VAR_compute_max_retries:-1}
+      TF_VAR_scheduler_service_account_email: ${TF_VAR_scheduler_service_account_email:-}
+      TF_VAR_scheduler_job_name_prefix: ${TF_VAR_scheduler_job_name_prefix:-datatalent-ingestion}
+      TF_VAR_scheduler_time_zone: ${TF_VAR_scheduler_time_zone:-Europe/Paris}
+      TF_VAR_scheduler_france_travail_schedule: ${TF_VAR_scheduler_france_travail_schedule:-0 6 * * *}
+      TF_VAR_scheduler_sirene_schedule: ${TF_VAR_scheduler_sirene_schedule:-0 3 1 * *}
+      TF_VAR_scheduler_geo_schedule: ${TF_VAR_scheduler_geo_schedule:-0 4 1 * *}
+      TF_VAR_secret_ft_client_id_name: ${TF_VAR_secret_ft_client_id_name:-FT_CLIENT_ID}
+      TF_VAR_secret_ft_client_secret_name: ${TF_VAR_secret_ft_client_secret_name:-FT_CLIENT_SECRET}
+      TF_VAR_secret_datagouv_api_key_name: ${TF_VAR_secret_datagouv_api_key_name:-DATAGOUV_API_KEY}
+      TF_VAR_ingestion_service_account_email: ${TF_VAR_ingestion_service_account_email:-}
+      TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
+      TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
+    volumes:
+      - ./:/workspace
+      - ./secrets:/workspace/secrets:ro
+      - ./.gcloud:/root/.config/gcloud
+    command: ["terraform", "version"]

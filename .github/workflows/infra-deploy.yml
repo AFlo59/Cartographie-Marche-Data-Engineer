@@ -1,0 +1,199 @@
+name: Infra Deploy — Terraform
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-deploy.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-deploy.yml"
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  terraform:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    name: Terraform ${{ github.event_name == 'push' && 'Apply' || 'Plan' }}
+    runs-on: ubuntu-latest
+
+    env:
+      TF_BACKEND_BUCKET: datatalent-tfstate-cartographie-data-engineer
+      # Projet GCP
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_region: europe-west1
+      TF_VAR_location: EU
+      TF_VAR_environment: dev
+      TF_VAR_project_prefix: datatalent
+      # Bucket
+      TF_VAR_bucket_versioning_enabled: "true"
+      TF_VAR_bucket_force_destroy: "false"
+      TF_VAR_bucket_lifecycle_delete_age_days: "365"
+      # BigQuery
+      TF_VAR_raw_dataset_id: raw
+      TF_VAR_staging_dataset_id: staging
+      TF_VAR_marts_dataset_id: marts
+      # Ingestion prefixes
+      TF_VAR_ingestion_france_travail_prefix: raw/france_travail/
+      TF_VAR_ingestion_sirene_prefix: raw/sirene/
+      TF_VAR_ingestion_geo_prefix: raw/geo/
+      # Service accounts (nécessaire pour maintenir les IAM bindings en state)
+      TF_VAR_ingestion_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
+      TF_VAR_dbt_service_account_email: dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com
+      TF_VAR_dashboard_service_account_email: dashboard-sa@cartographie-data-engineer.iam.gserviceaccount.com
+      TF_VAR_scheduler_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
+      # Compute (INFRA-04)
+      TF_VAR_compute_job_name: datatalent-ingestion-job
+      TF_VAR_compute_image: europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
+      TF_VAR_compute_memory: 512Mi
+      TF_VAR_compute_cpu: "1"
+      TF_VAR_compute_timeout_seconds: "1800"
+      TF_VAR_compute_max_retries: "1"
+      # Secrets (INFRA-06)
+      TF_VAR_secret_ft_client_id_name: FT_CLIENT_ID
+      TF_VAR_secret_ft_client_secret_name: FT_CLIENT_SECRET
+      TF_VAR_secret_datagouv_api_key_name: DATAGOUV_API_KEY
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # ── 2. Vérifier les secrets CI requis ───────────────────────────────────
+      - name: Check required CI secrets
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+          GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for secret_name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_WIF_SERVICE_ACCOUNT; do
+            if [ -z "${!secret_name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret: ${secret_name}"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Configure the missing values in GitHub > Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      # ── 3. Authentification GCP via WIF ──────────────────────────────────────
+      - name: Auth GCP via Workload Identity Federation
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      # ── 4. Setup gcloud CLI ──────────────────────────────────────────────────
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      # ── 5. Vérifier le backend Terraform en PR ───────────────────────────────
+      - name: Check Terraform backend bucket exists
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gcloud storage buckets describe "gs://${TF_BACKEND_BUCKET}" --project="${TF_VAR_project_id}" >/dev/null 2>&1; then
+            echo "Terraform backend bucket already exists: gs://${TF_BACKEND_BUCKET}"
+          else
+            echo "::error::Terraform backend bucket is missing: gs://${TF_BACKEND_BUCKET}"
+            echo "Create it once from Cloud Shell before running PR validation."
+            exit 1
+          fi
+
+      # ── 6. Bootstrap backend bucket sur push main/develop ─────────────────────
+      - name: Ensure Terraform backend bucket exists
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gcloud storage buckets describe "gs://${TF_BACKEND_BUCKET}" --project="${TF_VAR_project_id}" >/dev/null 2>&1; then
+            echo "Terraform backend bucket already exists: gs://${TF_BACKEND_BUCKET}"
+          else
+            echo "Creating Terraform backend bucket: gs://${TF_BACKEND_BUCKET}"
+            gcloud storage buckets create "gs://${TF_BACKEND_BUCKET}" \
+              --project="${TF_VAR_project_id}" \
+              --location="${TF_VAR_region}" \
+              --uniform-bucket-level-access
+            gcloud storage buckets update "gs://${TF_BACKEND_BUCKET}" --versioning
+          fi
+
+      # ── 7. Setup Terraform ───────────────────────────────────────────────────
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.9.8"
+
+      # ── 8. Terraform Init ────────────────────────────────────────────────────
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -backend-config="bucket=${TF_BACKEND_BUCKET}"
+
+      # ── 9. Terraform Validate ────────────────────────────────────────────────
+      - name: Terraform Validate
+        working-directory: infra
+        run: terraform validate
+
+      # ── 10. Terraform Plan (PR uniquement) ───────────────────────────────────
+      - name: Terraform Plan
+        if: github.event_name == 'pull_request'
+        working-directory: infra
+        run: terraform plan -no-color -out=tfplan
+        continue-on-error: false
+
+      # ── 11. Poster le plan en commentaire PR ─────────────────────────────────
+      - name: Post Plan to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const plan = execSync('terraform show -no-color tfplan', {
+              cwd: 'infra',
+              maxBuffer: 1024 * 1024 * 10
+            }).toString();
+            const body = `## Terraform Plan\n\`\`\`\n${plan}\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.startsWith('## Terraform Plan'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      # ── 12. Terraform Apply (merge main uniquement) ──────────────────────────
+      - name: Terraform Apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: infra
+        run: terraform apply -auto-approve
