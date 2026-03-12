@@ -44,6 +44,24 @@ resource "google_cloud_run_v2_job" "ingestion" {
   }
 }
 
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+resource "google_project_iam_member" "ingestion_artifact_registry_reader" {
+  count = var.ingestion_service_account_email == "" ? 0 : 1
+
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${var.ingestion_service_account_email}"
+}
+
+resource "google_project_iam_member" "cloud_run_service_agent_artifact_registry_reader" {
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:service-${data.google_project.current.number}@serverless-robot-prod.iam.gserviceaccount.com"
+}
+
 resource "google_cloud_run_v2_job_iam_member" "job_invoker" {
   for_each = toset(var.job_invoker_service_accounts)
 

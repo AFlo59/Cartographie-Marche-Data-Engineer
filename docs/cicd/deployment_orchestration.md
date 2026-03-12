@@ -12,6 +12,52 @@ Ce document décrit l'enchaînement global des composants du projet sans répét
 6. dbt transforme les données vers `staging` puis `marts`.
 7. Le dashboard consomme `marts`.
 
+## Décision d'architecture ingestion (recommandée)
+
+### Choix retenu
+
+- **Un seul Cloud Run Job** d'ingestion (`datatalent-ingestion-job`),
+- **3 jobs Cloud Scheduler** (france_travail, sirene, geo),
+- chaque scheduler envoie un override de variable d'environnement `INGESTION_SOURCE`.
+
+Ce choix est le plus optimisé actuellement pour votre projet (coût + simplicité opérationnelle).
+
+### Pourquoi c'est le plus efficace aujourd'hui
+
+- une seule image Docker à builder/pusher,
+- un seul job Cloud Run à maintenir,
+- moins de surface IAM/Terraform,
+- coût d'exploitation global souvent plus faible (fréquence faible: hebdo + mensuel).
+
+### Est-ce qu'on "overwrite" les données d'ingestion ?
+
+Recommandation:
+
+- **ne pas écraser le même objet** à chaque run,
+- écrire par **source + période d'exécution** (ex: `raw/<source>/YYYY/MM/` ou `raw/<source>/run_date=YYYY-MM-DD/`),
+- garder un pointeur "latest" si besoin (facultatif), mais conserver l'historique brut.
+
+Avec cette stratégie, un seul job reste propre et traçable sans collision entre sources.
+
+### Quand passer à 3 Cloud Run Jobs distincts
+
+Basculer vers 3 jobs uniquement si:
+
+- CPU/RAM/timeout très différents par source,
+- cadence très différente (ex: une source quotidienne lourde),
+- besoin d'isolation forte des incidents/SLA.
+
+Sinon, garder **1 job paramétré** est la meilleure option.
+
+## Note coût (ordre de grandeur)
+
+- À faible volumétrie, la différence de coût pur entre 1 job paramétré et 3 jobs séparés est généralement faible.
+- Le vrai gain vient surtout de:
+	- limiter CPU/RAM au strict besoin,
+	- réduire la durée d'exécution,
+	- éviter les re-téléchargements complets inutiles,
+	- gérer l'incrémental quand l'API le permet.
+
 ## Périmètre actuel documenté
 
 La documentation opérationnelle restructurée couvre surtout le périmètre infra actuel :

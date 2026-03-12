@@ -85,6 +85,21 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
   --role="roles/resourcemanager.projectIamAdmin"
 ```
 
+Optionnel (si vous voulez que la CI puisse activer automatiquement des APIs GCP manquantes) :
+
+```bash
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/serviceusage.serviceUsageAdmin"
+```
+
+Sinon, activer manuellement une fois les APIs requises :
+
+```bash
+gcloud services enable run.googleapis.com cloudscheduler.googleapis.com \
+  --project=${PROJECT}
+```
+
 Note : dans le workflow actuel, `TF_VAR_manage_project_job_user_bindings` est positionné à `false`, donc ce rôle optionnel n'est pas requis pour le flux CI standard.
 
 Placeholders utilisés dans ce guide :

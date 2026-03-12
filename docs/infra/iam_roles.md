@@ -91,6 +91,7 @@ gcloud iam service-accounts create terraform-deployer-sa \
 | Rôle | Portée | Ressource cible | Pourquoi | Statut | Ressource Terraform |
 |------|--------|-----------------|----------|--------|---------------------|
 | `roles/storage.objectAdmin` | Bucket | `datatalent-dev-cartographie-data-engineer-raw` | Créer, lire, écraser des objets Parquet dans le bucket raw | ✅ Terraform + ✅ Manuel appliqué | `modules/storage` → `google_storage_bucket_iam_member.ingestion_object_admin` |
+| `roles/artifactregistry.reader` | Projet | — | Autoriser Cloud Run à tirer l'image d'ingestion depuis Artifact Registry | ✅ Terraform (compute module) | `modules/compute` → `google_project_iam_member.ingestion_artifact_registry_reader` |
 | `roles/bigquery.dataEditor` | Dataset | `raw` | Insérer / écraser des tables dans le dataset raw | ✅ Terraform (appliqué INFRA-03) | `modules/warehouse` → `google_bigquery_dataset_iam_member.ingestion_raw_editor` |
 | `roles/bigquery.jobUser` | Projet | — | Lancer des jobs BigQuery (INSERT, LOAD, etc.) | ✅ Terraform + ✅ Manuel appliqué | `modules/warehouse` → `google_project_iam_member.ingestion_job_user` |
 | `roles/secretmanager.secretAccessor` | Secret | `FT_CLIENT_ID`, `FT_CLIENT_SECRET` | Lire les valeurs des secrets au runtime Cloud Run | ✅ Manuel appliqué (terraform apply INFRA-06 confirmera) | `modules/secrets` → `google_secret_manager_secret_iam_member.ingestion_accessor` |
@@ -211,6 +212,28 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
 
 ---
 
+## 5.1 Cloud Run service agent (pull image Artifact Registry)
+
+Cloud Run utilise aussi le service agent projet suivant:
+
+- `service-${PROJECT_NUMBER}@serverless-robot-prod.iam.gserviceaccount.com`
+
+Ce compte doit pouvoir lire les images Artifact Registry:
+
+```bash
+PROJECT="cartographie-data-engineer"
+PROJECT_NUMBER="839133795234"
+RUN_SA="service-${PROJECT_NUMBER}@serverless-robot-prod.iam.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${RUN_SA}" \
+  --role="roles/artifactregistry.reader"
+```
+
+Ce binding est désormais aussi géré par Terraform dans `modules/compute`.
+
+---
+
 ## 6. IAM Bindings — `terraform-deployer-sa`
 
 Ce SA est utilisé par Terraform (CI GitHub Actions via WIF, ou ADC en local). Il a besoin de droits élevés pour gérer les ressources GCP.
@@ -222,6 +245,7 @@ Ce SA est utilisé par Terraform (CI GitHub Actions via WIF, ou ADC en local). I
 | `roles/run.admin` | Projet | — | Déployer le Cloud Run Job (INFRA-04) | 🔧 Manuel ❌ à faire |
 | `roles/cloudscheduler.admin` | Projet | — | Créer / modifier les 3 jobs Cloud Scheduler (INFRA-05) | 🔧 Manuel ❌ à faire |
 | `roles/secretmanager.admin` | Projet | — | Créer les secret containers Secret Manager (INFRA-06) | 🔧 Manuel ❌ à faire |
+| `roles/serviceusage.serviceUsageAdmin` | Projet | — | Activer les APIs GCP manquantes depuis la CI (optionnel) | 🔧 Manuel (recommandé) |
 | `roles/iam.serviceAccountUser` | SA Resource | `ingestion-sa` | Assigner `ingestion-sa` comme `service_account` du Cloud Run Job | 🔧 Manuel ❌ à faire |
 
 **Commandes gcloud** — rôles déjà accordés (INFRA-01/02/03) :
@@ -260,6 +284,11 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/secretmanager.admin"
+
+# Optionnel: autoriser la CI à activer les APIs GCP manquantes
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/serviceusage.serviceUsageAdmin"
 
 # Permet à terraform-deployer-sa d'assigner ingestion-sa au Cloud Run Job
 gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
