@@ -114,7 +114,12 @@ variable "compute_job_name" {
 variable "compute_image" {
   description = "Container image used by Cloud Run Job"
   type        = string
-  default     = "us-docker.pkg.dev/cloudrun/container/job:latest"
+  default     = ""
+
+  validation {
+    condition     = trimspace(var.compute_image) != ""
+    error_message = "compute_image must be set explicitly (for example: europe-west1-docker.pkg.dev/<project>/datatalent/ingestion:latest)."
+  }
 }
 
 variable "compute_memory" {
@@ -192,5 +197,5 @@ variable "secret_ft_client_secret_name" {
 variable "secret_datagouv_api_key_name" {
   description = "Secret Manager secret id for data.gouv API key"
   type        = string
-  default     = "DATAGOUV_API_KEY"
+  default     = ""
 }

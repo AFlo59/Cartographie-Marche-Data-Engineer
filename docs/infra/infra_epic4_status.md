@@ -23,8 +23,8 @@ Un conteneur dédié IaC est disponible pour éviter une installation locale dir
 
 Guides d'exécution:
 
-- `docs/docker_run_commands.md` (commandes via Docker)
-- `docs/manual_commands.md` (commandes manuelles local/Cloud Shell)
+- `docs/infra/docker_run_commands.md` (commandes via Docker)
+- `docs/infra/manual_commands.md` (commandes manuelles local/Cloud Shell)
 
 ## Actions restantes prioritaires
 
