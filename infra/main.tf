@@ -21,6 +21,30 @@ locals {
   scheduler_service_account_email = var.scheduler_service_account_email != "" ? var.scheduler_service_account_email : var.ingestion_service_account_email
 }
 
+check "required_service_accounts" {
+  assert {
+    condition     = trimspace(var.ingestion_service_account_email) != ""
+    error_message = "ingestion_service_account_email is required."
+  }
+
+  assert {
+    condition     = trimspace(var.dbt_service_account_email) != ""
+    error_message = "dbt_service_account_email is required."
+  }
+
+  assert {
+    condition     = trimspace(var.dashboard_service_account_email) != ""
+    error_message = "dashboard_service_account_email is required."
+  }
+}
+
+check "scheduler_service_account_resolved" {
+  assert {
+    condition     = trimspace(local.scheduler_service_account_email) != ""
+    error_message = "Set scheduler_service_account_email or ingestion_service_account_email (fallback) to a non-empty value."
+  }
+}
+
 module "storage" {
   source = "./modules/storage"
 
