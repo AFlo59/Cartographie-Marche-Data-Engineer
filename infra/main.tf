@@ -68,6 +68,7 @@ module "warehouse" {
   ingestion_service_account    = var.ingestion_service_account_email
   dbt_service_account          = var.dbt_service_account_email
   dashboard_service_account    = var.dashboard_service_account_email
+  manage_project_job_user_bindings = var.manage_project_job_user_bindings
 }
 
 module "secrets" {

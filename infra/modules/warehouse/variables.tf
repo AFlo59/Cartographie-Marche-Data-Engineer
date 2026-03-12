@@ -43,3 +43,9 @@ variable "dashboard_service_account" {
   type        = string
   default     = ""
 }
+
+variable "manage_project_job_user_bindings" {
+  description = "Whether to manage project-level roles/bigquery.jobUser bindings"
+  type        = bool
+  default     = true
+}

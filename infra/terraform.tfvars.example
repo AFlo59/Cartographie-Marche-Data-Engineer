@@ -35,9 +35,9 @@ compute_max_retries     = 1
 scheduler_service_account_email  = ""
 scheduler_job_name_prefix        = "datatalent-ingestion"
 scheduler_time_zone              = "Europe/Paris"
-scheduler_france_travail_schedule = "0 6 * * *"
-scheduler_sirene_schedule         = "0 7 1 * *"
-scheduler_geo_schedule            = "0 8 1 * *"
+scheduler_france_travail_schedule = "0 6 * * *"  # Daily 6 AM
+scheduler_sirene_schedule         = "0 3 1 * *"  # Monthly 1st, 3 AM (ALIGN with defaults)
+scheduler_geo_schedule            = "0 4 1 * *"  # Monthly 1st, 4 AM (ALIGN with defaults)
 
 secret_ft_client_id_name     = "FT_CLIENT_ID"
 secret_ft_client_secret_name = "FT_CLIENT_SECRET"
@@ -47,3 +47,6 @@ secret_datagouv_api_key_name = "DATAGOUV_API_KEY"
 ingestion_service_account_email = ""
 dbt_service_account_email       = ""
 dashboard_service_account_email = ""
+
+# Mettre à false si le compte Terraform n'a pas le droit de modifier l'IAM projet
+manage_project_job_user_bindings = false

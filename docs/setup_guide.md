@@ -82,6 +82,7 @@ Guide : [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md)
 2. Choisir Docker ou installation locale
 3. Lancer `validate` → `plan` → `apply`
 4. Vérifier les ressources créées
+5. En cas d'erreur `409 already exists`, suivre la section dédiée "Gérer une erreur 409" du guide local
 
 Voir :
 - [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
