@@ -26,7 +26,7 @@ jobs:
     env:
       TF_BACKEND_BUCKET: datatalent-tfstate-cartographie-data-engineer
       # Projet GCP
-      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
       TF_VAR_region: europe-west1
       TF_VAR_location: EU
       TF_VAR_environment: dev
@@ -70,9 +70,9 @@ jobs:
       - name: Check required CI secrets
         shell: bash
         env:
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
-          GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER != '' && secrets.GCP_WIF_PROVIDER || vars.GCP_WIF_PROVIDER }}
+          GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
         run: |
           set -euo pipefail
 
@@ -85,7 +85,7 @@ jobs:
           done
 
           if [ "$missing" -ne 0 ]; then
-            echo "Configure the missing values in GitHub > Settings > Secrets and variables > Actions."
+            echo "Configure the missing values in GitHub > Settings > Secrets and variables > Actions (Secrets ou Variables)."
             exit 1
           fi
 
@@ -94,14 +94,31 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v3
         with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER != '' && secrets.GCP_WIF_PROVIDER || vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
 
       # ── 4. Setup gcloud CLI ──────────────────────────────────────────────────
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v3
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+
+      # ── 5.1 Activer les APIs requises (idempotent) ─────────────────────────
+      - name: Enable required GCP APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gcloud services enable \
+            run.googleapis.com \
+            cloudscheduler.googleapis.com \
+            secretmanager.googleapis.com \
+            bigquery.googleapis.com \
+            storage.googleapis.com \
+            --project="${TF_VAR_project_id}"
+
+          # Laisser quelques secondes pour propagation IAM/API
+          sleep 20
 
       # ── 5. Vérifier le backend Terraform en PR ───────────────────────────────
       - name: Check Terraform backend bucket exists
@@ -204,23 +221,51 @@ jobs:
           import_if_needed() {
             local address="$1"
             local import_id="$2"
+            local exists_cmd="${3:-}"
 
             if terraform state show "$address" >/dev/null 2>&1; then
               echo "Already in state: $address"
               return 0
             fi
 
+            if [ -n "$exists_cmd" ] && ! eval "$exists_cmd"; then
+              echo "Remote resource not found, skip import: $address"
+              return 0
+            fi
+
             echo "Importing: $address"
-            terraform import "$address" "$import_id" >/dev/null 2>&1 || true
+            terraform import "$address" "$import_id"
           }
 
-          import_if_needed 'module.storage.google_storage_bucket.raw' "${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw"
-          import_if_needed 'module.warehouse.google_bigquery_dataset.raw' "${TF_VAR_project_id}:${TF_VAR_raw_dataset_id}"
-          import_if_needed 'module.warehouse.google_bigquery_dataset.staging' "${TF_VAR_project_id}:${TF_VAR_staging_dataset_id}"
-          import_if_needed 'module.warehouse.google_bigquery_dataset.marts' "${TF_VAR_project_id}:${TF_VAR_marts_dataset_id}"
-          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_ID"]' "projects/${TF_VAR_project_id}/secrets/FT_CLIENT_ID"
-          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_SECRET"]' "projects/${TF_VAR_project_id}/secrets/FT_CLIENT_SECRET"
-          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["DATAGOUV_API_KEY"]' "projects/${TF_VAR_project_id}/secrets/DATAGOUV_API_KEY"
+          RAW_BUCKET="${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw"
+
+          import_if_needed 'module.storage.google_storage_bucket.raw' \
+            "${RAW_BUCKET}" \
+            "gcloud storage buckets describe gs://${RAW_BUCKET} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.warehouse.google_bigquery_dataset.raw' \
+            "projects/${TF_VAR_project_id}/datasets/${TF_VAR_raw_dataset_id}" \
+            "bq --project_id=${TF_VAR_project_id} show --dataset ${TF_VAR_raw_dataset_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.warehouse.google_bigquery_dataset.staging' \
+            "projects/${TF_VAR_project_id}/datasets/${TF_VAR_staging_dataset_id}" \
+            "bq --project_id=${TF_VAR_project_id} show --dataset ${TF_VAR_staging_dataset_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.warehouse.google_bigquery_dataset.marts' \
+            "projects/${TF_VAR_project_id}/datasets/${TF_VAR_marts_dataset_id}" \
+            "bq --project_id=${TF_VAR_project_id} show --dataset ${TF_VAR_marts_dataset_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_ID"]' \
+            "projects/${TF_VAR_project_id}/secrets/FT_CLIENT_ID" \
+            "gcloud secrets describe FT_CLIENT_ID --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_SECRET"]' \
+            "projects/${TF_VAR_project_id}/secrets/FT_CLIENT_SECRET" \
+            "gcloud secrets describe FT_CLIENT_SECRET --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["DATAGOUV_API_KEY"]' \
+            "projects/${TF_VAR_project_id}/secrets/DATAGOUV_API_KEY" \
+            "gcloud secrets describe DATAGOUV_API_KEY --project=${TF_VAR_project_id} >/dev/null 2>&1"
 
       # ── 13. Terraform Apply (merge main uniquement) ──────────────────────────
       - name: Terraform Apply
