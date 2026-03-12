@@ -48,6 +48,7 @@ jobs:
       TF_VAR_dbt_service_account_email: dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_dashboard_service_account_email: dashboard-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_scheduler_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
+      TF_VAR_manage_project_job_user_bindings: "false"
       # Compute (INFRA-04)
       TF_VAR_compute_job_name: datatalent-ingestion-job
       TF_VAR_compute_image: europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
@@ -192,7 +193,36 @@ jobs:
               });
             }
 
-      # ── 12. Terraform Apply (merge main uniquement) ──────────────────────────
+      # ── 12. Adopt existing resources into state (best effort) ───────────────
+      - name: Terraform Import existing resources (best effort)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: infra
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          import_if_needed() {
+            local address="$1"
+            local import_id="$2"
+
+            if terraform state show "$address" >/dev/null 2>&1; then
+              echo "Already in state: $address"
+              return 0
+            fi
+
+            echo "Importing: $address"
+            terraform import "$address" "$import_id" >/dev/null 2>&1 || true
+          }
+
+          import_if_needed 'module.storage.google_storage_bucket.raw' "${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw"
+          import_if_needed 'module.warehouse.google_bigquery_dataset.raw' "${TF_VAR_project_id}:${TF_VAR_raw_dataset_id}"
+          import_if_needed 'module.warehouse.google_bigquery_dataset.staging' "${TF_VAR_project_id}:${TF_VAR_staging_dataset_id}"
+          import_if_needed 'module.warehouse.google_bigquery_dataset.marts' "${TF_VAR_project_id}:${TF_VAR_marts_dataset_id}"
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_ID"]' "projects/${TF_VAR_project_id}/secrets/FT_CLIENT_ID"
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_SECRET"]' "projects/${TF_VAR_project_id}/secrets/FT_CLIENT_SECRET"
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["DATAGOUV_API_KEY"]' "projects/${TF_VAR_project_id}/secrets/DATAGOUV_API_KEY"
+
+      # ── 13. Terraform Apply (merge main uniquement) ──────────────────────────
       - name: Terraform Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: infra

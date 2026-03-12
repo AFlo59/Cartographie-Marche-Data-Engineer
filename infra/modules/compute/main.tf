@@ -44,10 +44,11 @@ resource "google_cloud_run_v2_job" "ingestion" {
   }
 }
 
-resource "google_project_iam_member" "job_invoker" {
+resource "google_cloud_run_v2_job_iam_member" "job_invoker" {
   for_each = toset(var.job_invoker_service_accounts)
 
-  project = var.project_id
-  role    = "roles/run.invoker"
-  member  = "serviceAccount:${each.value}"
+  name     = google_cloud_run_v2_job.ingestion.name
+  location = var.region
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${each.value}"
 }

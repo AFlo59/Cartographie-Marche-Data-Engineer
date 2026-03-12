@@ -38,6 +38,55 @@ Note de périmètre : le workflow actuel couvre principalement `terraform plan` 
   - Org : `GITHUB_ORG`
   - Repo : `GITHUB_REPO`
 
+### 2.1) Donner les droits au service account utilisé par WIF
+
+Le service account référencé dans `GCP_WIF_SERVICE_ACCOUNT` doit avoir les droits pour gérer les ressources Terraform.
+
+Commandes (à exécuter une fois) :
+
+```bash
+TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
+PROJECT="cartographie-data-engineer"
+INGESTION_SA="ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com"
+
+# Ressources infra
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/storage.admin"
+
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/bigquery.admin"
+
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/cloudscheduler.admin"
+
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/secretmanager.admin"
+
+# Permet d'assigner ingestion-sa au Cloud Run Job
+gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/iam.serviceAccountUser" \
+  --project=${PROJECT}
+```
+
+Optionnel (uniquement si Terraform doit gérer des bindings IAM au niveau projet, ex: `roles/bigquery.jobUser`) :
+
+```bash
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/resourcemanager.projectIamAdmin"
+```
+
+Note : dans le workflow actuel, `TF_VAR_manage_project_job_user_bindings` est positionné à `false`, donc ce rôle optionnel n'est pas requis pour le flux CI standard.
+
 Placeholders utilisés dans ce guide :
 
 - `PROJECT_NUMBER` = identifiant numérique du projet GCP.

@@ -69,6 +69,12 @@ variable "dashboard_service_account_email" {
   default     = ""
 }
 
+variable "manage_project_job_user_bindings" {
+  description = "Whether Terraform should manage project-level roles/bigquery.jobUser bindings"
+  type        = bool
+  default     = true
+}
+
 variable "raw_dataset_id" {
   description = "BigQuery dataset ID for raw layer"
   type        = string
