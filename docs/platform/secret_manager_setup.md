@@ -1,11 +1,11 @@
-# Guide pas à pas — Secret Manager runtime (INFRA-06)
+﻿# Guide pas à pas — Secret Manager runtime (INFRA-06)
 
 Ce guide traite uniquement la partie Secret Manager runtime : création des conteneurs, ajout des versions réelles, bindings IAM et vérifications.
 
 Prérequis déjà documentés ailleurs :
-- setup manuel GCP : [docs/gcp_terminal_setup.md](docs/gcp_terminal_setup.md)
-- exécution Docker et authentification locale : [docs/docker_run_commands.md](docs/docker_run_commands.md)
-- matrice complète des rôles : [docs/iam_roles.md](docs/iam_roles.md)
+- setup manuel GCP : [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md)
+- exécution Docker et authentification locale : [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
+- matrice complète des rôles : [docs/infra/iam_roles.md](docs/infra/iam_roles.md)
 
 > Ce guide sert à préparer les secrets runtime pour le développement et pour la plateforme.
 > Le déploiement principal de l'infrastructure reste piloté par GitHub Actions.

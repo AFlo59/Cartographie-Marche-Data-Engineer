@@ -1,4 +1,4 @@
-# Guide pas à pas — Workload Identity Federation GitHub ↔ GCP
+﻿# Guide pas à pas — Workload Identity Federation GitHub ↔ GCP
 
 Ce guide explique comment configurer **Workload Identity Federation (WIF)** pour permettre à GitHub Actions de déployer l’infrastructure GCP **sans clé JSON**.
 
@@ -258,7 +258,7 @@ C’est la combinaison la plus simple et la plus saine pour le périmètre actue
 
 ## 15) Références
 
-- Orchestration globale : [docs/deployment_orchestration.md](docs/deployment_orchestration.md)
-- Setup GCP manuel : [docs/gcp_terminal_setup.md](docs/gcp_terminal_setup.md)
-- Commandes Docker infra : [docs/docker_run_commands.md](docs/docker_run_commands.md)
+- Orchestration globale : [docs/cicd/deployment_orchestration.md](docs/cicd/deployment_orchestration.md)
+- Setup GCP manuel : [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md)
+- Commandes Docker infra : [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
 - Backlog projet : [objectif/backlog_agile_datatalent.md](objectif/backlog_agile_datatalent.md)

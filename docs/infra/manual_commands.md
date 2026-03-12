@@ -1,10 +1,10 @@
-# Commandes locales — sans Docker
+﻿# Commandes locales — sans Docker
 
 Ce guide couvre l'exécution Terraform avec les outils installés directement sur votre poste.
 
-Pour le setup GCP one-shot : [docs/gcp_terminal_setup.md](docs/gcp_terminal_setup.md)
+Pour le setup GCP one-shot : [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md)
 
-Pour l'exécution via conteneur : [docs/docker_run_commands.md](docs/docker_run_commands.md)
+Pour l'exécution via conteneur : [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
 
 > Ce guide sert principalement au **développement local**, à la validation manuelle et au debug.
 > Dans le périmètre actuel, le **déploiement principal de l'infrastructure Terraform** doit passer par GitHub Actions après merge sur `main`.
@@ -135,12 +135,12 @@ Pourquoi : prépare un environnement local pour les scripts d'ingestion.
 
 ### Vous voulez gérer les secrets runtime
 
-Utiliser le guide dédié : [docs/secret_manager_setup.md](docs/secret_manager_setup.md)
+Utiliser le guide dédié : [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md)
 
 ### Vous préparez la CI GitHub Actions
 
-Utiliser le guide dédié : [docs/github_wif_setup.md](docs/github_wif_setup.md)
+Utiliser le guide dédié : [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md)
 
 ### Vous voulez vérifier les rôles IAM
 
-Utiliser le guide dédié : [docs/iam_roles.md](docs/iam_roles.md)
+Utiliser le guide dédié : [docs/infra/iam_roles.md](docs/infra/iam_roles.md)

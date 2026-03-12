@@ -1,4 +1,4 @@
-# Cartographie-Marche-Data-Engineer
+﻿# Cartographie-Marche-Data-Engineer
 
 Pipeline de données end-to-end : cartographie du marché Data Engineer en France.
 
@@ -43,18 +43,42 @@ infra/
     secrets/
 ```
 
+### Structure applicative visée
+
+Le repo suit maintenant une séparation par domaine technique :
+
+```text
+src/
+  ingestion/
+dbt/
+  transformation/
+    Dockerfile
+    models/
+    macros/
+    tests/
+    seeds/
+    analyses/
+infra/
+docs/
+```
+
+Notes :
+- `src/ingestion/` porte les scripts Python d'ingestion,
+- `dbt/transformation/` est le futur emplacement du projet dbt de l'EPIC 2,
+- le dossier racine `models/` n'est plus retenu pour éviter l'ambiguïté entre modèles dbt et autres artefacts du projet.
+
 ### Documentation d'entrée
 
 Le point d'entrée principal de la documentation infra est : [docs/setup_guide.md](docs/setup_guide.md)
 
 Cette structure évite les doublons et sépare les parcours :
 
-- [docs/gcp_terminal_setup.md](docs/gcp_terminal_setup.md) pour le setup manuel GCP,
-- [docs/docker_run_commands.md](docs/docker_run_commands.md) pour l'exécution via Docker,
-- [docs/manual_commands.md](docs/manual_commands.md) pour l'exécution avec outils installés localement,
-- [docs/secret_manager_setup.md](docs/secret_manager_setup.md) pour les secrets runtime,
-- [docs/github_wif_setup.md](docs/github_wif_setup.md) pour la CI GitHub ↔ GCP,
-- [docs/iam_roles.md](docs/iam_roles.md) pour les rôles et permissions.
+- [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md) pour le setup manuel GCP,
+- [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md) pour l'exécution via Docker,
+- [docs/infra/manual_commands.md](docs/infra/manual_commands.md) pour l'exécution avec outils installés localement,
+- [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md) pour les secrets runtime,
+- [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md) pour la CI GitHub ↔ GCP,
+- [docs/infra/iam_roles.md](docs/infra/iam_roles.md) pour les rôles et permissions.
 
 ### Dépendances Python
 
@@ -77,10 +101,12 @@ Les exécutions Docker et terminal local servent surtout au développement, à l
 
 Deux parcours sont documentés séparément :
 
-- via Docker : [docs/docker_run_commands.md](docs/docker_run_commands.md)
-- via outils installés localement : [docs/manual_commands.md](docs/manual_commands.md)
+- via Docker : [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
+- via outils installés localement : [docs/infra/manual_commands.md](docs/infra/manual_commands.md)
 
-Le statut détaillé des tickets Epic 4 reste suivi dans [docs/infra_epic4_status.md](docs/infra_epic4_status.md).
+Le futur projet dbt est désormais scaffoldé dans `dbt/transformation/`, avec son propre `Dockerfile` dédié pour préparer l'EPIC 2.
+
+Le statut détaillé des tickets Epic 4 reste suivi dans [docs/infra/infra_epic4_status.md](docs/infra/infra_epic4_status.md).
 
 ### Déploiement (exemple)
 

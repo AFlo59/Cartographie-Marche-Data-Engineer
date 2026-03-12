@@ -1,12 +1,12 @@
-# Setup GCP manuel — étapes one-shot
+﻿# Setup GCP manuel — étapes one-shot
 
 Ce guide couvre uniquement les opérations manuelles à exécuter une seule fois dans GCP Cloud Shell avant de lancer Terraform.
 
 Périmètre actuel : préparation du socle nécessaire aux tickets INFRA-02 à INFRA-06, plus la base d'authentification pour INFRA-09 côté déploiement infra.
 
 Pour les exécutions récurrentes :
-- Docker : [docs/docker_run_commands.md](docs/docker_run_commands.md)
-- Installation locale : [docs/manual_commands.md](docs/manual_commands.md)
+- Docker : [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
+- Installation locale : [docs/infra/manual_commands.md](docs/infra/manual_commands.md)
 
 Pour la vue d'ensemble : [docs/setup_guide.md](docs/setup_guide.md)
 
@@ -120,7 +120,7 @@ gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
 
 Pourquoi : ce compte est utilisé par Terraform en local et en CI pour créer et mettre à jour les ressources du périmètre infra actuel.
 
-La matrice complète des rôles est documentée dans [docs/iam_roles.md](docs/iam_roles.md).
+La matrice complète des rôles est documentée dans [docs/infra/iam_roles.md](docs/infra/iam_roles.md).
 
 ### 8. Vérifier que le projet est prêt
 
@@ -142,9 +142,9 @@ Pourquoi : confirme les APIs actives, les rôles projet du deployer et le bindin
 ### 9. Étape suivante
 
 Une fois ce socle prêt :
-- exécuter Terraform via [docs/docker_run_commands.md](docs/docker_run_commands.md),
-- ou via [docs/manual_commands.md](docs/manual_commands.md),
-- puis charger les valeurs réelles des secrets via [docs/secret_manager_setup.md](docs/secret_manager_setup.md).
+- exécuter Terraform via [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md),
+- ou via [docs/infra/manual_commands.md](docs/infra/manual_commands.md),
+- puis charger les valeurs réelles des secrets via [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md).
 
 ## Option avancée — tags d'organisation
 
@@ -202,4 +202,4 @@ Pourquoi : il faut souvent `roles/resourcemanager.tagUser` à la fois sur le pro
 
 Ne pas détailler WIF ici pour éviter le doublon.
 
-Guide dédié : [docs/github_wif_setup.md](docs/github_wif_setup.md)
+Guide dédié : [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md)

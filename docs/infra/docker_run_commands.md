@@ -1,8 +1,8 @@
-# Commandes Docker — workflow infra récurrent
+﻿# Commandes Docker — workflow infra récurrent
 
 Ce guide couvre uniquement l'exécution Terraform via le conteneur `infra-iac`.
 
-Pour le setup GCP one-shot : [docs/gcp_terminal_setup.md](docs/gcp_terminal_setup.md)
+Pour le setup GCP one-shot : [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md)
 
 Pour la vue d'ensemble : [docs/setup_guide.md](docs/setup_guide.md)
 
@@ -20,9 +20,9 @@ Utiliser ce guide pour les opérations récurrentes :
 Ce guide ne définit pas la release fonctionnelle complète du projet : il couvre seulement l'exécution manuelle de l'infra pendant le développement.
 
 Les opérations sensibles ou one-shot ont leur guide dédié :
-- secrets : [docs/secret_manager_setup.md](docs/secret_manager_setup.md)
-- IAM : [docs/iam_roles.md](docs/iam_roles.md)
-- WIF GitHub : [docs/github_wif_setup.md](docs/github_wif_setup.md)
+- secrets : [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md)
+- IAM : [docs/infra/iam_roles.md](docs/infra/iam_roles.md)
+- WIF GitHub : [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md)
 
 ## Ordre recommandé
 
@@ -192,4 +192,4 @@ docker compose run --rm infra-iac terraform-oauth plan
 
 Ne pas le faire dans ce guide pour éviter le doublon.
 
-Guide dédié : [docs/secret_manager_setup.md](docs/secret_manager_setup.md)
+Guide dédié : [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md)
