@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@v6
 
       # ── 2. Vérifier les secrets CI requis ───────────────────────────────────
-      - name: Check required CI secrets
+      - name: Check required CI inputs
         shell: bash
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
@@ -77,9 +77,9 @@ jobs:
           set -euo pipefail
 
           missing=0
-          for secret_name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_WIF_SERVICE_ACCOUNT; do
-            if [ -z "${!secret_name:-}" ]; then
-              echo "::error::Missing GitHub Actions secret: ${secret_name}"
+          for input_name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_WIF_SERVICE_ACCOUNT; do
+            if [ -z "${!input_name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret or variable: ${input_name}"
               missing=1
             fi
           done
@@ -103,19 +103,31 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
 
-      # ── 5.1 Activer les APIs requises (idempotent) ─────────────────────────
-      - name: Enable required GCP APIs
+      # ── 5.1 Activer les APIs requises (push trusted uniquement, best effort) ──
+      - name: Enable required GCP APIs (best effort)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         shell: bash
         run: |
           set -euo pipefail
 
-          gcloud services enable \
-            run.googleapis.com \
-            cloudscheduler.googleapis.com \
-            secretmanager.googleapis.com \
-            bigquery.googleapis.com \
-            storage.googleapis.com \
-            --project="${TF_VAR_project_id}"
+          SERVICES=(
+            run.googleapis.com
+            cloudscheduler.googleapis.com
+            secretmanager.googleapis.com
+            bigquery.googleapis.com
+            storage.googleapis.com
+          )
+
+          for service in "${SERVICES[@]}"; do
+            if gcloud services list --enabled --project="${TF_VAR_project_id}" \
+                --filter="config.name=${service}" --format="value(config.name)" | grep -q "${service}"; then
+              echo "API already enabled: ${service}"
+            else
+              echo "Trying to enable API: ${service}"
+              gcloud services enable "${service}" --project="${TF_VAR_project_id}" \
+                || echo "::warning::Unable to enable ${service} with current CI identity. Enable it manually once."
+            fi
+          done
 
           # Laisser quelques secondes pour propagation IAM/API
           sleep 20
@@ -210,6 +222,34 @@ jobs:
               });
             }
 
+      # ── 11.5 Vérifier APIs requises avant apply ─────────────────────────────
+      - name: Check required GCP APIs are enabled
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SERVICES=(
+            run.googleapis.com
+            cloudscheduler.googleapis.com
+            secretmanager.googleapis.com
+            bigquery.googleapis.com
+            storage.googleapis.com
+          )
+
+          missing=0
+          for service in "${SERVICES[@]}"; do
+            if ! gcloud services list --enabled --project="${TF_VAR_project_id}" \
+              --filter="config.name=${service}" --format="value(config.name)" | grep -q "${service}"; then
+              echo "::error::Required API is disabled: ${service}. Enable it in project ${TF_VAR_project_id}."
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
       # ── 12. Adopt existing resources into state (best effort) ───────────────
       - name: Terraform Import existing resources (best effort)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -234,10 +274,22 @@ jobs:
             fi
 
             echo "Importing: $address"
-            terraform import "$address" "$import_id"
+            if ! terraform import "$address" "$import_id"; then
+              echo "::warning::Import failed for $address ($import_id). Continuing (best effort)."
+            fi
           }
 
-          RAW_BUCKET="${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw"
+          if [ -n "${TF_VAR_raw_bucket_name:-}" ]; then
+            RAW_BUCKET="${TF_VAR_raw_bucket_name}"
+          else
+            bucket_name_base="$(printf '%s' "${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw" | tr '[:upper:]' '[:lower:]')"
+            if [ ${#bucket_name_base} -le 63 ]; then
+              RAW_BUCKET="${bucket_name_base}"
+            else
+              bucket_hash="$(printf '%s' "${bucket_name_base}" | md5sum | awk '{print $1}' | cut -c1-10)"
+              RAW_BUCKET="${bucket_name_base:0:52}-${bucket_hash}"
+            fi
+          fi
 
           import_if_needed 'module.storage.google_storage_bucket.raw' \
             "${RAW_BUCKET}" \
