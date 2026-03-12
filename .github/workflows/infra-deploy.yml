@@ -25,6 +25,7 @@ jobs:
 
     env:
       TF_BACKEND_BUCKET: datatalent-tfstate-cartographie-data-engineer
+      CI_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
       # Projet GCP
       TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
       TF_VAR_region: europe-west1
@@ -125,7 +126,7 @@ jobs:
             else
               echo "Trying to enable API: ${service}"
               gcloud services enable "${service}" --project="${TF_VAR_project_id}" \
-                || echo "::warning::Unable to enable ${service} with current CI identity. Enable it manually once."
+                || echo "::warning::Unable to enable ${service} with current CI identity. Enable it manually once or grant roles/serviceusage.serviceUsageAdmin to ${CI_WIF_SERVICE_ACCOUNT}."
             fi
           done
 
@@ -238,15 +239,19 @@ jobs:
           )
 
           missing=0
+          missing_services=()
           for service in "${SERVICES[@]}"; do
             if ! gcloud services list --enabled --project="${TF_VAR_project_id}" \
               --filter="config.name=${service}" --format="value(config.name)" | grep -q "${service}"; then
               echo "::error::Required API is disabled: ${service}. Enable it in project ${TF_VAR_project_id}."
               missing=1
+              missing_services+=("${service}")
             fi
           done
 
           if [ "$missing" -ne 0 ]; then
+            echo "::error::Run once (Cloud Shell): gcloud services enable ${missing_services[*]} --project=${TF_VAR_project_id}"
+            echo "::error::Or grant CI SA permission: gcloud projects add-iam-policy-binding ${TF_VAR_project_id} --member=serviceAccount:${CI_WIF_SERVICE_ACCOUNT} --role=roles/serviceusage.serviceUsageAdmin"
             exit 1
           fi
 
