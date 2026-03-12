@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      TF_BACKEND_BUCKET: datatalent-tfstate-cartographie-data-engineer
+      TF_BACKEND_PREFIX: terraform/state
       # Projet GCP
       TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
       TF_VAR_region: europe-west1
@@ -63,7 +65,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # ── 2. Authentification GCP via WIF ──────────────────────────────────────
+      # ── 2. Vérifier les secrets CI requis ───────────────────────────────────
+      - name: Check required CI secrets
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+          GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for secret_name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_WIF_SERVICE_ACCOUNT; do
+            if [ -z "${!secret_name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret: ${secret_name}"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Configure the missing values in GitHub > Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      # ── 3. Authentification GCP via WIF ──────────────────────────────────────
       - name: Auth GCP via Workload Identity Federation
         id: auth
         uses: google-github-actions/auth@v3
@@ -71,30 +96,50 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
 
-      # ── 3. Setup Terraform ───────────────────────────────────────────────────
+      # ── 4. Setup gcloud CLI ──────────────────────────────────────────────────
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      # ── 5. Bootstrap backend bucket ──────────────────────────────────────────
+      - name: Ensure Terraform backend bucket exists
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gcloud storage buckets describe "gs://${TF_BACKEND_BUCKET}" --project="${TF_VAR_project_id}" >/dev/null 2>&1; then
+            echo "Terraform backend bucket already exists: gs://${TF_BACKEND_BUCKET}"
+          else
+            echo "Creating Terraform backend bucket: gs://${TF_BACKEND_BUCKET}"
+            gcloud storage buckets create "gs://${TF_BACKEND_BUCKET}" \
+              --project="${TF_VAR_project_id}" \
+              --location="${TF_VAR_region}" \
+              --uniform-bucket-level-access
+          fi
+
+      # ── 6. Setup Terraform ───────────────────────────────────────────────────
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.9.8"
 
-      # ── 4. Terraform Init ────────────────────────────────────────────────────
+      # ── 7. Terraform Init ────────────────────────────────────────────────────
       - name: Terraform Init
         working-directory: infra
-        run: terraform init
+        run: terraform init -backend-config="bucket=${TF_BACKEND_BUCKET}" -backend-config="prefix=${TF_BACKEND_PREFIX}"
 
-      # ── 5. Terraform Validate ────────────────────────────────────────────────
+      # ── 8. Terraform Validate ────────────────────────────────────────────────
       - name: Terraform Validate
         working-directory: infra
         run: terraform validate
 
-      # ── 6. Terraform Plan (PR uniquement) ────────────────────────────────────
+      # ── 9. Terraform Plan (PR uniquement) ────────────────────────────────────
       - name: Terraform Plan
         if: github.event_name == 'pull_request'
         working-directory: infra
         run: terraform plan -no-color -out=tfplan
         continue-on-error: false
 
-      # ── 7. Poster le plan en commentaire PR ──────────────────────────────────
+      # ── 10. Poster le plan en commentaire PR ─────────────────────────────────
       - name: Post Plan to PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v8
@@ -128,7 +173,7 @@ jobs:
               });
             }
 
-      # ── 8. Terraform Apply (merge main uniquement) ───────────────────────────
+      # ── 11. Terraform Apply (merge main uniquement) ──────────────────────────
       - name: Terraform Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: infra
