@@ -1,46 +1,74 @@
-# Commandes Docker — exécution infra
+# Commandes Docker — workflow infra récurrent
 
-Ce fichier regroupe uniquement les commandes à lancer via Docker pour l'infra (service `infra-iac`).
+Ce guide couvre uniquement l'exécution Terraform via le conteneur `infra-iac`.
 
-## 0) Préparer le contexte (obligatoire)
+Pour le setup GCP one-shot : [docs/gcp_terminal_setup.md](docs/gcp_terminal_setup.md)
 
-Toutes les commandes ci-dessous doivent être lancées depuis la racine du repo (`Cartographie-Marche-Data-Engineer`).
+Pour la vue d'ensemble : [docs/setup_guide.md](docs/setup_guide.md)
+
+> Ce guide sert principalement au **développement local**, à la validation manuelle et au debug.
+> Dans le périmètre actuel, le **déploiement principal de l'infrastructure Terraform** doit passer par GitHub Actions après merge sur `main`.
+
+## Quand utiliser ce fichier
+
+Utiliser ce guide pour les opérations récurrentes :
+- build de l'image infra,
+- authentification locale,
+- `init`, `validate`, `plan`, `apply`,
+- vérifications après déploiement.
+
+Ce guide ne définit pas la release fonctionnelle complète du projet : il couvre seulement l'exécution manuelle de l'infra pendant le développement.
+
+Les opérations sensibles ou one-shot ont leur guide dédié :
+- secrets : [docs/secret_manager_setup.md](docs/secret_manager_setup.md)
+- IAM : [docs/iam_roles.md](docs/iam_roles.md)
+- WIF GitHub : [docs/github_wif_setup.md](docs/github_wif_setup.md)
+
+## Ordre recommandé
+
+### 0. Pré-requis
+
+- Le setup GCP manuel est terminé.
+- Le fichier `.env` existe.
+- Les `TF_VAR_*` nécessaires sont renseignés.
+
+Depuis la racine du repo :
 
 ```bash
 cd D:/PROJETS/Cartographie-Marche-Data-Engineer
-```
-
-Vérifier que le fichier `.env` existe:
-
-```bash
 ls -l .env
 ```
 
-Si absent:
+Si `.env` est absent :
 
 ```bash
 cp .env.example .env
 ```
 
-Vérifier au minimum ces variables dans `.env`:
+Si votre repo n'est pas dans `D:/PROJETS/...`, remplacez le chemin par le chemin local réel du workspace.
 
-- `TF_VAR_project_id=cartographie-data-engineer`
-- `TF_VAR_region=europe-west1`
-- `TF_VAR_location=EU`
-
-## 1) Construire l'image infra
+### 1. Construire l'image infra
 
 ```bash
 docker compose build --no-cache infra-iac
 ```
 
-But: reconstruit l'image avec `terraform`, `tofu` et `gcloud`.
+Pourquoi : reconstruit l'image qui contient `terraform`, `tofu` et `gcloud`.
 
-Note architecture: le `Dockerfile` infra est multi-arch (`linux/amd64` et `linux/arm64`) via `TARGETOS`/`TARGETARCH` BuildKit. Aucun `--platform=linux/amd64` n'est requis dans le cas standard.
+### 2. Choisir un mode d'authentification local
 
-## 2) Authentification (choisir un seul chemin)
+#### Option A — ADC recommandé
 
-### Option A — Token OAuth (fallback robuste, recommandé si ADC échoue)
+```bash
+docker compose run --rm infra-iac gcloud auth login
+docker compose run --rm infra-iac gcloud auth application-default login
+docker compose run --rm infra-iac gcloud config set project cartographie-data-engineer
+docker compose run --rm infra-iac sh -lc 'ls -l /root/.config/gcloud/application_default_credentials.json'
+```
+
+Pourquoi : c'est le mode standard local quand les clés JSON sont bloquées.
+
+#### Option B — OAuth fallback
 
 ```bash
 docker compose run --rm infra-iac gcloud auth login
@@ -48,128 +76,120 @@ docker compose run --rm infra-iac gcloud config set project cartographie-data-en
 docker compose run --rm infra-iac gcloud auth list
 ```
 
-Puis lancer Terraform avec token temporaire:
+Puis utiliser le wrapper intégré :
 
 ```bash
-docker compose run --rm infra-iac sh -lc 'export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) && terraform plan'
-docker compose run --rm infra-iac sh -lc 'export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) && terraform apply'
+docker compose run --rm infra-iac terraform-oauth init -reconfigure
+docker compose run --rm infra-iac terraform-oauth validate
+docker compose run --rm infra-iac terraform-oauth plan
+docker compose run --rm infra-iac terraform-oauth apply
 ```
 
-Version explicite avec variable projet (copier-coller):
+Pourquoi : `terraform-oauth` rafraîchit automatiquement le token OAuth avant chaque commande.
+
+### 3. Initialiser Terraform
+
+#### Backend local temporaire
 
 ```bash
-docker compose run --rm infra-iac sh -lc 'PROJECT_ID=cartographie-data-engineer; gcloud config set project ${PROJECT_ID}; export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token); terraform init -backend=false; terraform validate; terraform plan'
+docker compose run --rm infra-iac terraform init -backend=false
 ```
 
-### Option B — ADC (mode standard)
+Pourquoi : utile pour valider la config sans toucher au backend GCS.
+
+#### Backend GCS réel
 
 ```bash
-docker compose run --rm infra-iac gcloud auth login
-docker compose run --rm infra-iac gcloud auth application-default login
-docker compose run --rm infra-iac gcloud config set project cartographie-data-engineer
-docker compose run --rm infra-iac sh -lc 'ls -l /root/.config/gcloud/application_default_credentials.json'
+docker compose run --rm infra-iac terraform init -reconfigure
 ```
 
-But: permet au provider Terraform Google d'utiliser les credentials ADC sans clé JSON (compatible policy entreprise qui interdit la création de clés SA).
+Si vous migrez un state local existant vers GCS :
 
-Note: le conteneur utilise `GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json`.
+```bash
+docker compose run --rm infra-iac terraform init -migrate-state
+```
 
-Option clé JSON (si autorisée par policy): définir `GOOGLE_APPLICATION_CREDENTIALS=/workspace/secrets/gcp-sa.json` dans `.env` et déposer la clé dans `secrets/gcp-sa.json`.
+Pourquoi : initialise le backend réel utilisé par les déploiements.
 
-## 3) Vérifier les outils dans le conteneur
+### 4. Vérifier la configuration avant déploiement
+
+```bash
+docker compose run --rm infra-iac terraform fmt -check -recursive
+docker compose run --rm infra-iac terraform validate
+docker compose run --rm infra-iac terraform plan
+```
+
+Pourquoi : détecte les erreurs avant l'application.
+
+### 5. Appliquer l'infrastructure
+
+```bash
+docker compose run --rm infra-iac terraform apply
+```
+
+Pourquoi : crée ou met à jour les ressources GCP décrites dans Terraform.
+
+### 6. Vérifier le résultat côté GCP
+
+```bash
+docker compose run --rm infra-iac gcloud storage buckets list --project cartographie-data-engineer
+docker compose run --rm infra-iac bq ls --project_id=cartographie-data-engineer
+docker compose run --rm infra-iac gcloud run jobs list --region=europe-west1 --project cartographie-data-engineer
+docker compose run --rm infra-iac gcloud scheduler jobs list --location=europe-west1 --project cartographie-data-engineer
+docker compose run --rm infra-iac gcloud secrets list --project cartographie-data-engineer
+```
+
+Pourquoi : confirme bucket, datasets, Cloud Run Job, Scheduler et secrets.
+
+### 7. Détruire les ressources si nécessaire
+
+```bash
+docker compose run --rm infra-iac terraform destroy
+```
+
+Pourquoi : supprime les ressources gérées par le state courant.
+
+## Commandes utiles par objectif
+
+### Vérifier les versions d'outils du conteneur
 
 ```bash
 docker compose run --rm infra-iac terraform version
 docker compose run --rm infra-iac gcloud --version
 ```
 
-But: valider que l'environnement conteneurisé est prêt.
-
-## 4) Valider la configuration Terraform
-
-```bash
-docker compose run --rm infra-iac terraform init -backend=false
-docker compose run --rm infra-iac terraform validate
-docker compose run --rm infra-iac terraform fmt -check -recursive
-```
-
-But: vérifier syntaxe/providers/modules avant le déploiement.
-
-Commande unique (init + validate + fmt):
+### Chaîne rapide `init + validate + fmt`
 
 ```bash
 docker compose run --rm infra-iac sh -lc 'terraform init -backend=false && terraform validate && terraform fmt -check -recursive'
 ```
 
-## 5) Plan et application (INFRA-01/02/03)
+### Plan/apply avec wrapper OAuth
 
 ```bash
-docker compose run --rm infra-iac terraform plan
-docker compose run --rm infra-iac terraform apply
+docker compose run --rm infra-iac terraform-oauth plan
+docker compose run --rm infra-iac terraform-oauth apply
 ```
-
-But: créer les ressources actuellement implémentées (bucket raw + datasets BigQuery raw/staging/marts).
-
-Si vous utilisez Option A (token OAuth), utilisez ces commandes à la place:
-
-```bash
-docker compose run --rm infra-iac sh -lc 'export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) && terraform plan'
-docker compose run --rm infra-iac sh -lc 'export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) && terraform apply -auto-approve'
-```
-
-## 6) Vérifications post-déploiement depuis le conteneur
-
-```bash
-docker compose run --rm infra-iac gcloud storage buckets list --project cartographie-data-engineer
-docker compose run --rm infra-iac bq ls --project_id=cartographie-data-engineer
-```
-
-But: confirmer que les ressources existent dans GCP.
 
 ## Dépannage rapide
 
-Si `terraform plan` affiche encore une erreur credentials, vérifier que le fichier ADC existe:
-
-```bash
-docker compose run --rm infra-iac sh -lc 'ls -l /root/.config/gcloud/application_default_credentials.json'
-```
-
-Si absent, relancer:
+### Le fichier ADC n'existe pas
 
 ```bash
 docker compose run --rm infra-iac gcloud auth application-default login
+docker compose run --rm infra-iac sh -lc 'ls -l /root/.config/gcloud/application_default_credentials.json'
 ```
 
-Si `gcloud` crash encore avec `Scope has changed`, revenir à l'**Option A — Token OAuth** en section 2.
+### Erreur de credentials persistante
 
-Explication de la commande:
-
-- `gcloud auth print-access-token` génère un token OAuth temporaire.
-- `export GOOGLE_OAUTH_ACCESS_TOKEN=...` injecte ce token dans l'environnement du shell du conteneur.
-- `terraform plan` / `terraform apply` utilisent ce token via le provider Google.
-
-Important:
-
-- Le token expire rapidement (souvent ~1h).
-- Relancer la commande token avant chaque exécution importante (`plan`, puis `apply`).
-- Le token n'est pas persisté dans le repo et ne remplace pas une auth service account long terme.
-
-Commande de diagnostic correcte (dans le service `infra-iac`):
+Basculez temporairement sur l'option OAuth :
 
 ```bash
-docker compose run --rm infra-iac gcloud info --run-diagnostics
+docker compose run --rm infra-iac terraform-oauth plan
 ```
 
-## 7) Nettoyage des ressources (si besoin)
+### Vous devez créer ou peupler les secrets
 
-Si vous voulez supprimer les ressources créées via Terraform (et seulement celles gérées par le state courant):
+Ne pas le faire dans ce guide pour éviter le doublon.
 
-```bash
-docker compose run --rm infra-iac terraform destroy
-```
-
-Si vous utilisez Option A (token OAuth):
-
-```bash
-docker compose run --rm infra-iac sh -lc 'export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) && terraform destroy -auto-approve'
-```
+Guide dédié : [docs/secret_manager_setup.md](docs/secret_manager_setup.md)

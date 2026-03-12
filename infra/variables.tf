@@ -86,3 +86,111 @@ variable "marts_dataset_id" {
   type        = string
   default     = "marts"
 }
+
+variable "ingestion_france_travail_prefix" {
+  description = "Prefix for France Travail raw files"
+  type        = string
+  default     = "raw/france_travail/"
+}
+
+variable "ingestion_sirene_prefix" {
+  description = "Prefix for Sirene raw files"
+  type        = string
+  default     = "raw/sirene/"
+}
+
+variable "ingestion_geo_prefix" {
+  description = "Prefix for Geo API raw files"
+  type        = string
+  default     = "raw/geo/"
+}
+
+variable "compute_job_name" {
+  description = "Cloud Run Job name for ingestion"
+  type        = string
+  default     = "datatalent-ingestion-job"
+}
+
+variable "compute_image" {
+  description = "Container image used by Cloud Run Job"
+  type        = string
+  default     = "us-docker.pkg.dev/cloudrun/container/job:latest"
+}
+
+variable "compute_memory" {
+  description = "Memory for Cloud Run Job container"
+  type        = string
+  default     = "512Mi"
+}
+
+variable "compute_cpu" {
+  description = "CPU for Cloud Run Job container"
+  type        = string
+  default     = "1"
+}
+
+variable "compute_timeout_seconds" {
+  description = "Cloud Run Job timeout in seconds"
+  type        = number
+  default     = 1800
+}
+
+variable "compute_max_retries" {
+  description = "Cloud Run Job max retries"
+  type        = number
+  default     = 1
+}
+
+variable "scheduler_service_account_email" {
+  description = "Service account used by Cloud Scheduler to call Run API"
+  type        = string
+  default     = ""
+}
+
+variable "scheduler_job_name_prefix" {
+  description = "Prefix for scheduler jobs"
+  type        = string
+  default     = "datatalent-ingestion"
+}
+
+variable "scheduler_time_zone" {
+  description = "Timezone for scheduler jobs"
+  type        = string
+  default     = "Europe/Paris"
+}
+
+variable "scheduler_france_travail_schedule" {
+  description = "Cron schedule for France Travail ingestion"
+  type        = string
+  default     = "0 6 * * *"
+}
+
+variable "scheduler_sirene_schedule" {
+  description = "Cron schedule for Sirene ingestion"
+  type        = string
+  default     = "0 3 1 * *"
+}
+
+variable "scheduler_geo_schedule" {
+  description = "Cron schedule for Geo ingestion"
+  type        = string
+  default     = "0 4 1 * *"
+}
+
+variable "secret_ft_client_id_name" {
+  description = "Secret Manager secret id for France Travail client id"
+  type        = string
+  default     = "FT_CLIENT_ID"
+}
+
+variable "secret_ft_client_secret_name" {
+  description = "Secret Manager secret id for France Travail client secret"
+  type        = string
+  default     = "FT_CLIENT_SECRET"
+}
+
+variable "secret_datagouv_api_key_name" {
+  description = "Secret Manager secret id for data.gouv API key"
+  type        = string
+  default     = "DATAGOUV_API_KEY"
+}

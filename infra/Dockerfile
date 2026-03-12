@@ -21,20 +21,22 @@ RUN apt-get update \
             amd64|arm64) ARCH="${TARGETARCH}" ;; \
             *) echo "Unsupported TARGETARCH: ${TARGETARCH}"; exit 1 ;; \
            esac \
-        && curl -fsSL -o /tmp/terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_${TARGETOS}_${ARCH}.zip" \
+        && TERRAFORM_ZIP="terraform_${TERRAFORM_VERSION}_${TARGETOS}_${ARCH}.zip" \
+        && curl -fsSL -o "/tmp/${TERRAFORM_ZIP}" "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/${TERRAFORM_ZIP}" \
         && curl -fsSL -o /tmp/terraform_SHA256SUMS "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS" \
-        && grep " terraform_${TERRAFORM_VERSION}_${TARGETOS}_${ARCH}.zip$" /tmp/terraform_SHA256SUMS > /tmp/terraform_SHA256SUM \
-        && sha256sum -c /tmp/terraform_SHA256SUM \
-    && unzip /tmp/terraform.zip -d /usr/local/bin \
+        && grep " ${TERRAFORM_ZIP}$" /tmp/terraform_SHA256SUMS > /tmp/terraform_SHA256SUM \
+        && (cd /tmp && sha256sum -c terraform_SHA256SUM) \
+    && unzip "/tmp/${TERRAFORM_ZIP}" -d /usr/local/bin \
     && chmod +x /usr/local/bin/terraform \
-    && rm -f /tmp/terraform.zip /tmp/terraform_SHA256SUMS /tmp/terraform_SHA256SUM \
-    && curl -fsSL -o /tmp/tofu.tar.gz "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/tofu_${OPENTOFU_VERSION}_${TARGETOS}_${ARCH}.tar.gz" \
+    && rm -f "/tmp/${TERRAFORM_ZIP}" /tmp/terraform_SHA256SUMS /tmp/terraform_SHA256SUM \
+    && TOFU_TAR="tofu_${OPENTOFU_VERSION}_${TARGETOS}_${ARCH}.tar.gz" \
+    && curl -fsSL -o "/tmp/${TOFU_TAR}" "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/${TOFU_TAR}" \
     && curl -fsSL -o /tmp/tofu_SHA256SUMS "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/tofu_${OPENTOFU_VERSION}_SHA256SUMS" \
-    && grep " tofu_${OPENTOFU_VERSION}_${TARGETOS}_${ARCH}.tar.gz$" /tmp/tofu_SHA256SUMS > /tmp/tofu_SHA256SUM \
-    && sha256sum -c /tmp/tofu_SHA256SUM \
-    && tar -xzf /tmp/tofu.tar.gz -C /usr/local/bin tofu \
+    && grep " ${TOFU_TAR}$" /tmp/tofu_SHA256SUMS > /tmp/tofu_SHA256SUM \
+    && (cd /tmp && sha256sum -c tofu_SHA256SUM) \
+    && tar -xzf "/tmp/${TOFU_TAR}" -C /usr/local/bin tofu \
     && chmod +x /usr/local/bin/tofu \
-    && rm -f /tmp/tofu.tar.gz /tmp/tofu_SHA256SUMS /tmp/tofu_SHA256SUM
+    && rm -f "/tmp/${TOFU_TAR}" /tmp/tofu_SHA256SUMS /tmp/tofu_SHA256SUM
 
 WORKDIR /workspace/infra
 

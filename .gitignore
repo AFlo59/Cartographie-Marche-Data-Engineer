@@ -10,9 +10,11 @@ venv/
 # Terraform / OpenTofu
 **/.terraform/
 **/.terraform.lock.hcl
+!infra/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfvars
+*.tvars
 !infra/terraform.tfvars.example
 crash.log
 override.tf

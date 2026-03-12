@@ -14,6 +14,28 @@ raw_dataset_id     = "raw"
 staging_dataset_id = "staging"
 marts_dataset_id   = "marts"
 
+ingestion_france_travail_prefix = "raw/france_travail/"
+ingestion_sirene_prefix         = "raw/sirene/"
+ingestion_geo_prefix            = "raw/geo/"
+
+compute_job_name        = "datatalent-ingestion-job"
+compute_image           = "europe-west1-docker.pkg.dev/my-gcp-project-id/datatalent/ingestion:latest"
+compute_memory          = "512Mi"
+compute_cpu             = "1"
+compute_timeout_seconds = 1800
+compute_max_retries     = 1
+
+scheduler_service_account_email  = ""
+scheduler_job_name_prefix        = "datatalent-ingestion"
+scheduler_time_zone              = "Europe/Paris"
+scheduler_france_travail_schedule = "0 6 * * *"
+scheduler_sirene_schedule         = "0 7 1 * *"
+scheduler_geo_schedule            = "0 8 1 * *"
+
+secret_ft_client_id_name     = "FT_CLIENT_ID"
+secret_ft_client_secret_name = "FT_CLIENT_SECRET"
+secret_datagouv_api_key_name = "DATAGOUV_API_KEY"
+
 # Renseigner au fur et à mesure de la création des comptes de service
 ingestion_service_account_email = ""
 dbt_service_account_email       = ""

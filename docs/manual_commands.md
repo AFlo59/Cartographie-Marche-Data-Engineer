@@ -1,93 +1,146 @@
-# Commandes manuelles — local & Cloud Shell
+# Commandes locales — sans Docker
 
-Ce fichier regroupe les commandes manuelles hors exécution Docker.
+Ce guide couvre l'exécution Terraform avec les outils installés directement sur votre poste.
 
-## A) Terminal local (PowerShell)
+Pour le setup GCP one-shot : [docs/gcp_terminal_setup.md](docs/gcp_terminal_setup.md)
 
-## 1) Vérifier le dossier projet
+Pour l'exécution via conteneur : [docs/docker_run_commands.md](docs/docker_run_commands.md)
+
+> Ce guide sert principalement au **développement local**, à la validation manuelle et au debug.
+> Dans le périmètre actuel, le **déploiement principal de l'infrastructure Terraform** doit passer par GitHub Actions après merge sur `main`.
+
+## Quand utiliser ce fichier
+
+Utiliser ce guide si vous avez installé localement :
+- `gcloud`,
+- `terraform` ou `tofu`,
+- et éventuellement Python pour le projet.
+
+Si ce n'est pas le cas, préférez le guide Docker.
+
+Ce guide couvre uniquement l'exécution manuelle de l'infra pendant le développement, pas la release automatique complète du projet.
+
+## Pré-requis
+
+### 1. Se placer à la racine du projet
 
 ```powershell
-Set-Location "D:\PROJETS\Cartographie-Marche-Data-Engineer"
+Set-Location "C:\CHEMIN\VERS\Cartographie-Marche-Data-Engineer"
 ```
 
-But: se placer à la racine du repo.
+Pourquoi : toutes les commandes supposent la racine du repo comme point de départ.
 
-## 2) Préparer le fichier d'environnement
+Placeholder utilisé :
+- `C:\CHEMIN\VERS\Cartographie-Marche-Data-Engineer` = chemin local réel du repo sur votre poste.
 
-```powershell
-Copy-Item .\.env.example .\.env -Force
-```
-
-But: créer `.env` local pour les variables infra.
-
-## 3) Vérifier la présence des variables clés
+### 2. Vérifier ou créer `.env`
 
 ```powershell
+Copy-Item .\.env.example .\.env -ErrorAction SilentlyContinue
 Get-Content .\.env
 ```
 
-But: contrôler `GCP_PROJECT_ID`, `TF_VAR_project_id`, `TF_VAR_*_service_account_email`.
+Pourquoi : vérifier les variables projet, région, comptes de service et image Cloud Run.
 
-## B) Cloud Shell GCP
+### 3. Authentifier `gcloud`
 
-## 1) Cibler le projet
-
-```bash
+```powershell
+gcloud auth login
+gcloud auth application-default login
 gcloud config set project cartographie-data-engineer
+gcloud auth list
 ```
 
-But: toutes les commandes suivantes ciblent le bon projet.
+Pourquoi : Terraform Google utilisera ADC en local.
 
-## 2) Créer les service accounts applicatifs
+## Workflow Terraform local
 
-```bash
-gcloud iam service-accounts create ingestion-sa --display-name="Ingestion SA"
-gcloud iam service-accounts create dbt-sa --display-name="DBT SA"
-gcloud iam service-accounts create dashboard-sa --display-name="Dashboard SA"
+### 4. Aller dans le dossier infra
+
+```powershell
+Set-Location .\infra
 ```
 
-But: comptes techniques dédiés par usage (ingestion / dbt / dashboard).
+Pourquoi : les commandes Terraform doivent partir du dossier contenant les fichiers `.tf`.
 
-## 3) Créer le service account de déploiement Terraform
+### 5. Initialiser Terraform
 
-```bash
-gcloud iam service-accounts create terraform-deployer-sa --display-name="Terraform Deployer SA"
+#### Validation locale simple
+
+```powershell
+terraform init -backend=false
 ```
 
-But: compte dédié au provisioning infra.
+#### Backend GCS réel
 
-## 4) Assigner les rôles minimum (INFRA-01/02/03)
-
-```bash
-gcloud projects add-iam-policy-binding cartographie-data-engineer \
-  --member="serviceAccount:terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
-
-gcloud projects add-iam-policy-binding cartographie-data-engineer \
-  --member="serviceAccount:terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com" \
-  --role="roles/bigquery.admin"
+```powershell
+terraform init -reconfigure
 ```
 
-But: autoriser la création bucket + datasets BigQuery.
+Si migration de state :
 
-## 5) Récupérer les emails SA pour `.env`
-
-```bash
-gcloud iam service-accounts list --format="table(email,displayName)"
+```powershell
+terraform init -migrate-state
 ```
 
-But: remplir les variables `TF_VAR_ingestion_service_account_email`, `TF_VAR_dbt_service_account_email`, `TF_VAR_dashboard_service_account_email`.
+### 6. Vérifier la configuration
 
-## 6) Vérifier les ressources créées
+```powershell
+terraform fmt -check -recursive
+terraform validate
+terraform plan
+```
 
-```bash
+Pourquoi : contrôle style, validité et diff avant application.
+
+### 7. Appliquer
+
+```powershell
+terraform apply
+```
+
+Pourquoi : crée ou met à jour l'infrastructure dans GCP.
+
+### 8. Vérifier les ressources déployées
+
+```powershell
 gcloud storage buckets list --project cartographie-data-engineer
 bq ls --project_id=cartographie-data-engineer
+gcloud run jobs list --region=europe-west1 --project cartographie-data-engineer
+gcloud scheduler jobs list --location=europe-west1 --project cartographie-data-engineer
+gcloud secrets list --project cartographie-data-engineer
 ```
 
-But: valider la création effective des éléments GCP.
+Pourquoi : confirme les ressources principales après déploiement.
 
-## Notes importantes
+### 9. Détruire si nécessaire
 
-- Si `gcloud` n'est pas installé localement, utiliser Cloud Shell pour les commandes manuelles GCP.
-- Si l'organisation bloque les clés SA (`iam.disableServiceAccountKeyCreation`), utiliser `gcloud auth application-default login` dans le conteneur `infra-iac` au lieu d'une clé JSON.
+```powershell
+terraform destroy
+```
+
+## Dépendances Python du projet
+
+Si vous exécutez aussi les scripts Python localement :
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r ..\requirements.txt
+```
+
+Pourquoi : prépare un environnement local pour les scripts d'ingestion.
+
+## Options avancées
+
+### Vous voulez gérer les secrets runtime
+
+Utiliser le guide dédié : [docs/secret_manager_setup.md](docs/secret_manager_setup.md)
+
+### Vous préparez la CI GitHub Actions
+
+Utiliser le guide dédié : [docs/github_wif_setup.md](docs/github_wif_setup.md)
+
+### Vous voulez vérifier les rôles IAM
+
+Utiliser le guide dédié : [docs/iam_roles.md](docs/iam_roles.md)
