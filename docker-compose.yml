@@ -46,3 +46,48 @@ services:
       - ./secrets:/workspace/secrets:ro
       - ./.gcloud:/root/.config/gcloud
     command: ["terraform", "version"]
+
+  ingestion-jobs:
+    build:
+      context: .
+      dockerfile: src/ingestion/Dockerfile
+    container_name: datatalent-ingestion-jobs
+    working_dir: /workspace
+    env_file:
+      - .env
+    environment:
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-cartographie-data-engineer-db}
+      GCP_REGION: ${GCP_REGION:-europe-west1}
+      GCP_LOCATION: ${GCP_LOCATION:-EU}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-cartographie-data-engineer-db}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
+
+      TF_VAR_project_id: ${TF_VAR_project_id:-}
+      TF_VAR_region: ${TF_VAR_region:-}
+      TF_VAR_location: ${TF_VAR_location:-}
+      TF_VAR_environment: ${TF_VAR_environment:-dev}
+      TF_VAR_project_prefix: ${TF_VAR_project_prefix:-datatalent}
+      TF_VAR_raw_bucket_name: ${TF_VAR_raw_bucket_name:-}
+      TF_VAR_raw_dataset_id: ${TF_VAR_raw_dataset_id:-raw}
+      TF_VAR_staging_dataset_id: ${TF_VAR_staging_dataset_id:-staging}
+      TF_VAR_marts_dataset_id: ${TF_VAR_marts_dataset_id:-marts}
+
+      TF_VAR_ingestion_service_account_email: ${TF_VAR_ingestion_service_account_email:-}
+      TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
+      TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
+
+      # Secret Manager - France Travail
+      FRANCE_TRAVAIL_CLIENT_ID_SECRET_NAME: ${FRANCE_TRAVAIL_CLIENT_ID_SECRET_NAME:-france-travail-client-id}
+      FRANCE_TRAVAIL_CLIENT_SECRET_SECRET_NAME: ${FRANCE_TRAVAIL_CLIENT_SECRET_SECRET_NAME:-france-travail-client-secret}
+
+      # Endpoints utiles
+      FRANCE_TRAVAIL_API_BASE_URL: ${FRANCE_TRAVAIL_API_BASE_URL:-https://api.francetravail.io/partenaire/offresdemploi/v2}
+      GEO_API_BASE_URL: ${GEO_API_BASE_URL:-https://geo.api.gouv.fr}
+      SIRENE_SOURCE_BASE_URL: ${SIRENE_SOURCE_BASE_URL:-https://www.data.gouv.fr/fr/datasets/base-sirene-des-entreprises-et-de-leurs-etablissements-siren-siret/}
+
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./:/workspace
+      - ./secrets:/workspace/secrets:ro
+      - ./.gcloud:/root/.config/gcloud
+    command: ["python", "--version"]
