@@ -73,15 +73,20 @@ terraform init -backend=false
 
 #### Backend GCS réel
 
-```powershell
-terraform init -reconfigure
-```
-
-Si migration de state :
+Depuis le dossier `infra/`, récupérez le nom du bucket (défini dans le workflow) :
 
 ```powershell
-terraform init -migrate-state
+# Exemple: datatalent-tfstate-my-gcp-project-id
+terraform init -backend-config="bucket=${TERRAFORM_STATE_BUCKET}" -reconfigure
 ```
+
+Si migration de state depuis local vers GCS:
+
+```powershell
+terraform init -backend-config="bucket=${TERRAFORM_STATE_BUCKET}" -migrate-state
+```
+
+Où `${TERRAFORM_STATE_BUCKET}` = nom du bucket de state Terraform (ex: `datatalent-tfstate-my-gcp-project-id`)
 
 ### 6. Vérifier la configuration
 

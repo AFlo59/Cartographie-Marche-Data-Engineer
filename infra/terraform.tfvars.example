@@ -2,6 +2,13 @@ project_id = "my-gcp-project-id"
 region     = "europe-west1"
 location   = "EU"
 
+# Pour initialiser Terraform en local avec le backend GCS:
+#   docker compose run --rm infra-iac terraform init \
+#     -backend-config=bucket=datatalent-tfstate-my-gcp-project-id
+# Note: Le bucket doit exister au préalable. Créer via:
+#   gcloud storage buckets create gs://datatalent-tfstate-my-gcp-project-id \
+#     --location=europe-west1 --project=my-gcp-project-id
+
 environment    = "dev"
 project_prefix = "datatalent"
 # raw_bucket_name = "datatalent-dev-my-raw-bucket"
