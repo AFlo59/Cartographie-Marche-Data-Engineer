@@ -32,7 +32,9 @@ fi
 
 if [ "${1:-}" = "validate" ]; then
   shift
-  terraform init -backend=false "$@"
+  # Run init without args (init doesn't accept validate-specific flags like -json, -no-color)
+  terraform init -backend=false
+  # Pass args only to validate
   exec terraform validate "$@"
 fi
 

@@ -2,12 +2,12 @@ name: Infra Deploy — Terraform
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "infra/**"
       - ".github/workflows/infra-deploy.yml"
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "infra/**"
       - ".github/workflows/infra-deploy.yml"
@@ -117,9 +117,9 @@ jobs:
             exit 1
           fi
 
-      # ── 6. Bootstrap backend bucket sur push main ───────────────────────────
+      # ── 6. Bootstrap backend bucket sur push main/develop ─────────────────────
       - name: Ensure Terraform backend bucket exists
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         shell: bash
         run: |
           set -euo pipefail
@@ -144,7 +144,7 @@ jobs:
       # ── 8. Terraform Init ────────────────────────────────────────────────────
       - name: Terraform Init
         working-directory: infra
-        run: terraform init
+        run: terraform init -backend-config="bucket=${TF_BACKEND_BUCKET}"
 
       # ── 9. Terraform Validate ────────────────────────────────────────────────
       - name: Terraform Validate
