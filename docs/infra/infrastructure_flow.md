@@ -4,6 +4,14 @@
 
 Ce document explique comment les données circulent dans notre pipeline d'infrastructure, de GitHub Actions jusqu'à GCP.
 
+### Décision actuelle ingestion
+
+- 1 Cloud Run Job: `datatalent-ingestion-job`
+- 3 Cloud Scheduler jobs: `france_travail`, `sirene`, `geo`
+- chaque Scheduler déclenche le même job avec `INGESTION_SOURCE=<source>` (override env)
+
+Ce modèle est actuellement le plus simple et le moins coûteux en exploitation pour votre fréquence (hebdo/mensuel).
+
 ---
 
 ## 1️⃣ Sources des données
@@ -216,11 +224,11 @@ Plan: 1 to add, 0 to change, 0 to destroy
 │ 5. Créer bucket d'état si absent ✅         │
 │ 6. terraform init (télécharge state)        │
 │ 7. terraform validate                       │
-│ 8. terraform plan (affiche, pas apply)      │
-│ 9. ❌ PAS DE APPLY                          │
+│ 8. ❌ PAS DE PLAN                            │
+│ 9. ❌ PAS DE APPLY                           │
 └─────────────────────────────────────────────┘
 
-💡 Utilité: Vérifier que le plan est valide avant main
+💡 Utilité: vérifier le wiring CI et la validité Terraform sans mutation infra.
 ```
 
 ### **Cas 3: Push sur main**
@@ -239,11 +247,12 @@ Plan: 1 to add, 0 to change, 0 to destroy
 │ 4. Setup gcloud CLI                         │
 │ 5. Créer bucket d'état si absent ✅         │
 │ 6. terraform init (télécharge state)        │
-│ 7. terraform validate                       │
-│ 8. terraform plan                           │
-│ 9. terraform apply -auto-approve 🚀         │
-│    ├─ Crée/modifie ressources GCP          │
-│    └─ Met à jour state dans GCS             │
+│ 7. terraform validate                        │
+│ 8. Vérifier APIs requises                    │
+│ 9. Import best-effort des ressources existantes│
+│10. terraform apply -auto-approve 🚀          │
+│    ├─ Crée/modifie ressources GCP            │
+│    └─ Met à jour state dans GCS              │
 └─────────────────────────────────────────────┘
 
 🚨 IMPORTANT: Les changements sont appliqués immédiatement
