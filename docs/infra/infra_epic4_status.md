@@ -10,7 +10,7 @@
 - ✅ **INFRA-06** : Module secrets (`infra/modules/secrets`) + bindings `secretAccessor` pour `ingestion-sa`.
 - ✅ **INFRA-07** : IAM complet — IAM datasets BQ + bucket raw + BQ jobUser + Artifact Registry pour tous les SA. Ajout `roles/storage.objectViewer` pour `dbt-sa` (requis pour que BQ lise GCS lors des queries sur External Tables). Voir [docs/infra/iam_roles.md](iam_roles.md).
 - 🟡 **INFRA-08** : Non implémenté (`docs/cost_estimation.md` à créer). Estimation cible : < 5€/mois hors free tier GCP avec les optimisations en place (Nearline, External Tables, 1 job mutualisé).
-- 🟡 **INFRA-09** : Partiel — workflow IaC (`.github/workflows/infra-deploy.yml`) avec WIF, plan PR, apply main. Restent : lint Python + checks dbt (`compile/run/test`) sur PR.
+- 🟡 **INFRA-09** : Partiel — workflow IaC (`.github/workflows/infra-deploy.yml`) avec WIF, plan PR, apply main, et gate dbt (`parse`/`compile`) avant Terraform. Workflow dbt dédié ajouté (`.github/workflows/dbt-ci.yml`) sur `main`/`develop` (push + PR) pour `parse`/`compile`. Restent : lint Python et exécution dbt `run/test` sur merge `main`.
 - ✅ **INFRA-10** : Partiellement couvert (structure repo + `.gitignore` + `.env.example` créés; branch protection à configurer sur GitHub UI).
 
 ## Détail infra conteneurisée
@@ -33,7 +33,7 @@ Guides d'exécution:
 1. **Pousser la branche** `feature_infra_04` sur `main` — `terraform apply` ne crée que bucket + datasets + IAM (compute et external tables désactivés par défaut).
 2. **Développer les scripts d'ingestion** (`src/ingestion/`), builder et pusher l'image vers Artifact Registry, puis activer `TF_VAR_create_compute_job=true` dans le workflow CI.
 3. **Activer les External Tables BQ** après la première ingestion : re-apply avec `TF_VAR_create_external_tables=true`. Voir [docs/infra/manual_commands.md](manual_commands.md#activer-les-external-tables-bigquery-après-la-première-ingestion).
-4. **Compléter INFRA-09** : ajouter lint Python (`ruff`) + `dbt compile` sur les PRs, puis `dbt run` + `dbt test` sur merge main.
+4. **Compléter INFRA-09** : ajouter lint Python (`ruff`), puis `dbt run` + `dbt test` sur merge `main` (les checks `parse/compile` sont déjà en place).
 5. **Créer `docs/cost_estimation.md`** (INFRA-08) — estimer les coûts avec Infracost ou manuellement.
 
 ## CI Security

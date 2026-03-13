@@ -10,6 +10,7 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN dbt deps --project-dir /app --profiles-dir /app
 
 ENV DBT_PROFILES_DIR=/app
 

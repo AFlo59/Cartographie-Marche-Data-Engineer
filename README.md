@@ -2,7 +2,7 @@
 
 Pipeline de données end-to-end : cartographie du marché Data Engineer en France.
 
-## Epic 4 — État infra actuel (INFRA-01 à INFRA-06 + INFRA-09 partiel)
+## Epic 4 — État infra actuel (INFRA-01 à INFRA-07 + INFRA-09 partiel)
 
 ### Choix du cloud : GCP
 
@@ -23,7 +23,8 @@ Cette itération IaC provisionne :
 - Trois jobs Cloud Scheduler (module `infra/modules/scheduler`)
 - Les secrets API dans Secret Manager + binding `secretAccessor` ingestion (module `infra/modules/secrets`)
 - Les IAM dataset-level et `roles/bigquery.jobUser` pour ingestion/dbt/dashboard
-- Un workflow CI infra WIF (`.github/workflows/infra-deploy.yml`) pour plan/apply Terraform
+- Un workflow CI infra WIF (`.github/workflows/infra-deploy.yml`) avec vérification dbt (`parse`/`compile`) avant Terraform
+- Un workflow CI dbt dédié (`.github/workflows/dbt-ci.yml`) sur `main`/`develop` pour `parse`/`compile`
 
 ### Arborescence infra
 
@@ -123,6 +124,6 @@ Copier `infra/terraform.tfvars.example` vers `infra/terraform.tfvars` puis rense
 
 - INFRA-07 : finaliser le durcissement IAM (moindre privilège)
 - INFRA-08 : document de coûts `docs/cost_estimation.md`
-- INFRA-09 : compléter CI avec lint Python + dbt (compile/run/test)
+- INFRA-09 : compléter CI avec lint Python + dbt `run/test` sur `main` (parse/compile déjà en place)
 - Intégration applicative ingestion/dbt sur les ressources désormais provisionnées
 

@@ -1,0 +1,50 @@
+name: dbt CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "dbt/transformation/**"
+      - ".github/workflows/dbt-ci.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "dbt/transformation/**"
+      - ".github/workflows/dbt-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-dbt-project:
+    name: Verify dbt project (parse/compile)
+    runs-on: ubuntu-latest
+    env:
+      DBT_TARGET: ci
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+      GCP_LOCATION: ${{ secrets.GCP_LOCATION != '' && secrets.GCP_LOCATION || vars.GCP_LOCATION != '' && vars.GCP_LOCATION || 'EU' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build dbt image
+        run: docker build -f dbt/transformation/Dockerfile -t datatalent-dbt-ci:latest dbt/transformation
+
+      - name: dbt parse
+        run: |
+          docker run --rm \
+            -e DBT_TARGET=${DBT_TARGET} \
+            -e GCP_PROJECT_ID=${GCP_PROJECT_ID} \
+            -e GCP_LOCATION=${GCP_LOCATION} \
+            datatalent-dbt-ci:latest \
+            dbt parse --project-dir /app --profiles-dir /app
+
+      - name: dbt compile
+        run: |
+          docker run --rm \
+            -e DBT_TARGET=${DBT_TARGET} \
+            -e GCP_PROJECT_ID=${GCP_PROJECT_ID} \
+            -e GCP_LOCATION=${GCP_LOCATION} \
+            datatalent-dbt-ci:latest \
+            dbt compile --project-dir /app --profiles-dir /app
