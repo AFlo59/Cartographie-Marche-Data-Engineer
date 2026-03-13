@@ -60,8 +60,8 @@ resource "time_sleep" "wait_for_iam_propagation" {
   create_duration = "60s"
 
   triggers = {
-    # one() retourne null si count=0 (ingestion_sa non fourni), valide comme trigger
-    ingestion_iam_id = one(google_project_iam_member.ingestion_artifact_registry_reader[*].id)
+    # one() retourne null si count=0 (ingestion_sa non fourni), on le remplace par une chaîne vide pour respecter map(string)
+     ingestion_iam_id = coalesce(one(google_project_iam_member.ingestion_artifact_registry_reader[*].id), "")
     cloud_run_iam_id = google_project_iam_member.cloud_run_service_agent_artifact_registry_reader.id
   }
 
