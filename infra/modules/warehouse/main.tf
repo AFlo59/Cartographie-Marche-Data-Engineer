@@ -67,7 +67,7 @@ resource "google_bigquery_dataset_iam_member" "dashboard_marts_viewer" {
 # Elles fonctionneront dès que les fichiers Parquet seront présents dans GCS.
 
 resource "google_bigquery_table" "raw_sirene_etablissements" {
-  count = var.raw_bucket_name != "" ? 1 : 0
+  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
 
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.raw.dataset_id
@@ -82,7 +82,7 @@ resource "google_bigquery_table" "raw_sirene_etablissements" {
 }
 
 resource "google_bigquery_table" "raw_sirene_unites_legales" {
-  count = var.raw_bucket_name != "" ? 1 : 0
+  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
 
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.raw.dataset_id
@@ -97,7 +97,7 @@ resource "google_bigquery_table" "raw_sirene_unites_legales" {
 }
 
 resource "google_bigquery_table" "raw_france_travail_offres" {
-  count = var.raw_bucket_name != "" ? 1 : 0
+  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
 
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.raw.dataset_id

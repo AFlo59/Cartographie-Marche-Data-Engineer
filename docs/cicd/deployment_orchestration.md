@@ -95,13 +95,18 @@ Les étapes dbt et dashboard sont rappelées ici pour la vision cible, mais elle
 
 ## État actuel synthétique
 
-- Bucket raw GCS en place avec lifecycle Nearline (30j) + suppression geo/ (90j)
-- Datasets BigQuery `raw` (External Tables GCS), `staging`, `marts` en place
-- External Tables `raw.sirene_etablissements`, `raw.sirene_unites_legales`, `raw.france_travail_offres` — Parquet GCS, sans stockage BQ
-- Cloud Run Job mutualisé + 3 Schedulers (france_travail quotidien, sirene/geo mensuels)
-- Secret Manager câblé + bindings `secretAccessor` pour `ingestion-sa`
+**Créé par Terraform (activé par défaut) :**
+- Bucket raw GCS avec lifecycle Nearline (30j) + suppression geo/ (90j)
+- Datasets BigQuery `raw`, `staging`, `marts`
+- IAM complet : tous les SA (ingestion, dbt, dashboard) — y compris IAM Artifact Registry préparés en avance
+- Secret Manager + bindings `secretAccessor` pour `ingestion-sa`
 - Workflow CI Terraform via WIF (plan PR, apply merge main)
-- IAM complet : tous les SA ont les permissions requises y compris `dbt-sa` → `storage.objectViewer` pour les External Tables
+
+**Défini mais désactivé (activer après prérequis) :**
+- `create_compute_job = false` : Cloud Run Job + 3 Schedulers — activer après push de l'image ingestion dans Artifact Registry
+- `create_external_tables = false` : External Tables `raw.sirene_etablissements`, `raw.sirene_unites_legales`, `raw.france_travail_offres` — activer après la première ingestion (BQ autodetect requiert des fichiers Parquet)
+
+**Conteneurs Docker disponibles :** `infra-iac` (Terraform), `ingestion` (Python, profile `ingestion`), `dbt` (dbt-bigquery, profile `dbt`)
 
 Le suivi détaillé des tickets reste dans [docs/infra/infra_epic4_status.md](docs/infra/infra_epic4_status.md).
 
