@@ -63,8 +63,9 @@ resource "google_bigquery_dataset_iam_member" "dashboard_marts_viewer" {
 
 # External Tables raw → GCS
 # BigQuery lit directement le Parquet depuis GCS : zéro copie, zéro stockage BQ facturé.
-# Les tables sont créées seulement si raw_bucket_name est fourni.
-# Elles fonctionneront dès que les fichiers Parquet seront présents dans GCS.
+# Création conditionnée par create_external_tables = true (défaut false) :
+# BQ autodetect requiert au moins un fichier Parquet présent dans GCS à la création.
+# Activer après la première ingestion.
 
 resource "google_bigquery_table" "raw_sirene_etablissements" {
   count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0

@@ -44,6 +44,13 @@ resource "google_cloud_run_v2_job" "ingestion" {
     }
   }
 
+  lifecycle {
+    precondition {
+      condition     = trimspace(var.image) != ""
+      error_message = "compute_image must be set before enabling create_compute_job (example: europe-west1-docker.pkg.dev/<project>/datatalent/ingestion:latest)."
+    }
+  }
+
   depends_on = [
     time_sleep.wait_for_iam_propagation
   ]
@@ -91,6 +98,7 @@ resource "google_project_iam_member" "cloud_run_service_agent_artifact_registry_
 resource "google_cloud_run_v2_job_iam_member" "job_invoker" {
   for_each = var.create_job ? toset(var.job_invoker_service_accounts) : toset([])
 
+  project  = var.project_id
   name     = var.job_name
   location = var.region
   role     = "roles/run.invoker"
