@@ -141,23 +141,32 @@ gcloud secrets add-iam-policy-binding DATAGOUV_API_KEY \
 
 | Rôle | Portée | Ressource cible | Pourquoi | Statut | Ressource Terraform |
 |------|--------|-----------------|----------|--------|---------------------|
-| `roles/bigquery.dataViewer` | Dataset | `raw` | Lire les tables raw en entrée des modèles dbt | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.dbt_raw_viewer` |
+| `roles/bigquery.dataViewer` | Dataset | `raw` | Lire les tables raw (y compris les External Tables) en entrée des modèles dbt | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.dbt_raw_viewer` |
 | `roles/bigquery.dataEditor` | Dataset | `staging` | Créer / écraser les modèles staging | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.dbt_staging_editor` |
 | `roles/bigquery.dataEditor` | Dataset | `marts` | Créer / écraser les modèles marts | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.dbt_marts_editor` |
 | `roles/bigquery.jobUser` | Projet | — | Lancer des jobs BigQuery | ✅ Terraform | `modules/warehouse` → `google_project_iam_member.dbt_job_user` |
+| `roles/storage.objectViewer` | Bucket | `datatalent-dev-cartographie-data-engineer-raw` | **Requis pour les BigQuery External Tables** : BQ lit directement GCS au moment de la query, le SA dbt doit donc avoir accès au bucket raw | ✅ Terraform | `modules/storage` → `google_storage_bucket_iam_member.dbt_object_viewer` |
+
+> **Pourquoi `storage.objectViewer` est nécessaire** : les External Tables BigQuery (dataset `raw`) ne stockent pas les données dans BQ — elles lisent les fichiers Parquet dans GCS à chaque requête. BigQuery utilise l'identité du SA dbt pour lire ces objets GCS. Sans ce binding, toute query dbt sur `raw.*` échoue avec `403 Access denied`.
 
 **Commandes gcloud équivalentes** :
 
-> ⚠️ **Limitation** : les bindings dataset BigQuery (`dataViewer`, `dataEditor`) ne peuvent pas être appliqués via `bq` CLI (erreur `allowlisting`). Ils sont **gérés uniquement via `terraform apply`** (déjà appliqués lors de INFRA-03).
+> ⚠️ **Limitation** : les bindings dataset BigQuery (`dataViewer`, `dataEditor`) ne peuvent pas être appliqués via `bq` CLI (erreur `allowlisting`). Ils sont **gérés uniquement via `terraform apply`**.
 
 ```bash
 SA="dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com"
 PROJECT="cartographie-data-engineer"
+BUCKET="datatalent-dev-cartographie-data-engineer-raw"
 
-# jobUser niveau projet uniquement via gcloud (idempotent)
+# jobUser niveau projet (idempotent)
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${SA}" \
   --role="roles/bigquery.jobUser"
+
+# Storage objectViewer — requis pour External Tables (idempotent)
+gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
+  --member="serviceAccount:${SA}" \
+  --role="roles/storage.objectViewer"
 
 # Les bindings dataset (dataViewer raw, dataEditor staging/marts) sont dans Terraform
 # → exécuter terraform apply pour les appliquer
@@ -308,6 +317,7 @@ gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
 | `ingestion-sa` | `roles/bigquery.dataEditor` sur `staging` / `marts` | L'ingestion n'écrit que dans `raw`. Les autres datasets sont réservés à dbt. |
 | `ingestion-sa` | `roles/storage.admin` | L'accès `objectAdmin` au bucket suffit. `storage.admin` donnerait la gestion de la config du bucket elle-même. |
 | `dbt-sa` | `roles/bigquery.dataEditor` sur `raw` | dbt ne doit qu'écrire dans `staging` et `marts`. `raw` est en lecture seule pour lui. |
+| `dbt-sa` | `roles/storage.objectAdmin` sur le bucket raw | `objectViewer` suffit pour lire les External Tables. `objectAdmin` permettrait de supprimer ou écraser des données brutes. |
 | `dashboard-sa` | `roles/bigquery.dataEditor` sur `marts` | Le dashboard n'a besoin que de lire. Accorder `dataEditor` créerait un risque d'écriture involontaire. |
 | `dashboard-sa` | Tout accès à `raw` / `staging` | Le dashboard ne doit voir que les données finales de `marts`. |
 | `scheduler-sa` | `roles/run.admin` | `run.invoker` suffit pour déclencher un job existant. `run.admin` permettrait de modifier le job. |
@@ -320,7 +330,7 @@ gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
 | SA | Création | Permissions core | Statut global |
 |----|----------|------------------|---------------|
 | `ingestion-sa` | ✅ Créé | Storage objectAdmin ✅ + BQ dataEditor(raw) ✅ + BQ jobUser ✅ + Secret Accessor FT_* ✅ + Secret Accessor DATAGOUV ❌ | ⚠️ Presque complet — créer DATAGOUV_API_KEY secret + binding |
-| `dbt-sa` | ✅ Créé | BQ dataViewer(raw) + BQ dataEditor(staging,marts) + BQ jobUser ✅ | ✅ Géré Terraform (appliqué INFRA-03) |
+| `dbt-sa` | ✅ Créé | BQ dataViewer(raw) ✅ + BQ dataEditor(staging,marts) ✅ + BQ jobUser ✅ + Storage objectViewer(bucket raw) ✅ | ✅ Géré Terraform — `storage.objectViewer` ajouté pour External Tables |
 | `dashboard-sa` | ✅ Créé | BQ dataViewer(marts) + BQ jobUser ✅ | ✅ Géré Terraform (appliqué INFRA-03) |
 | `scheduler-sa` | ✅ Créé | run.invoker (projet) — binding appliqué par terraform apply INFRA-04 | ⏳ En attente terraform apply INFRA-04 |
 | `terraform-deployer-sa` | ✅ Créé | storage.admin + bigquery.admin ✅ / run.admin + cloudscheduler.admin + secretmanager.admin + iam.serviceAccountUser ❌ | ⚠️ Incomplet pour INFRA-04/05/06 |
@@ -330,7 +340,7 @@ gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
 ## 9. Notes importantes
 
 ### WIF (Workload Identity Federation)
-En CI GitHub Actions, le workflow utilise WIF via `google-github-actions/auth@v2` et non une clé JSON. Le SA associé est `terraform-deployer-sa` (ou tout SA lié au WIF pool). Les rôles de la section 6 s'appliquent identiquement.
+En CI GitHub Actions, le workflow utilise WIF via `google-github-actions/auth@v3` et non une clé JSON. Le SA associé est `terraform-deployer-sa` (ou tout SA lié au WIF pool). Les rôles de la section 6 s'appliquent identiquement.
 
 ### Clés JSON
 La création de clés JSON est bloquée par la policy org sur ce projet. Le mode recommandé est :

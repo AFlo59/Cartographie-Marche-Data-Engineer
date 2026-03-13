@@ -36,6 +36,8 @@ jobs:
       TF_VAR_bucket_versioning_enabled: "true"
       TF_VAR_bucket_force_destroy: "false"
       TF_VAR_bucket_lifecycle_delete_age_days: "365"
+      TF_VAR_bucket_nearline_age_days: "30"
+      TF_VAR_bucket_geo_prefix_delete_age_days: "90"
       # BigQuery
       TF_VAR_raw_dataset_id: raw
       TF_VAR_staging_dataset_id: staging

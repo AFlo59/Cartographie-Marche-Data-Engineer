@@ -22,6 +22,36 @@ resource "google_storage_bucket" "raw" {
       }
     }
   }
+
+  # Transition vers NEARLINE après N jours : ~40% d'économie sur le stockage Sirene (plusieurs Go)
+  dynamic "lifecycle_rule" {
+    for_each = var.nearline_transition_age_days == null ? [] : [1]
+
+    content {
+      condition {
+        age = var.nearline_transition_age_days
+      }
+      action {
+        type          = "SetStorageClass"
+        storage_class = "NEARLINE"
+      }
+    }
+  }
+
+  # Suppression des anciennes versions des données geo/ (référentiel stable, rotation mensuelle)
+  dynamic "lifecycle_rule" {
+    for_each = var.geo_prefix_delete_age_days == null ? [] : [1]
+
+    content {
+      condition {
+        age            = var.geo_prefix_delete_age_days
+        matches_prefix = [var.geo_prefix]
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
 }
 
 resource "google_storage_bucket_iam_member" "ingestion_object_admin" {
@@ -30,4 +60,14 @@ resource "google_storage_bucket_iam_member" "ingestion_object_admin" {
   bucket = google_storage_bucket.raw.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${var.ingestion_sa_email}"
+}
+
+# Requis pour que dbt puisse lire les données via les BigQuery external tables :
+# BQ lit directement GCS au moment de la query, le SA dbt doit donc avoir accès au bucket.
+resource "google_storage_bucket_iam_member" "dbt_object_viewer" {
+  count = var.dbt_sa_email == "" ? 0 : 1
+
+  bucket = google_storage_bucket.raw.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${var.dbt_sa_email}"
 }

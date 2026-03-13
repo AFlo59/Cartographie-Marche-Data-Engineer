@@ -44,13 +44,23 @@ resource "google_cloud_run_v2_job" "ingestion" {
   }
 
   depends_on = [
-    google_project_iam_member.ingestion_artifact_registry_reader,
-    google_project_iam_member.cloud_run_service_agent_artifact_registry_reader
+    time_sleep.wait_for_iam_propagation
   ]
 }
 
 data "google_project" "current" {
   project_id = var.project_id
+}
+
+# GCP IAM bindings peuvent prendre jusqu'à 60s à se propager.
+# Sans ce délai, la création du Cloud Run Job échoue avec 403 sur Artifact Registry.
+resource "time_sleep" "wait_for_iam_propagation" {
+  create_duration = "60s"
+
+  depends_on = [
+    google_project_iam_member.ingestion_artifact_registry_reader,
+    google_project_iam_member.cloud_run_service_agent_artifact_registry_reader,
+  ]
 }
 
 resource "google_project_iam_member" "ingestion_artifact_registry_reader" {

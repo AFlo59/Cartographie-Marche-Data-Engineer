@@ -544,6 +544,12 @@ gcloud storage buckets update gs://${TERRAFORM_STATE_BUCKET} --versioning
 
 **Voir**: [docs/infra/iam_roles.md](iam_roles.md)
 
+### **Problème: Error 403 `artifactregistry.repositories.downloadArtifacts` lors de la création du Cloud Run Job**
+
+**Cause**: GCP IAM prend jusqu'à 60 secondes à propager les nouveaux bindings. Terraform créait le Cloud Run Job immédiatement après avoir accordé `roles/artifactregistry.reader`, avant propagation.
+
+**Solution appliquée**: Une ressource `time_sleep` de 60s dans `infra/modules/compute/main.tf` insère un délai entre les IAM members et la création du job. Aucune action manuelle nécessaire — le prochain apply passera.
+
 ---
 
 ## 🔟 Résumé rapide
@@ -554,7 +560,7 @@ gcloud storage buckets update gs://${TERRAFORM_STATE_BUCKET} --versioning
 | **Env vars** | infra-deploy.yml | TF_VAR_*, TF_BACKEND_BUCKET |
 | **Code Terraform** | infra/ | variables.tf, main.tf, modules/ |
 | **State file** | GCS Bucket | terraform.tfstate (JSON) |
-| **Ressources** | GCP | Cloud Run, BigQuery, Storage, etc. |
+| **Ressources** | GCP | Cloud Run Job (1 mutualisé), BigQuery (datasets + external tables raw), Storage (avec lifecycle Nearline), Scheduler (3 jobs), Secret Manager |
 | **Config locale** | .gitignore | terraform.tfvars (ne pas commiter) |
 
 ---

@@ -193,10 +193,11 @@
   - `mart_offres_par_mois.sql` : évolution temporelle du nombre d'offres et des salaires
   - `mart_offres_detail.sql` : table de détail avec toutes les dimensions pour le filtrage dans le dashboard
   - Utiliser le partitionnement et le clustering sur les champs clés (date, département, code NAF)
+  - Activer `require_partition_filter: true` sur les tables Sirene pour bloquer les full-scans accidentels (10M+ lignes = ~0,05$/To)
 - **Critères d'acceptation** :
   - Les 4 modèles s'exécutent sans erreur
   - Les agrégats sont cohérents (pas de doublons, totaux vérifiables)
-  - Le partitionnement/clustering est configuré dans `dbt_project.yml` ou dans les config des modèles
+  - Le partitionnement/clustering est configuré dans `dbt_project.yml` ou dans les config des modèles avec `require_partition_filter: true` sur les modèles Sirene
   - Documentation `.yml` complète
 
 #### DBT-08 — Tests de qualité dbt (not_null, unique, accepted_values, relationships)
@@ -236,9 +237,11 @@
 #### DASH-01 — Choisir et configurer l'outil de BI
 - **Type** : Tâche
 - **Points** : 2
-- **Description** : Choisir un outil de BI (Looker Studio, Metabase, Superset, Power BI) et le connecter à l'entrepôt de données (dataset marts). Documenter le choix et la configuration dans le README. L'outil doit permettre un accès public au dashboard (lien partageable).
+- **Description** : Connecter **Looker Studio** (recommandé) au dataset `marts` de BigQuery. Looker Studio est natif GCP, gratuit, connecté directement à BigQuery sans couche intermédiaire. Évite de provisionner un serveur Metabase ou Superset (Cloud Run ou VM en continu = coût fixe mensuel non justifié). Documenter la configuration dans le README. L'outil doit permettre un accès public au dashboard (lien partageable).
+- **Choix recommandé** : Looker Studio (gratuit, natif GCP, connecteur BigQuery natif, lien public intégré)
+- **Alternative** : Metabase Cloud ou Superset si visualisations avancées nécessaires (coût ~10-20€/mois supplémentaire)
 - **Critères d'acceptation** :
-  - L'outil est connecté à l'entrepôt et affiche les données marts
+  - L'outil est connecté à BigQuery et affiche les données marts
   - Un lien public est générable
   - Le choix est justifié dans le README
 

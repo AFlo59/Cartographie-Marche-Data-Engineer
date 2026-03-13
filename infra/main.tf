@@ -53,8 +53,12 @@ module "storage" {
   location                  = var.region
   versioning_enabled        = var.bucket_versioning_enabled
   force_destroy             = var.bucket_force_destroy
-  lifecycle_delete_age_days = var.bucket_lifecycle_delete_age_days
-  ingestion_sa_email        = var.ingestion_service_account_email
+  lifecycle_delete_age_days    = var.bucket_lifecycle_delete_age_days
+  nearline_transition_age_days = var.bucket_nearline_age_days
+  geo_prefix_delete_age_days   = var.bucket_geo_prefix_delete_age_days
+  geo_prefix                   = var.ingestion_geo_prefix
+  ingestion_sa_email           = var.ingestion_service_account_email
+  dbt_sa_email                 = var.dbt_service_account_email
 }
 
 module "warehouse" {
@@ -69,6 +73,9 @@ module "warehouse" {
   dbt_service_account          = var.dbt_service_account_email
   dashboard_service_account    = var.dashboard_service_account_email
   manage_project_job_user_bindings = var.manage_project_job_user_bindings
+  raw_bucket_name                  = local.bucket_name
+  raw_sirene_prefix                = var.ingestion_sirene_prefix
+  raw_france_travail_prefix        = var.ingestion_france_travail_prefix
 }
 
 module "secrets" {
