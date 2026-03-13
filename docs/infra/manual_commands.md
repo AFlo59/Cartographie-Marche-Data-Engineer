@@ -174,6 +174,35 @@ pip install -r ..\requirements.txt
 
 Pourquoi : prpare un environnement local pour les scripts d'ingestion.
 
+## Bootstrap Artifact Registry (one-shot avant le premier push CI)
+
+Le repo Artifact Registry et la permission `artifactregistry.writer` sont cres par Terraform,
+mais le CI pousse les images **avant** que Terraform ait applique ces ressources la premiere fois.
+Il faut donc les creer manuellement une seule fois, puis Terraform les importera au prochain apply.
+
+```powershell
+# 1. Creer le repo Docker dans Artifact Registry
+gcloud artifacts repositories create datatalent `
+  --repository-format=docker `
+  --location=europe-west1 `
+  --project=cartographie-data-engineer
+
+# 2. Accorder artifactregistry.writer au SA WIF (terraform-deployer-sa)
+gcloud projects add-iam-policy-binding cartographie-data-engineer `
+  --member="serviceAccount:terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com" `
+  --role="roles/artifactregistry.writer"
+
+# 3. Verifier
+gcloud artifacts repositories describe datatalent `
+  --location=europe-west1 `
+  --project=cartographie-data-engineer
+```
+
+Apres ces deux commandes, re-declencher le workflow CI (re-push ou workflow_dispatch).
+Terraform importera le repo existant via le step `import_if_needed` au prochain apply.
+
+---
+
 ## Activer le Cloud Run Job aprs le premier push d'image
 
 Le Cloud Run Job et les Schedulers sont dsactivs par dfaut (`create_compute_job = false`)
