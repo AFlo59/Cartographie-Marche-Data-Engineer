@@ -7,11 +7,9 @@ on:
       - "infra/**"
       - ".github/workflows/infra-deploy.yml"
   push:
+    # Pas de filtre paths sur push : terraform apply doit toujours s'exécuter
+    # sur merge main, quelle que soit la source du changement (code, dbt, docs…).
     branches: [main, develop]
-    paths:
-      - "infra/**"
-      - ".github/workflows/infra-deploy.yml"
-  # Déclenchement manuel depuis GitHub Actions UI (utile quand les paths ne changent pas)
   workflow_dispatch: {}
 
 permissions:
@@ -20,6 +18,28 @@ permissions:
   pull-requests: write
 
 jobs:
+  ingestion-verify:
+    name: Verify ingestion image before Terraform
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+      AR_REGION: europe-west1
+      AR_REPO: datatalent
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Build uniquement — vérifie que le Dockerfile ingestion est valide
+      # Le push vers AR est fait dans le job push-images, après terraform apply
+      - name: Build ingestion image
+        run: |
+          docker build \
+            -f src/ingestion/Dockerfile \
+            -t ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/ingestion:latest \
+            -t ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/ingestion:${GITHUB_SHA::8} \
+            src/ingestion
+
   dbt-verify:
     name: Verify dbt before Terraform
     runs-on: ubuntu-latest
@@ -66,7 +86,7 @@ jobs:
             dbt compile --project-dir /app --profiles-dir /app
 
   terraform:
-    needs: [dbt-verify]
+    needs: [ingestion-verify, dbt-verify]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Terraform ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'Apply' || 'Plan' }}
     runs-on: ubuntu-latest
@@ -418,3 +438,52 @@ jobs:
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         working-directory: infra
         run: terraform apply -auto-approve
+
+  # ── Push images vers Artifact Registry (après apply, main uniquement) ────────
+  push-images:
+    needs: [terraform]
+    name: Push ingestion & dbt images to Artifact Registry
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+      AR_REGION: europe-west1
+      AR_REPO: datatalent
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Auth GCP via WIF ────────────────────────────────────────────────
+      - name: Auth GCP via Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER != '' && secrets.GCP_WIF_PROVIDER || vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
+
+      # ── 3. Configurer Docker pour Artifact Registry ────────────────────────
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${AR_REGION}-docker.pkg.dev --quiet
+
+      # ── 4. Build & push image ingestion ───────────────────────────────────
+      - name: Build and push ingestion image
+        run: |
+          docker build \
+            -f src/ingestion/Dockerfile \
+            -t ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/ingestion:latest \
+            -t ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/ingestion:${GITHUB_SHA::8} \
+            src/ingestion
+          docker push ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/ingestion:latest
+          docker push ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/ingestion:${GITHUB_SHA::8}
+
+      # ── 5. Build & push image dbt ──────────────────────────────────────────
+      - name: Build and push dbt image
+        run: |
+          docker build \
+            -f dbt/transformation/Dockerfile \
+            -t ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/dbt:latest \
+            -t ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/dbt:${GITHUB_SHA::8} \
+            dbt/transformation
+          docker push ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/dbt:latest
+          docker push ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/dbt:${GITHUB_SHA::8}
