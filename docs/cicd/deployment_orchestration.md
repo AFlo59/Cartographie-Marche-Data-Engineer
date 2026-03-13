@@ -85,13 +85,13 @@ Les étapes dbt et dashboard sont rappelées ici pour la vision cible, mais elle
 
 ## Guides à suivre selon l'étape
 
-- setup initial : [docs/setup_guide.md](docs/setup_guide.md)
-- préparation GCP : [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md)
-- exécution Terraform via Docker : [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
-- exécution Terraform locale : [docs/infra/manual_commands.md](docs/infra/manual_commands.md)
-- secrets runtime : [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md)
-- CI GitHub ↔ GCP : [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md)
-- matrice IAM : [docs/infra/iam_roles.md](docs/infra/iam_roles.md)
+- setup initial : [docs/setup_guide.md](../setup_guide.md)
+- préparation GCP : [docs/platform/gcp_terminal_setup.md](../platform/gcp_terminal_setup.md)
+- exécution Terraform via Docker : [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md)
+- exécution Terraform locale : [docs/infra/manual_commands.md](../infra/manual_commands.md)
+- secrets runtime : [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md)
+- CI GitHub ↔ GCP : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
+- matrice IAM : [docs/infra/iam_roles.md](../infra/iam_roles.md)
 
 ## État actuel synthétique
 
@@ -108,7 +108,7 @@ Les étapes dbt et dashboard sont rappelées ici pour la vision cible, mais elle
 
 **Conteneurs Docker disponibles :** `infra-iac` (Terraform), `ingestion` (Python, profile `ingestion`), `dbt` (dbt-bigquery, profile `dbt`)
 
-Le suivi détaillé des tickets reste dans [docs/infra/infra_epic4_status.md](docs/infra/infra_epic4_status.md).
+Le suivi détaillé des tickets reste dans [docs/infra/infra_epic4_status.md](../infra/infra_epic4_status.md).
 
 ## Règle documentaire
 
