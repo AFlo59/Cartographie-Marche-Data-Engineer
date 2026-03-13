@@ -6,6 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir dbt-bigquery==1.8.2
+COPY requirements.txt ./requirements.txt
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV DBT_PROFILES_DIR=/app
 
 CMD ["dbt", "--version"]

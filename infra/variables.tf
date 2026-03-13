@@ -51,6 +51,18 @@ variable "bucket_lifecycle_delete_age_days" {
   default     = 365
 }
 
+variable "bucket_nearline_age_days" {
+  description = "Transition raw objects to NEARLINE storage class after N days (~40% cheaper for Sirene multi-Go). Default: 30 (enabled). Override to null in terraform.tfvars to disable."
+  type        = number
+  default     = 30
+}
+
+variable "bucket_geo_prefix_delete_age_days" {
+  description = "Delete raw/geo/ objects older than N days (stable monthly ref data, no long history needed). Default: 90 (enabled). Override to null in terraform.tfvars to disable."
+  type        = number
+  default     = 90
+}
+
 variable "ingestion_service_account_email" {
   description = "Service account used by ingestion jobs"
   type        = string
@@ -67,6 +79,24 @@ variable "dashboard_service_account_email" {
   description = "Service account used by BI/dashboard tools"
   type        = string
   default     = ""
+}
+
+variable "manage_project_job_user_bindings" {
+  description = "Whether Terraform should manage project-level roles/bigquery.jobUser bindings"
+  type        = bool
+  default     = true
+}
+
+variable "create_external_tables" {
+  description = "Create BigQuery External Tables pointing to GCS Parquet files. Set to true only after at least one ingestion run has populated the bucket (BQ autodetect requires at least one file to exist)."
+  type        = bool
+  default     = false
+}
+
+variable "create_compute_job" {
+  description = "Create the Cloud Run Job and Cloud Scheduler jobs. Set to true only after the container image has been pushed to Artifact Registry (job creation fails with 403 if the image does not exist)."
+  type        = bool
+  default     = false
 }
 
 variable "raw_dataset_id" {
@@ -112,14 +142,9 @@ variable "compute_job_name" {
 }
 
 variable "compute_image" {
-  description = "Container image used by Cloud Run Job"
+  description = "Container image used by Cloud Run Job. Required when create_compute_job = true. Can be left empty when create_compute_job = false (image not yet built)."
   type        = string
   default     = ""
-
-  validation {
-    condition     = trimspace(var.compute_image) != ""
-    error_message = "compute_image must be set explicitly (for example: europe-west1-docker.pkg.dev/<project>/datatalent/ingestion:latest)."
-  }
 }
 
 variable "compute_memory" {

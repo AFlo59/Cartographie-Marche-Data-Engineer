@@ -17,6 +17,8 @@ services:
       TF_VAR_bucket_versioning_enabled: ${TF_VAR_bucket_versioning_enabled:-true}
       TF_VAR_bucket_force_destroy: ${TF_VAR_bucket_force_destroy:-false}
       TF_VAR_bucket_lifecycle_delete_age_days: ${TF_VAR_bucket_lifecycle_delete_age_days:-365}
+      TF_VAR_bucket_nearline_age_days: ${TF_VAR_bucket_nearline_age_days:-30}
+      TF_VAR_bucket_geo_prefix_delete_age_days: ${TF_VAR_bucket_geo_prefix_delete_age_days:-90}
       TF_VAR_raw_dataset_id: ${TF_VAR_raw_dataset_id:-raw}
       TF_VAR_staging_dataset_id: ${TF_VAR_staging_dataset_id:-staging}
       TF_VAR_marts_dataset_id: ${TF_VAR_marts_dataset_id:-marts}
@@ -41,6 +43,8 @@ services:
       TF_VAR_ingestion_service_account_email: ${TF_VAR_ingestion_service_account_email:-}
       TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
       TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
+      TF_VAR_create_compute_job: ${TF_VAR_create_compute_job:-false}
+      TF_VAR_create_external_tables: ${TF_VAR_create_external_tables:-false}
     volumes:
       - ./:/workspace
       - ./secrets:/workspace/secrets:ro

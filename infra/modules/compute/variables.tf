@@ -65,3 +65,9 @@ variable "secret_env" {
   type        = map(string)
   default     = {}
 }
+
+variable "create_job" {
+  description = "Create the Cloud Run Job resource. Set to true only after the container image has been pushed to Artifact Registry (job creation fails if the image does not exist)."
+  type        = bool
+  default     = false
+}

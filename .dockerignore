@@ -1,0 +1,21 @@
+# Exclure les dossiers non nécessaires au build de l'image ingestion
+# (contexte = racine du repo pour accéder à requirements.txt + src/ingestion/)
+
+.git
+.github
+.gcloud
+secrets
+infra
+dbt
+docs
+objectif
+tests
+*.md
+*.tfvars
+*.tfstate
+*.tfstate.backup
+.terraform
+.env
+.env.*
+!.env.example
+docker-compose.yml
