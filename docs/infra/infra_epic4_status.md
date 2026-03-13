@@ -49,18 +49,33 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
 
 Puis relancer le workflow (push ou `workflow_dispatch`).
 
-### Ordre des étapes CI/CD (logique confirmée)
+### Ordre des étapes CI/CD (logique confirmée — mis à jour)
 
-1. **`infra-deploy.yml`** (terraform apply) → crée AR repo + IAM bindings (ingestion-sa, dbt-sa, CI-sa, Cloud Run agent)
-2. **`dbt-ci.yml`** → build + parse + compile + push image `dbt:latest` vers AR (déclenché par changements `dbt/transformation/**`)
-3. **`ingestion-ci.yml`** → build + push image `ingestion:latest` vers AR (déclenché par changements `src/ingestion/**`)
-4. (futur) Activer `TF_VAR_create_compute_job=true` + `TF_VAR_create_dbt_job=true` après que les deux images soient dans AR
-5. (futur) Activer `TF_VAR_create_external_tables=true` après la première ingestion réussie
+Le workflow `infra-deploy.yml` orchestre l'ensemble sur push `main` en **4 jobs séquentiels/parallèles** :
 
-Les variables de garde sont correctement positionnées dans le workflow :
+```
+push main
+    ├──► ingestion-verify  ──────────────────────┐
+    │    (build Dockerfile ingestion)            ├──► terraform (apply) ──► push-images
+    └──► dbt-verify  ──────────────────────────  ┘         (AR repo +        (build + push
+         (build dbt + parse + compile)               IAM bindings)     ingestion + dbt → AR)
+```
+
+1. **`ingestion-verify`** — build du `Dockerfile` ingestion (vérification validité, pas de push)
+2. **`dbt-verify`** — build image dbt + `dbt parse` + `dbt compile` (vérification modèles)
+3. **`terraform`** — bloqué jusqu'à succès des deux verify → `terraform apply` sur main
+4. **`push-images`** — rebuild + push `ingestion:latest` et `dbt:latest` vers Artifact Registry
+
+**Workflows séparés (`dbt-ci.yml` / `ingestion-ci.yml`)** : conservés pour les PR et pushes ciblés sur leurs paths respectifs (`dbt/transformation/**`, `src/ingestion/**`). Sur push main sans ces paths, `infra-deploy.yml` prend le relais via `push-images`.
+
+Les variables de garde restent actives :
 - `TF_VAR_create_compute_job=false` — Cloud Run Job ingestion non créé
 - `TF_VAR_create_dbt_job=false` — Cloud Run Job dbt non créé
 - `TF_VAR_create_external_tables=false` — External Tables BQ non créées
+
+Étapes futures :
+- (après images dans AR) Activer `TF_VAR_create_compute_job=true` + `TF_VAR_create_dbt_job=true`
+- (après première ingestion) Activer `TF_VAR_create_external_tables=true`
 
 ### Prochaines étapes après fix IAM
 
