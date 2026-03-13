@@ -14,4 +14,4 @@ RUN dbt deps --project-dir /app --profiles-dir /app
 
 ENV DBT_PROFILES_DIR=/app
 
-CMD ["dbt", "--version"]
+CMD ["sh", "-c", "dbt run && dbt test"]

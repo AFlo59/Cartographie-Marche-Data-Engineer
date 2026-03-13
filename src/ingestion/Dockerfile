@@ -15,9 +15,16 @@ RUN apt-get update \
 
 WORKDIR /workspace
 
+# Build context = src/ingestion/ (cohérent avec CI ingestion-ci.yml)
 COPY requirements.txt /tmp/requirements.txt
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt
 
-CMD ["python", "--version"]
+COPY . /workspace/
+
+# INGESTION_SOURCE sélectionne le script à lancer (france_travail | sirene | geo)
+# Injecté via env var Cloud Run Job ou --env au docker run
+ENV INGESTION_SOURCE=france_travail
+
+CMD ["sh", "-c", "python ingest_${INGESTION_SOURCE}.py"]

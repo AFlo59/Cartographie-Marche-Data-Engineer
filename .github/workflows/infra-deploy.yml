@@ -11,6 +11,8 @@ on:
     paths:
       - "infra/**"
       - ".github/workflows/infra-deploy.yml"
+  # Déclenchement manuel depuis GitHub Actions UI (utile quand les paths ne changent pas)
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -28,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Build dbt image
         run: docker build -f dbt/transformation/Dockerfile -t datatalent-dbt-ci:latest dbt/transformation
@@ -54,7 +56,7 @@ jobs:
   terraform:
     needs: [dbt-verify]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    name: Terraform ${{ github.event_name == 'push' && 'Apply' || 'Plan' }}
+    name: Terraform ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'Apply' || 'Plan' }}
     runs-on: ubuntu-latest
 
     env:
@@ -101,11 +103,21 @@ jobs:
       TF_VAR_secret_ft_client_id_name: FT_CLIENT_ID
       TF_VAR_secret_ft_client_secret_name: FT_CLIENT_SECRET
       TF_VAR_secret_datagouv_api_key_name: DATAGOUV_API_KEY
+      # CI SA pour push Artifact Registry (même SA que WIF)
+      TF_VAR_ci_service_account_email: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
+      # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)
+      TF_VAR_create_dbt_job: "false"
+      TF_VAR_dbt_job_name: datatalent-dbt-job
+      TF_VAR_dbt_compute_image: europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/dbt:latest
+      TF_VAR_dbt_memory: 1Gi
+      TF_VAR_dbt_cpu: "1"
+      TF_VAR_dbt_timeout_seconds: "1800"
+      TF_VAR_dbt_max_retries: "0"
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       # ── 2. Vérifier les secrets CI requis ───────────────────────────────────
       - name: Check required CI inputs
@@ -146,7 +158,7 @@ jobs:
 
       # ── 5.1 Activer les APIs requises (push trusted uniquement, best effort) ──
       - name: Enable required GCP APIs (best effort)
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         shell: bash
         run: |
           set -euo pipefail
@@ -157,6 +169,7 @@ jobs:
             secretmanager.googleapis.com
             bigquery.googleapis.com
             storage.googleapis.com
+            artifactregistry.googleapis.com
           )
 
           failed_services=()
@@ -200,7 +213,7 @@ jobs:
 
       # ── 6. Bootstrap backend bucket sur push main/develop ─────────────────────
       - name: Ensure Terraform backend bucket exists
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         shell: bash
         run: |
           set -euo pipefail
@@ -275,7 +288,7 @@ jobs:
 
       # ── 11.5 Vérifier APIs requises avant apply ─────────────────────────────
       - name: Check required GCP APIs are enabled
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
@@ -286,6 +299,7 @@ jobs:
             secretmanager.googleapis.com
             bigquery.googleapis.com
             storage.googleapis.com
+            artifactregistry.googleapis.com
           )
 
           missing=0
@@ -312,7 +326,7 @@ jobs:
 
       # ── 12. Adopt existing resources into state (best effort) ───────────────
       - name: Terraform Import existing resources (best effort)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         working-directory: infra
         shell: bash
         run: |
@@ -379,8 +393,16 @@ jobs:
             "projects/${TF_VAR_project_id}/secrets/DATAGOUV_API_KEY" \
             "gcloud secrets describe DATAGOUV_API_KEY --project=${TF_VAR_project_id} >/dev/null 2>&1"
 
+          import_if_needed 'module.compute.google_artifact_registry_repository.datatalent' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/repositories/datatalent" \
+            "gcloud artifacts repositories describe datatalent --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.compute.google_cloud_run_v2_job.dbt[0]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_dbt_job_name}" \
+            "gcloud run jobs describe ${TF_VAR_dbt_job_name} --region=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
       # ── 13. Terraform Apply (merge main uniquement) ──────────────────────────
       - name: Terraform Apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         working-directory: infra
         run: terraform apply -auto-approve

@@ -1,0 +1,44 @@
+name: Python Lint
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "src/**/*.py"
+      - "src/**/requirements*.txt"
+      - ".github/workflows/python-lint.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "src/**/*.py"
+      - "src/**/requirements*.txt"
+      - ".github/workflows/python-lint.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint Python (black / isort / flake8)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install linting tools
+        run: pip install black isort flake8
+
+      - name: black — check formatting
+        run: black --check --diff src/
+
+      - name: isort — check import order
+        run: isort --check-only --diff src/
+
+      - name: flake8 — check style & errors
+        run: flake8 src/ --max-line-length=120 --extend-ignore=E203,W503
