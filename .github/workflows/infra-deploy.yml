@@ -119,16 +119,26 @@ jobs:
             storage.googleapis.com
           )
 
+          failed_services=()
+
           for service in "${SERVICES[@]}"; do
             if gcloud services list --enabled --project="${TF_VAR_project_id}" \
                 --filter="config.name=${service}" --format="value(config.name)" | grep -q "${service}"; then
               echo "API already enabled: ${service}"
             else
               echo "Trying to enable API: ${service}"
-              gcloud services enable "${service}" --project="${TF_VAR_project_id}" \
-                || echo "::warning::Unable to enable ${service} with current CI identity. Enable it manually once or grant roles/serviceusage.serviceUsageAdmin to ${CI_WIF_SERVICE_ACCOUNT}."
+              if ! gcloud services enable "${service}" --project="${TF_VAR_project_id}"; then
+                failed_services+=("${service}")
+                echo "::warning::Unable to enable ${service} with current CI identity. Enable it manually once or grant roles/serviceusage.serviceUsageAdmin to ${CI_WIF_SERVICE_ACCOUNT}."
+              fi
             fi
           done
+
+          if [ "${#failed_services[@]}" -ne 0 ]; then
+            echo "::warning::Still disabled after best effort: ${failed_services[*]}"
+            echo "::warning::Fix order: 1) enable these APIs once in Cloud Shell, 2) rerun CI, 3) optionally grant roles/serviceusage.serviceUsageAdmin to ${CI_WIF_SERVICE_ACCOUNT} for future auto-enable."
+            echo "::warning::See docs/setup_guide.md -> docs/platform/gcp_terminal_setup.md -> docs/cicd/github_wif_setup.md"
+          fi
 
           # Laisser quelques secondes pour propagation IAM/API
           sleep 20
@@ -250,8 +260,13 @@ jobs:
           done
 
           if [ "$missing" -ne 0 ]; then
+            echo "::error::Fix order:"
+            echo "::error::1) Enable the missing APIs once in Cloud Shell for project ${TF_VAR_project_id}."
+            echo "::error::2) Re-run the workflow."
+            echo "::error::3) Optional: grant roles/serviceusage.serviceUsageAdmin to ${CI_WIF_SERVICE_ACCOUNT} so CI can auto-enable APIs next time."
             echo "::error::Run once (Cloud Shell): gcloud services enable ${missing_services[*]} --project=${TF_VAR_project_id}"
             echo "::error::Or grant CI SA permission: gcloud projects add-iam-policy-binding ${TF_VAR_project_id} --member=serviceAccount:${CI_WIF_SERVICE_ACCOUNT} --role=roles/serviceusage.serviceUsageAdmin"
+            echo "::error::Docs: docs/platform/gcp_terminal_setup.md and docs/cicd/github_wif_setup.md"
             exit 1
           fi
 

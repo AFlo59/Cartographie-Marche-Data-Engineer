@@ -90,13 +90,17 @@ Voir :
 
 ### Préparer la CI
 
-1. Vérifier les rôles de `terraform-deployer-sa`
-2. Vérifier le binding `iam.serviceAccountUser`
-3. Configurer WIF
-4. Vérifier le workflow GitHub Actions
+1. Activer une fois les APIs GCP requises (`storage`, `bigquery`, `run`, `cloudscheduler`, `secretmanager`)
+2. Vérifier les rôles de `terraform-deployer-sa`
+3. Vérifier le binding `iam.serviceAccountUser`
+4. Configurer WIF
+5. Vérifier le workflow GitHub Actions
+
+Point d'attention : si les APIs ne sont pas activées, le workflow échoue avant `terraform apply` avec `Required API is disabled`, même si l'authentification WIF fonctionne correctement.
 
 Voir :
 - [docs/infra/iam_roles.md](docs/infra/iam_roles.md)
+- [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md)
 - [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md)
 
 ## Cartographie des docs
