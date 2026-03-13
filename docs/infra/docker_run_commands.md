@@ -193,3 +193,71 @@ docker compose run --rm infra-iac terraform-oauth plan
 Ne pas le faire dans ce guide pour éviter le doublon.
 
 Guide dédié : [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md)
+
+### Activer le Cloud Run Job après le premier push d'image
+
+Le Cloud Run Job et les Schedulers sont désactivés par défaut (`create_compute_job = false`).
+GCP échoue avec 403 si l'image n'existe pas dans Artifact Registry.
+
+**Étape 1** — Builder et pusher l'image d'ingestion :
+
+```bash
+# Builder l'image ingestion via docker compose
+docker compose build ingestion
+
+# Authentifier Docker sur Artifact Registry
+docker compose run --rm infra-iac gcloud auth configure-docker europe-west1-docker.pkg.dev
+
+# Tagger et pousser l'image
+docker tag datatalent-ingestion europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
+docker push europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
+```
+
+**Étape 2** — Activer le job dans Terraform :
+
+```bash
+docker compose run --rm infra-iac terraform apply -var="create_compute_job=true"
+```
+
+---
+
+### Activer les External Tables BigQuery après la première ingestion
+
+Les External Tables sont désactivées par défaut (`create_external_tables = false`).
+BigQuery refuse de créer une table avec `autodetect = true` si le bucket est vide.
+
+**Étape 1** — Vérifier que des fichiers Parquet existent dans le bucket :
+
+```bash
+docker compose run --rm infra-iac gcloud storage ls \
+  gs://datatalent-dev-cartographie-data-engineer-raw/raw/sirene/ \
+  --project cartographie-data-engineer
+
+docker compose run --rm infra-iac gcloud storage ls \
+  gs://datatalent-dev-cartographie-data-engineer-raw/raw/france_travail/ \
+  --project cartographie-data-engineer
+```
+
+**Étape 2** — Déclencher manuellement le Cloud Run Job pour peupler le bucket (recommandé) :
+
+```bash
+docker compose run --rm infra-iac gcloud run jobs execute datatalent-ingestion-job \
+  --region=europe-west1 \
+  --project cartographie-data-engineer \
+  --update-env-vars INGESTION_SOURCE=france_travail
+
+docker compose run --rm infra-iac gcloud run jobs execute datatalent-ingestion-job \
+  --region=europe-west1 \
+  --project cartographie-data-engineer \
+  --update-env-vars INGESTION_SOURCE=sirene
+```
+
+**Étape 3** — Une fois les fichiers présents, appliquer avec les External Tables activées :
+
+```bash
+docker compose run --rm infra-iac terraform apply -var="create_external_tables=true"
+```
+
+Pour activer en CI : mettre `TF_VAR_create_external_tables: "true"` dans `.github/workflows/infra-deploy.yml`.
+
+Voir le guide complet : [docs/infra/manual_commands.md](docs/infra/manual_commands.md#activer-les-external-tables-bigquery-après-la-première-ingestion)

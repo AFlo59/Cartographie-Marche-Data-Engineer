@@ -17,6 +17,8 @@ services:
       TF_VAR_bucket_versioning_enabled: ${TF_VAR_bucket_versioning_enabled:-true}
       TF_VAR_bucket_force_destroy: ${TF_VAR_bucket_force_destroy:-false}
       TF_VAR_bucket_lifecycle_delete_age_days: ${TF_VAR_bucket_lifecycle_delete_age_days:-365}
+      TF_VAR_bucket_nearline_age_days: ${TF_VAR_bucket_nearline_age_days:-30}
+      TF_VAR_bucket_geo_prefix_delete_age_days: ${TF_VAR_bucket_geo_prefix_delete_age_days:-90}
       TF_VAR_raw_dataset_id: ${TF_VAR_raw_dataset_id:-raw}
       TF_VAR_staging_dataset_id: ${TF_VAR_staging_dataset_id:-staging}
       TF_VAR_marts_dataset_id: ${TF_VAR_marts_dataset_id:-marts}
@@ -41,8 +43,46 @@ services:
       TF_VAR_ingestion_service_account_email: ${TF_VAR_ingestion_service_account_email:-}
       TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
       TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
+      TF_VAR_create_compute_job: ${TF_VAR_create_compute_job:-false}
+      TF_VAR_create_external_tables: ${TF_VAR_create_external_tables:-false}
     volumes:
       - ./:/workspace
       - ./secrets:/workspace/secrets:ro
       - ./.gcloud:/root/.config/gcloud
     command: ["terraform", "version"]
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: src/ingestion/Dockerfile
+    container_name: datatalent-ingestion
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      GCP_PROJECT_ID: ${TF_VAR_project_id:-}
+      INGESTION_RAW_BUCKET: ${INGESTION_RAW_BUCKET:-}
+      INGESTION_FRANCE_TRAVAIL_PREFIX: ${TF_VAR_ingestion_france_travail_prefix:-raw/france_travail/}
+      INGESTION_SIRENE_PREFIX: ${TF_VAR_ingestion_sirene_prefix:-raw/sirene/}
+      INGESTION_GEO_PREFIX: ${TF_VAR_ingestion_geo_prefix:-raw/geo/}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
+    volumes:
+      - ./.gcloud:/root/.config/gcloud
+    profiles:
+      - ingestion
+
+  dbt:
+    build:
+      context: dbt/transformation
+      dockerfile: Dockerfile
+    container_name: datatalent-dbt
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
+    volumes:
+      - ./dbt/transformation:/app
+      - ./.gcloud:/root/.config/gcloud
+    profiles:
+      - dbt

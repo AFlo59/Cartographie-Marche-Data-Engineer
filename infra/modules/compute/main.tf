@@ -1,7 +1,8 @@
 resource "google_cloud_run_v2_job" "ingestion" {
-  name                = var.job_name
-  location            = var.region
-  project             = var.project_id
+  count    = var.create_job ? 1 : 0
+  name     = var.job_name
+  location = var.region
+  project  = var.project_id
 
   template {
     template {
@@ -43,6 +44,13 @@ resource "google_cloud_run_v2_job" "ingestion" {
     }
   }
 
+  lifecycle {
+    precondition {
+      condition     = trimspace(var.image) != ""
+      error_message = "compute_image must be set before enabling create_compute_job (example: europe-west1-docker.pkg.dev/<project>/datatalent/ingestion:latest)."
+    }
+  }
+
   depends_on = [
     time_sleep.wait_for_iam_propagation
   ]
@@ -52,12 +60,14 @@ data "google_project" "current" {
   project_id = var.project_id
 }
 
-# GCP IAM bindings peuvent prendre jusqu'à 60s à se propager.
+# GCP IAM bindings peuvent prendre jusqu'à 90s à se propager.
 # Sans ce délai, la création du Cloud Run Job échoue avec 403 sur Artifact Registry.
 # Les triggers forcent une re-création du sleep si l'un des bindings IAM change lors d'un
 # apply ultérieur — sans triggers, time_sleep resterait en state et ne re-attendrait pas.
+# count = create_job : inutile d'attendre si le job n'est pas créé.
 resource "time_sleep" "wait_for_iam_propagation" {
-  create_duration = "60s"
+  count           = var.create_job ? 1 : 0
+  create_duration = "90s"
 
   triggers = {
     # one() retourne null si count=0 (ingestion_sa non fourni), on le remplace par une chaîne vide pour respecter map(string)
@@ -86,10 +96,13 @@ resource "google_project_iam_member" "cloud_run_service_agent_artifact_registry_
 }
 
 resource "google_cloud_run_v2_job_iam_member" "job_invoker" {
-  for_each = toset(var.job_invoker_service_accounts)
+  for_each = var.create_job ? toset(var.job_invoker_service_accounts) : toset([])
 
-  name     = google_cloud_run_v2_job.ingestion.name
+  project  = var.project_id
+  name     = var.job_name
   location = var.region
   role     = "roles/run.invoker"
   member   = "serviceAccount:${each.value}"
+
+  depends_on = [google_cloud_run_v2_job.ingestion]
 }

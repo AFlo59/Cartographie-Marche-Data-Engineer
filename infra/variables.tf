@@ -87,6 +87,18 @@ variable "manage_project_job_user_bindings" {
   default     = true
 }
 
+variable "create_external_tables" {
+  description = "Create BigQuery External Tables pointing to GCS Parquet files. Set to true only after at least one ingestion run has populated the bucket (BQ autodetect requires at least one file to exist)."
+  type        = bool
+  default     = false
+}
+
+variable "create_compute_job" {
+  description = "Create the Cloud Run Job and Cloud Scheduler jobs. Set to true only after the container image has been pushed to Artifact Registry (job creation fails with 403 if the image does not exist)."
+  type        = bool
+  default     = false
+}
+
 variable "raw_dataset_id" {
   description = "BigQuery dataset ID for raw layer"
   type        = string
@@ -130,14 +142,9 @@ variable "compute_job_name" {
 }
 
 variable "compute_image" {
-  description = "Container image used by Cloud Run Job"
+  description = "Container image used by Cloud Run Job. Required when create_compute_job = true. Can be left empty when create_compute_job = false (image not yet built)."
   type        = string
   default     = ""
-
-  validation {
-    condition     = trimspace(var.compute_image) != ""
-    error_message = "compute_image must be set explicitly (for example: europe-west1-docker.pkg.dev/<project>/datatalent/ingestion:latest)."
-  }
 }
 
 variable "compute_memory" {

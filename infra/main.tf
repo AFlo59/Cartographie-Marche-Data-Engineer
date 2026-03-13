@@ -76,6 +76,7 @@ module "warehouse" {
   raw_bucket_name                  = local.bucket_name
   raw_sirene_prefix                = var.ingestion_sirene_prefix
   raw_france_travail_prefix        = var.ingestion_france_travail_prefix
+  create_external_tables           = var.create_external_tables
 }
 
 module "secrets" {
@@ -99,6 +100,7 @@ module "compute" {
   max_retries                     = var.compute_max_retries
   ingestion_service_account_email = var.ingestion_service_account_email
   job_invoker_service_accounts    = compact([local.scheduler_service_account_email])
+  create_job                      = var.create_compute_job
 
   plain_env = {
     GCP_PROJECT_ID                  = var.project_id
@@ -115,14 +117,17 @@ module "compute" {
 
 module "scheduler" {
   source = "./modules/scheduler"
+  count  = var.create_compute_job ? 1 : 0
 
   project_id                      = var.project_id
   region                          = var.region
-  compute_job_name                = module.compute.job_name
+  compute_job_name                = var.compute_job_name
   scheduler_service_account_email = local.scheduler_service_account_email
   job_name_prefix                 = var.scheduler_job_name_prefix
   time_zone                       = var.scheduler_time_zone
   france_travail_schedule         = var.scheduler_france_travail_schedule
   sirene_schedule                 = var.scheduler_sirene_schedule
   geo_schedule                    = var.scheduler_geo_schedule
+
+  depends_on = [module.compute]
 }

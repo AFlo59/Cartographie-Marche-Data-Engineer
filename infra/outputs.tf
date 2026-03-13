@@ -23,8 +23,8 @@ output "compute_job_name" {
 }
 
 output "scheduler_job_names" {
-  description = "Cloud Scheduler job names"
-  value       = module.scheduler.job_names
+  description = "Cloud Scheduler job names (null if create_compute_job = false)"
+  value       = one(module.scheduler[*].job_names)
 }
 
 output "secret_ids" {
