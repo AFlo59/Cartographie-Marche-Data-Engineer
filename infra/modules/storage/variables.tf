@@ -32,13 +32,13 @@ variable "lifecycle_delete_age_days" {
 }
 
 variable "nearline_transition_age_days" {
-  description = "Transition objects to NEARLINE storage class after N days (~40% cheaper). Null disables."
+  description = "Transition objects to NEARLINE storage class after N days (~40% cheaper). Null (module default) disables — controlled by root var bucket_nearline_age_days (default 30)."
   type        = number
   default     = null
 }
 
 variable "geo_prefix_delete_age_days" {
-  description = "Delete objects under geo_prefix after N days (stable ref data, no need to keep history). Null disables."
+  description = "Delete objects under geo_prefix after N days. Null (module default) disables — controlled by root var bucket_geo_prefix_delete_age_days (default 90)."
   type        = number
   default     = null
 }

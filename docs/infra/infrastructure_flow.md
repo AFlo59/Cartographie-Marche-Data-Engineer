@@ -548,7 +548,7 @@ gcloud storage buckets update gs://${TERRAFORM_STATE_BUCKET} --versioning
 
 **Cause**: GCP IAM prend jusqu'à 60 secondes à propager les nouveaux bindings. Terraform créait le Cloud Run Job immédiatement après avoir accordé `roles/artifactregistry.reader`, avant propagation.
 
-**Solution appliquée**: Une ressource `time_sleep` de 60s dans `infra/modules/compute/main.tf` insère un délai entre les IAM members et la création du job. Aucune action manuelle nécessaire — le prochain apply passera.
+**Solution appliquée**: Une ressource `time_sleep` de 60s dans `infra/modules/compute/main.tf` insère un délai entre les IAM members et la création du job. Des `triggers` basés sur les IDs des bindings IAM garantissent que le sleep se relance si les bindings sont modifiés lors d'un apply ultérieur. Aucune action manuelle nécessaire — le prochain apply passera.
 
 ---
 
