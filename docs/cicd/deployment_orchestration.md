@@ -8,9 +8,9 @@ Ce document décrit l'enchaînement global des composants du projet sans répét
 2. Terraform déploie l'infrastructure.
 3. Les secrets runtime sont versionnés dans Secret Manager.
 4. Cloud Scheduler déclenche le Cloud Run Job d'ingestion.
-5. Les données brutes arrivent dans GCS et BigQuery raw.
-6. dbt transforme les données vers `staging` puis `marts`.
-7. Le dashboard consomme `marts`.
+5. Les données brutes arrivent dans **GCS (bucket raw)**. BigQuery y accède via des **External Tables** (pas de copie ni de stockage BQ facturé pour la couche raw).
+6. dbt transforme les données via les External Tables → `staging` (tables BQ réelles) → `marts` (tables BQ réelles).
+7. Le dashboard (Looker Studio) consomme `marts`.
 
 ## Décision d'architecture ingestion (recommandée)
 
@@ -52,11 +52,25 @@ Sinon, garder **1 job paramétré** est la meilleure option.
 ## Note coût (ordre de grandeur)
 
 - À faible volumétrie, la différence de coût pur entre 1 job paramétré et 3 jobs séparés est généralement faible.
-- Le vrai gain vient surtout de:
+- Le vrai gain vient surtout de :
 	- limiter CPU/RAM au strict besoin,
 	- réduire la durée d'exécution,
 	- éviter les re-téléchargements complets inutiles,
 	- gérer l'incrémental quand l'API le permet.
+
+### Optimisations coût appliquées
+
+| Levier | Économie estimée | Implémenté |
+|--------|-----------------|------------|
+| 1 Cloud Run Job mutualisé (vs 3 séparés) | ~60% Artifact Registry + ops | ✅ |
+| BigQuery External Tables pour raw (Sirene 10M+ lignes) | ~2-5€/mois stockage BQ | ✅ |
+| GCS Nearline après 30j pour les données raw | ~40% stockage Sirene | ✅ |
+| Suppression auto geo/ après 90j | marginal | ✅ |
+| Workload Identity Federation (vs clés JSON) | 0 rotation + 0 coût | ✅ |
+| Looker Studio (vs Metabase Cloud Run) | ~10-20€/mois | ✅ (recommandé DASH-01) |
+| `require_partition_filter: true` sur les tables Sirene dbt | Évite scans > 1To accidentels | ✅ (backlog DBT-07) |
+
+**Cible** : < 5€/mois hors free tier GCP (1 To/mois queries BQ, 5 Go storage BQ, 3 Scheduler jobs, 2M Cloud Run invocations).
 
 ## Périmètre actuel documenté
 
@@ -81,12 +95,13 @@ Les étapes dbt et dashboard sont rappelées ici pour la vision cible, mais elle
 
 ## État actuel synthétique
 
-- bucket raw GCS en place,
-- datasets BigQuery `raw`, `staging`, `marts` en place,
-- modules Terraform Cloud Run Job, Scheduler et Secret Manager câblés,
-- workflow CI Terraform via WIF en place,
-- rôles IAM principaux préparés,
-- secrets runtime présents et versionnés.
+- Bucket raw GCS en place avec lifecycle Nearline (30j) + suppression geo/ (90j)
+- Datasets BigQuery `raw` (External Tables GCS), `staging`, `marts` en place
+- External Tables `raw.sirene_etablissements`, `raw.sirene_unites_legales`, `raw.france_travail_offres` — Parquet GCS, sans stockage BQ
+- Cloud Run Job mutualisé + 3 Schedulers (france_travail quotidien, sirene/geo mensuels)
+- Secret Manager câblé + bindings `secretAccessor` pour `ingestion-sa`
+- Workflow CI Terraform via WIF (plan PR, apply merge main)
+- IAM complet : tous les SA ont les permissions requises y compris `dbt-sa` → `storage.objectViewer` pour les External Tables
 
 Le suivi détaillé des tickets reste dans [docs/infra/infra_epic4_status.md](docs/infra/infra_epic4_status.md).
 

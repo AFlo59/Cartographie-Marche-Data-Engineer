@@ -51,6 +51,18 @@ variable "bucket_lifecycle_delete_age_days" {
   default     = 365
 }
 
+variable "bucket_nearline_age_days" {
+  description = "Transition raw objects to NEARLINE storage class after N days (~40% cheaper for Sirene multi-Go). Null disables."
+  type        = number
+  default     = 30
+}
+
+variable "bucket_geo_prefix_delete_age_days" {
+  description = "Delete raw/geo/ objects older than N days (stable monthly ref data). Null disables."
+  type        = number
+  default     = 90
+}
+
 variable "ingestion_service_account_email" {
   description = "Service account used by ingestion jobs"
   type        = string

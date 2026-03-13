@@ -49,3 +49,21 @@ variable "manage_project_job_user_bindings" {
   type        = bool
   default     = true
 }
+
+variable "raw_bucket_name" {
+  description = "GCS bucket name for raw data. When set, external tables are created in the raw dataset pointing to GCS (avoids BQ storage costs for large datasets like Sirene)."
+  type        = string
+  default     = ""
+}
+
+variable "raw_sirene_prefix" {
+  description = "GCS prefix for Sirene raw Parquet files"
+  type        = string
+  default     = "raw/sirene/"
+}
+
+variable "raw_france_travail_prefix" {
+  description = "GCS prefix for France Travail raw Parquet files"
+  type        = string
+  default     = "raw/france_travail/"
+}
