@@ -52,13 +52,13 @@ variable "bucket_lifecycle_delete_age_days" {
 }
 
 variable "bucket_nearline_age_days" {
-  description = "Transition raw objects to NEARLINE storage class after N days (~40% cheaper for Sirene multi-Go). Null disables."
+  description = "Transition raw objects to NEARLINE storage class after N days (~40% cheaper for Sirene multi-Go). Default: 30 (enabled). Override to null in terraform.tfvars to disable."
   type        = number
   default     = 30
 }
 
 variable "bucket_geo_prefix_delete_age_days" {
-  description = "Delete raw/geo/ objects older than N days (stable monthly ref data). Null disables."
+  description = "Delete raw/geo/ objects older than N days (stable monthly ref data, no long history needed). Default: 90 (enabled). Override to null in terraform.tfvars to disable."
   type        = number
   default     = 90
 }
