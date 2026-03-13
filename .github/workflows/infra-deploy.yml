@@ -32,6 +32,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Auth requis avant parse/compile : dbt-bigquery 1.8+ tente l'auth même sans run
+      - name: Auth GCP via Workload Identity Federation
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER != '' && secrets.GCP_WIF_PROVIDER || vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
+
       - name: Build dbt image
         run: docker build -f dbt/transformation/Dockerfile -t datatalent-dbt-ci:latest dbt/transformation
 
@@ -41,6 +49,8 @@ jobs:
             -e DBT_TARGET=${DBT_TARGET} \
             -e GCP_PROJECT_ID=${GCP_PROJECT_ID} \
             -e GCP_LOCATION=${GCP_LOCATION} \
+            -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json \
+            -v "${GOOGLE_APPLICATION_CREDENTIALS}:/tmp/gcp-creds.json:ro" \
             datatalent-dbt-ci:latest \
             dbt parse --project-dir /app --profiles-dir /app
 
@@ -50,6 +60,8 @@ jobs:
             -e DBT_TARGET=${DBT_TARGET} \
             -e GCP_PROJECT_ID=${GCP_PROJECT_ID} \
             -e GCP_LOCATION=${GCP_LOCATION} \
+            -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json \
+            -v "${GOOGLE_APPLICATION_CREDENTIALS}:/tmp/gcp-creds.json:ro" \
             datatalent-dbt-ci:latest \
             dbt compile --project-dir /app --profiles-dir /app
 
