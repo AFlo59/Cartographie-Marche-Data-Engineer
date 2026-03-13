@@ -25,8 +25,9 @@ jobs:
 
     env:
       TF_BACKEND_BUCKET: datatalent-tfstate-cartographie-data-engineer
+      CI_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
       # Projet GCP
-      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
       TF_VAR_region: europe-west1
       TF_VAR_location: EU
       TF_VAR_environment: dev
@@ -35,6 +36,8 @@ jobs:
       TF_VAR_bucket_versioning_enabled: "true"
       TF_VAR_bucket_force_destroy: "false"
       TF_VAR_bucket_lifecycle_delete_age_days: "365"
+      TF_VAR_bucket_nearline_age_days: "30"
+      TF_VAR_bucket_geo_prefix_delete_age_days: "90"
       # BigQuery
       TF_VAR_raw_dataset_id: raw
       TF_VAR_staging_dataset_id: staging
@@ -48,6 +51,11 @@ jobs:
       TF_VAR_dbt_service_account_email: dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_dashboard_service_account_email: dashboard-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_scheduler_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
+      TF_VAR_manage_project_job_user_bindings: "false"
+      # Cloud Run Job + Scheduler (false tant que l'image n'est pas dans Artifact Registry)
+      TF_VAR_create_compute_job: "false"
+      # External Tables BQ (false tant que le bucket est vide — activer après la 1ère ingestion)
+      TF_VAR_create_external_tables: "false"
       # Compute (INFRA-04)
       TF_VAR_compute_job_name: datatalent-ingestion-job
       TF_VAR_compute_image: europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
@@ -66,25 +74,25 @@ jobs:
         uses: actions/checkout@v6
 
       # ── 2. Vérifier les secrets CI requis ───────────────────────────────────
-      - name: Check required CI secrets
+      - name: Check required CI inputs
         shell: bash
         env:
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
-          GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER != '' && secrets.GCP_WIF_PROVIDER || vars.GCP_WIF_PROVIDER }}
+          GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
         run: |
           set -euo pipefail
 
           missing=0
-          for secret_name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_WIF_SERVICE_ACCOUNT; do
-            if [ -z "${!secret_name:-}" ]; then
-              echo "::error::Missing GitHub Actions secret: ${secret_name}"
+          for input_name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_WIF_SERVICE_ACCOUNT; do
+            if [ -z "${!input_name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret or variable: ${input_name}"
               missing=1
             fi
           done
 
           if [ "$missing" -ne 0 ]; then
-            echo "Configure the missing values in GitHub > Settings > Secrets and variables > Actions."
+            echo "Configure the missing values in GitHub > Settings > Secrets and variables > Actions (Secrets ou Variables)."
             exit 1
           fi
 
@@ -93,14 +101,53 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v3
         with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER != '' && secrets.GCP_WIF_PROVIDER || vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
 
       # ── 4. Setup gcloud CLI ──────────────────────────────────────────────────
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v3
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+
+      # ── 5.1 Activer les APIs requises (push trusted uniquement, best effort) ──
+      - name: Enable required GCP APIs (best effort)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SERVICES=(
+            run.googleapis.com
+            cloudscheduler.googleapis.com
+            secretmanager.googleapis.com
+            bigquery.googleapis.com
+            storage.googleapis.com
+          )
+
+          failed_services=()
+
+          for service in "${SERVICES[@]}"; do
+            if gcloud services list --enabled --project="${TF_VAR_project_id}" \
+                --filter="config.name=${service}" --format="value(config.name)" | grep -q "${service}"; then
+              echo "API already enabled: ${service}"
+            else
+              echo "Trying to enable API: ${service}"
+              if ! gcloud services enable "${service}" --project="${TF_VAR_project_id}"; then
+                failed_services+=("${service}")
+                echo "::warning::Unable to enable ${service} with current CI identity. Enable it manually once or grant roles/serviceusage.serviceUsageAdmin to ${CI_WIF_SERVICE_ACCOUNT}."
+              fi
+            fi
+          done
+
+          if [ "${#failed_services[@]}" -ne 0 ]; then
+            echo "::warning::Still disabled after best effort: ${failed_services[*]}"
+            echo "::warning::Fix order: 1) enable these APIs once in Cloud Shell, 2) rerun CI, 3) optionally grant roles/serviceusage.serviceUsageAdmin to ${CI_WIF_SERVICE_ACCOUNT} for future auto-enable."
+            echo "::warning::See docs/setup_guide.md -> docs/platform/gcp_terminal_setup.md -> docs/cicd/github_wif_setup.md"
+          fi
+
+          # Laisser quelques secondes pour propagation IAM/API
+          sleep 20
 
       # ── 5. Vérifier le backend Terraform en PR ───────────────────────────────
       - name: Check Terraform backend bucket exists
@@ -192,7 +239,113 @@ jobs:
               });
             }
 
-      # ── 12. Terraform Apply (merge main uniquement) ──────────────────────────
+      # ── 11.5 Vérifier APIs requises avant apply ─────────────────────────────
+      - name: Check required GCP APIs are enabled
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SERVICES=(
+            run.googleapis.com
+            cloudscheduler.googleapis.com
+            secretmanager.googleapis.com
+            bigquery.googleapis.com
+            storage.googleapis.com
+          )
+
+          missing=0
+          missing_services=()
+          for service in "${SERVICES[@]}"; do
+            if ! gcloud services list --enabled --project="${TF_VAR_project_id}" \
+              --filter="config.name=${service}" --format="value(config.name)" | grep -q "${service}"; then
+              echo "::error::Required API is disabled: ${service}. Enable it in project ${TF_VAR_project_id}."
+              missing=1
+              missing_services+=("${service}")
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Fix order:"
+            echo "::error::1) Enable the missing APIs once in Cloud Shell for project ${TF_VAR_project_id}."
+            echo "::error::2) Re-run the workflow."
+            echo "::error::3) Optional: grant roles/serviceusage.serviceUsageAdmin to ${CI_WIF_SERVICE_ACCOUNT} so CI can auto-enable APIs next time."
+            echo "::error::Run once (Cloud Shell): gcloud services enable ${missing_services[*]} --project=${TF_VAR_project_id}"
+            echo "::error::Or grant CI SA permission: gcloud projects add-iam-policy-binding ${TF_VAR_project_id} --member=serviceAccount:${CI_WIF_SERVICE_ACCOUNT} --role=roles/serviceusage.serviceUsageAdmin"
+            echo "::error::Docs: docs/platform/gcp_terminal_setup.md and docs/cicd/github_wif_setup.md"
+            exit 1
+          fi
+
+      # ── 12. Adopt existing resources into state (best effort) ───────────────
+      - name: Terraform Import existing resources (best effort)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: infra
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          import_if_needed() {
+            local address="$1"
+            local import_id="$2"
+            local exists_cmd="${3:-}"
+
+            if terraform state show "$address" >/dev/null 2>&1; then
+              echo "Already in state: $address"
+              return 0
+            fi
+
+            if [ -n "$exists_cmd" ] && ! eval "$exists_cmd"; then
+              echo "Remote resource not found, skip import: $address"
+              return 0
+            fi
+
+            echo "Importing: $address"
+            if ! terraform import "$address" "$import_id"; then
+              echo "::warning::Import failed for $address ($import_id). Continuing (best effort)."
+            fi
+          }
+
+          if [ -n "${TF_VAR_raw_bucket_name:-}" ]; then
+            RAW_BUCKET="${TF_VAR_raw_bucket_name}"
+          else
+            bucket_name_base="$(printf '%s' "${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw" | tr '[:upper:]' '[:lower:]')"
+            if [ ${#bucket_name_base} -le 63 ]; then
+              RAW_BUCKET="${bucket_name_base}"
+            else
+              bucket_hash="$(printf '%s' "${bucket_name_base}" | md5sum | awk '{print $1}' | cut -c1-10)"
+              RAW_BUCKET="${bucket_name_base:0:52}-${bucket_hash}"
+            fi
+          fi
+
+          import_if_needed 'module.storage.google_storage_bucket.raw' \
+            "${RAW_BUCKET}" \
+            "gcloud storage buckets describe gs://${RAW_BUCKET} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.warehouse.google_bigquery_dataset.raw' \
+            "projects/${TF_VAR_project_id}/datasets/${TF_VAR_raw_dataset_id}" \
+            "bq --project_id=${TF_VAR_project_id} show --dataset ${TF_VAR_raw_dataset_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.warehouse.google_bigquery_dataset.staging' \
+            "projects/${TF_VAR_project_id}/datasets/${TF_VAR_staging_dataset_id}" \
+            "bq --project_id=${TF_VAR_project_id} show --dataset ${TF_VAR_staging_dataset_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.warehouse.google_bigquery_dataset.marts' \
+            "projects/${TF_VAR_project_id}/datasets/${TF_VAR_marts_dataset_id}" \
+            "bq --project_id=${TF_VAR_project_id} show --dataset ${TF_VAR_marts_dataset_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_ID"]' \
+            "projects/${TF_VAR_project_id}/secrets/FT_CLIENT_ID" \
+            "gcloud secrets describe FT_CLIENT_ID --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_SECRET"]' \
+            "projects/${TF_VAR_project_id}/secrets/FT_CLIENT_SECRET" \
+            "gcloud secrets describe FT_CLIENT_SECRET --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["DATAGOUV_API_KEY"]' \
+            "projects/${TF_VAR_project_id}/secrets/DATAGOUV_API_KEY" \
+            "gcloud secrets describe DATAGOUV_API_KEY --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+      # ── 13. Terraform Apply (merge main uniquement) ──────────────────────────
       - name: Terraform Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: infra

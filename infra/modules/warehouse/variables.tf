@@ -43,3 +43,33 @@ variable "dashboard_service_account" {
   type        = string
   default     = ""
 }
+
+variable "manage_project_job_user_bindings" {
+  description = "Whether to manage project-level roles/bigquery.jobUser bindings"
+  type        = bool
+  default     = true
+}
+
+variable "raw_bucket_name" {
+  description = "GCS bucket name for raw data. When set, external tables are created in the raw dataset pointing to GCS (avoids BQ storage costs for large datasets like Sirene)."
+  type        = string
+  default     = ""
+}
+
+variable "raw_sirene_prefix" {
+  description = "GCS prefix for Sirene raw Parquet files"
+  type        = string
+  default     = "raw/sirene/"
+}
+
+variable "raw_france_travail_prefix" {
+  description = "GCS prefix for France Travail raw Parquet files"
+  type        = string
+  default     = "raw/france_travail/"
+}
+
+variable "create_external_tables" {
+  description = "Create BigQuery External Tables pointing to GCS Parquet files. Set to true only after at least one ingestion run has populated the bucket (BQ autodetect requires at least one file to exist)."
+  type        = bool
+  default     = false
+}

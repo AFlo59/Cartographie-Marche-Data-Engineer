@@ -53,8 +53,12 @@ module "storage" {
   location                  = var.region
   versioning_enabled        = var.bucket_versioning_enabled
   force_destroy             = var.bucket_force_destroy
-  lifecycle_delete_age_days = var.bucket_lifecycle_delete_age_days
-  ingestion_sa_email        = var.ingestion_service_account_email
+  lifecycle_delete_age_days    = var.bucket_lifecycle_delete_age_days
+  nearline_transition_age_days = var.bucket_nearline_age_days
+  geo_prefix_delete_age_days   = var.bucket_geo_prefix_delete_age_days
+  geo_prefix                   = var.ingestion_geo_prefix
+  ingestion_sa_email           = var.ingestion_service_account_email
+  dbt_sa_email                 = var.dbt_service_account_email
 }
 
 module "warehouse" {
@@ -68,6 +72,11 @@ module "warehouse" {
   ingestion_service_account    = var.ingestion_service_account_email
   dbt_service_account          = var.dbt_service_account_email
   dashboard_service_account    = var.dashboard_service_account_email
+  manage_project_job_user_bindings = var.manage_project_job_user_bindings
+  raw_bucket_name                  = local.bucket_name
+  raw_sirene_prefix                = var.ingestion_sirene_prefix
+  raw_france_travail_prefix        = var.ingestion_france_travail_prefix
+  create_external_tables           = var.create_external_tables
 }
 
 module "secrets" {
@@ -91,6 +100,7 @@ module "compute" {
   max_retries                     = var.compute_max_retries
   ingestion_service_account_email = var.ingestion_service_account_email
   job_invoker_service_accounts    = compact([local.scheduler_service_account_email])
+  create_job                      = var.create_compute_job
 
   plain_env = {
     GCP_PROJECT_ID                  = var.project_id
@@ -107,14 +117,17 @@ module "compute" {
 
 module "scheduler" {
   source = "./modules/scheduler"
+  count  = var.create_compute_job ? 1 : 0
 
   project_id                      = var.project_id
   region                          = var.region
-  compute_job_name                = module.compute.job_name
+  compute_job_name                = var.compute_job_name
   scheduler_service_account_email = local.scheduler_service_account_email
   job_name_prefix                 = var.scheduler_job_name_prefix
   time_zone                       = var.scheduler_time_zone
   france_travail_schedule         = var.scheduler_france_travail_schedule
   sirene_schedule                 = var.scheduler_sirene_schedule
   geo_schedule                    = var.scheduler_geo_schedule
+
+  depends_on = [module.compute]
 }

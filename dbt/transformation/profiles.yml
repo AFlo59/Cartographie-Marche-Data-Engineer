@@ -1,0 +1,25 @@
+datatalent:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('DBT_BIGQUERY_PROJECT', env_var('GCP_PROJECT_ID')) }}"
+      dataset: "{{ env_var('DBT_BIGQUERY_DATASET', 'staging') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', env_var('GCP_LOCATION', 'EU')) }}"
+      priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'interactive') }}"
+      threads: "{{ env_var('DBT_THREADS', '4') | int }}"
+      job_execution_timeout_seconds: "{{ env_var('DBT_BIGQUERY_TIMEOUT_SECONDS', '300') | int }}"
+      job_retries: "{{ env_var('DBT_BIGQUERY_JOB_RETRIES', '1') | int }}"
+
+    ci:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('DBT_BIGQUERY_PROJECT', env_var('GCP_PROJECT_ID')) }}"
+      dataset: "{{ env_var('DBT_BIGQUERY_DATASET', 'staging') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', env_var('GCP_LOCATION', 'EU')) }}"
+      priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'interactive') }}"
+      threads: "{{ env_var('DBT_THREADS', '4') | int }}"
+      job_execution_timeout_seconds: "{{ env_var('DBT_BIGQUERY_TIMEOUT_SECONDS', '300') | int }}"
+      job_retries: "{{ env_var('DBT_BIGQUERY_JOB_RETRIES', '1') | int }}"
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
