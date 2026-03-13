@@ -142,14 +142,9 @@ variable "compute_job_name" {
 }
 
 variable "compute_image" {
-  description = "Container image used by Cloud Run Job"
+  description = "Container image used by Cloud Run Job. Required when create_compute_job = true. Can be left empty when create_compute_job = false (image not yet built)."
   type        = string
   default     = ""
-
-  validation {
-    condition     = trimspace(var.compute_image) != ""
-    error_message = "compute_image must be set explicitly (for example: europe-west1-docker.pkg.dev/<project>/datatalent/ingestion:latest)."
-  }
 }
 
 variable "compute_memory" {
