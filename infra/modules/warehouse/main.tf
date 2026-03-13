@@ -61,6 +61,56 @@ resource "google_bigquery_dataset_iam_member" "dashboard_marts_viewer" {
   member     = "serviceAccount:${var.dashboard_service_account}"
 }
 
+# External Tables raw → GCS
+# BigQuery lit directement le Parquet depuis GCS : zéro copie, zéro stockage BQ facturé.
+# Les tables sont créées seulement si raw_bucket_name est fourni.
+# Elles fonctionneront dès que les fichiers Parquet seront présents dans GCS.
+
+resource "google_bigquery_table" "raw_sirene_etablissements" {
+  count = var.raw_bucket_name != "" ? 1 : 0
+
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.raw.dataset_id
+  table_id            = "sirene_etablissements"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "PARQUET"
+    source_uris   = ["gs://${var.raw_bucket_name}/${var.raw_sirene_prefix}etablissements/*.parquet"]
+  }
+}
+
+resource "google_bigquery_table" "raw_sirene_unites_legales" {
+  count = var.raw_bucket_name != "" ? 1 : 0
+
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.raw.dataset_id
+  table_id            = "sirene_unites_legales"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "PARQUET"
+    source_uris   = ["gs://${var.raw_bucket_name}/${var.raw_sirene_prefix}unites_legales/*.parquet"]
+  }
+}
+
+resource "google_bigquery_table" "raw_france_travail_offres" {
+  count = var.raw_bucket_name != "" ? 1 : 0
+
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.raw.dataset_id
+  table_id            = "france_travail_offres"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "PARQUET"
+    source_uris   = ["gs://${var.raw_bucket_name}/${var.raw_france_travail_prefix}*.parquet"]
+  }
+}
+
 resource "google_project_iam_member" "ingestion_job_user" {
   count = var.manage_project_job_user_bindings && var.ingestion_service_account != "" ? 1 : 0
 

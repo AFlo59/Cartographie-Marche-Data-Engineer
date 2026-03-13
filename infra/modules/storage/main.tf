@@ -22,6 +22,36 @@ resource "google_storage_bucket" "raw" {
       }
     }
   }
+
+  # Transition vers NEARLINE après N jours : ~40% d'économie sur le stockage Sirene (plusieurs Go)
+  dynamic "lifecycle_rule" {
+    for_each = var.nearline_transition_age_days == null ? [] : [1]
+
+    content {
+      condition {
+        age = var.nearline_transition_age_days
+      }
+      action {
+        type          = "SetStorageClass"
+        storage_class = "NEARLINE"
+      }
+    }
+  }
+
+  # Suppression des anciennes versions des données geo/ (référentiel stable, rotation mensuelle)
+  dynamic "lifecycle_rule" {
+    for_each = var.geo_prefix_delete_age_days == null ? [] : [1]
+
+    content {
+      condition {
+        age            = var.geo_prefix_delete_age_days
+        matches_prefix = ["raw/geo/"]
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
 }
 
 resource "google_storage_bucket_iam_member" "ingestion_object_admin" {
