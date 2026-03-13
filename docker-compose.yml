@@ -45,6 +45,16 @@ services:
       TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
       TF_VAR_create_compute_job: ${TF_VAR_create_compute_job:-false}
       TF_VAR_create_external_tables: ${TF_VAR_create_external_tables:-false}
+      # CI SA pour Artifact Registry writer (même email que le WIF SA)
+      TF_VAR_ci_service_account_email: ${TF_VAR_ci_service_account_email:-}
+      # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)
+      TF_VAR_create_dbt_job: ${TF_VAR_create_dbt_job:-false}
+      TF_VAR_dbt_job_name: ${TF_VAR_dbt_job_name:-datatalent-dbt-job}
+      TF_VAR_dbt_compute_image: ${TF_VAR_dbt_compute_image:-}
+      TF_VAR_dbt_memory: ${TF_VAR_dbt_memory:-1Gi}
+      TF_VAR_dbt_cpu: ${TF_VAR_dbt_cpu:-1}
+      TF_VAR_dbt_timeout_seconds: ${TF_VAR_dbt_timeout_seconds:-1800}
+      TF_VAR_dbt_max_retries: ${TF_VAR_dbt_max_retries:-0}
     volumes:
       - ./:/workspace
       - ./secrets:/workspace/secrets:ro
@@ -53,17 +63,17 @@ services:
 
   ingestion-jobs:
     build:
-      context: .
-      dockerfile: src/ingestion/Dockerfile
+      context: src/ingestion
+      dockerfile: Dockerfile
     container_name: datatalent-ingestion-jobs
     working_dir: /workspace
     env_file:
       - .env
     environment:
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-cartographie-data-engineer-db}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-cartographie-data-engineer}
       GCP_REGION: ${GCP_REGION:-europe-west1}
       GCP_LOCATION: ${GCP_LOCATION:-EU}
-      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-cartographie-data-engineer-db}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-cartographie-data-engineer}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
 
       TF_VAR_project_id: ${TF_VAR_project_id:-}
@@ -80,11 +90,21 @@ services:
       TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
       TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
 
-      # Secret Manager - France Travail
-      FRANCE_TRAVAIL_CLIENT_ID_SECRET_NAME: ${FRANCE_TRAVAIL_CLIENT_ID_SECRET_NAME:-france-travail-client-id}
-      FRANCE_TRAVAIL_CLIENT_SECRET_SECRET_NAME: ${FRANCE_TRAVAIL_CLIENT_SECRET_SECRET_NAME:-france-travail-client-secret}
+      # Bucket et prefixes GCS (runtime ingestion)
+      INGESTION_RAW_BUCKET: ${INGESTION_RAW_BUCKET:-}
+      INGESTION_FRANCE_TRAVAIL_PREFIX: ${INGESTION_FRANCE_TRAVAIL_PREFIX:-raw/france_travail/}
+      INGESTION_SIRENE_PREFIX: ${INGESTION_SIRENE_PREFIX:-raw/sirene/}
+      INGESTION_GEO_PREFIX: ${INGESTION_GEO_PREFIX:-raw/geo/}
 
-      # Endpoints utiles
+      # Noms des secrets Secret Manager (doivent correspondre aux IDs créés dans INFRA-06)
+      FT_CLIENT_ID_SECRET_NAME: ${FT_CLIENT_ID_SECRET_NAME:-FT_CLIENT_ID}
+      FT_CLIENT_SECRET_SECRET_NAME: ${FT_CLIENT_SECRET_SECRET_NAME:-FT_CLIENT_SECRET}
+      DATAGOUV_API_KEY_SECRET_NAME: ${DATAGOUV_API_KEY_SECRET_NAME:-DATAGOUV_API_KEY}
+
+      # Source à exécuter (france_travail | sirene | geo) — overridable au docker run
+      INGESTION_SOURCE: ${INGESTION_SOURCE:-france_travail}
+
+      # Endpoints APIs sources
       FRANCE_TRAVAIL_API_BASE_URL: ${FRANCE_TRAVAIL_API_BASE_URL:-https://api.francetravail.io/partenaire/offresdemploi/v2}
       GEO_API_BASE_URL: ${GEO_API_BASE_URL:-https://geo.api.gouv.fr}
       SIRENE_SOURCE_BASE_URL: ${SIRENE_SOURCE_BASE_URL:-https://www.data.gouv.fr/fr/datasets/base-sirene-des-entreprises-et-de-leurs-etablissements-siren-siret/}
@@ -95,3 +115,31 @@ services:
       - ./secrets:/workspace/secrets:ro
       - ./.gcloud:/root/.config/gcloud
     command: ["python", "--version"]
+
+  dbt:
+    build:
+      context: dbt/transformation
+      dockerfile: Dockerfile
+    container_name: datatalent-dbt
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      GCP_LOCATION: ${GCP_LOCATION:-EU}
+      DBT_TARGET: ${DBT_TARGET:-dev}
+      DBT_THREADS: ${DBT_THREADS:-4}
+      # DBT_BIGQUERY_PROJECT non défini ici : profiles.yml fait le fallback sur GCP_PROJECT_ID
+      # DBT_BIGQUERY_LOCATION non défini ici : profiles.yml fait le fallback sur GCP_LOCATION
+
+      DBT_BIGQUERY_DATASET: ${DBT_BIGQUERY_DATASET:-staging}
+      DBT_BIGQUERY_PRIORITY: ${DBT_BIGQUERY_PRIORITY:-interactive}
+      DBT_BIGQUERY_TIMEOUT_SECONDS: ${DBT_BIGQUERY_TIMEOUT_SECONDS:-300}
+      DBT_BIGQUERY_JOB_RETRIES: ${DBT_BIGQUERY_JOB_RETRIES:-1}
+    volumes:
+      - ./.gcloud:/root/.config/gcloud
+    profiles:
+      - dbt
+    # Default: print version. Override: docker compose --profile dbt run --rm dbt dbt run
+    command: ["dbt", "--version"]

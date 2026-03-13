@@ -1,0 +1,57 @@
+name: Ingestion CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "src/ingestion/**"
+      - ".github/workflows/ingestion-ci.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "src/ingestion/**"
+      - ".github/workflows/ingestion-ci.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-push-ingestion:
+    name: Build & Push ingestion image
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+      AR_REGION: europe-west1
+      AR_REPO: datatalent
+      IMAGE_NAME: ingestion
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build ingestion image
+        run: |
+          docker build \
+            -f src/ingestion/Dockerfile \
+            -t datatalent-ingestion-ci:latest \
+            -t ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:latest \
+            -t ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${GITHUB_SHA::8} \
+            src/ingestion
+
+      - name: Auth GCP via Workload Identity Federation
+        if: github.event_name == 'push'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER != '' && secrets.GCP_WIF_PROVIDER || vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        if: github.event_name == 'push'
+        run: gcloud auth configure-docker ${AR_REGION}-docker.pkg.dev --quiet
+
+      - name: Push ingestion image to Artifact Registry
+        if: github.event_name == 'push'
+        run: |
+          docker push ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:latest
+          docker push ${AR_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${GITHUB_SHA::8}

@@ -41,8 +41,8 @@ docker compose --profile dbt run --rm --service-ports dbt dbt docs serve --port 
 
 ## 5. Cibles dev et ci
 
-- `DBT_TARGET=dev` : methode oauth (ADC)
-- `DBT_TARGET=ci` : methode service-account, `GOOGLE_APPLICATION_CREDENTIALS` requis
+- `DBT_TARGET=dev` : methode oauth (ADC) — usage local
+- `DBT_TARGET=ci` : methode oauth (ADC via metadata server) — usage GitHub Actions / Cloud Run Job
 
 ## 6. Depannage rapide
 

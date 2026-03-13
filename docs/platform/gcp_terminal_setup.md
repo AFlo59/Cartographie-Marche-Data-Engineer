@@ -1,10 +1,10 @@
-# Setup GCP manuel — étapes one-shot
+# Setup GCP manuel  tapes one-shot
 
-Ce guide couvre uniquement les opérations manuelles à exécuter une seule fois dans GCP Cloud Shell avant de lancer Terraform.
+Ce guide couvre uniquement les oprations manuelles  excuter une seule fois dans GCP Cloud Shell avant de lancer Terraform.
 
-Périmètre actuel : préparation du socle nécessaire aux tickets INFRA-02 à INFRA-06, plus la base d'authentification pour INFRA-09 côté déploiement infra.
+Primtre actuel : prparation du socle ncessaire aux tickets INFRA-02  INFRA-06, plus la base d'authentification pour INFRA-09 ct dploiement infra.
 
-Pour les exécutions récurrentes :
+Pour les excutions rcurrentes :
 - Docker : [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md)
 - Installation locale : [docs/infra/manual_commands.md](../infra/manual_commands.md)
 
@@ -13,15 +13,15 @@ Pour la vue d'ensemble : [docs/setup_guide.md](../setup_guide.md)
 ## Quand utiliser ce fichier
 
 Utiliser ce guide pour :
-- préparer le projet GCP,
-- activer les APIs nécessaires,
-- créer les service accounts,
-- donner les droits au compte de déploiement,
-- vérifier que le socle GCP est prêt.
+- prparer le projet GCP,
+- activer les APIs ncessaires,
+- crer les service accounts,
+- donner les droits au compte de dploiement,
+- vrifier que le socle GCP est prt.
 
-## Ordre des étapes
+## Ordre des tapes
 
-### 1. Sélectionner le projet
+### 1. Slectionner le projet
 
 ```bash
 gcloud config set project cartographie-data-engineer
@@ -29,7 +29,7 @@ gcloud config set project cartographie-data-engineer
 
 Pourquoi : fixe le projet actif pour toutes les commandes suivantes.
 
-### 2. Vérifier le contexte projet
+### 2. Vrifier le contexte projet
 
 ```bash
 gcloud projects describe cartographie-data-engineer --format="value(projectId,projectNumber,parent.type,parent.id)"
@@ -37,9 +37,9 @@ gcloud projects describe cartographie-data-engineer --format="value(projectId,pr
 
 Pourquoi : confirme le projet, le project number et le parent org/folder.
 
-### 3. Vérifier les tags d'organisation si nécessaire
+### 3. Vrifier les tags d'organisation si ncessaire
 
-Cette étape est optionnelle et dépend des policies de votre organisation.
+Cette tape est optionnelle et dpend des policies de votre organisation.
 
 ```bash
 gcloud resource-manager tags bindings list --parent=//cloudresourcemanager.googleapis.com/projects/cartographie-data-engineer
@@ -47,9 +47,9 @@ gcloud resource-manager tags bindings list --parent=//cloudresourcemanager.googl
 
 Pourquoi : certaines organisations exigent un tag `environment` avant d'autoriser certains usages.
 
-Si vous devez créer ou binder le tag, utiliser la section détaillée plus bas dans ce même fichier.
+Si vous devez crer ou binder le tag, utiliser la section dtaille plus bas dans ce mme fichier.
 
-### 4. Activer les APIs nécessaires
+### 4. Activer les APIs ncessaires
 
 ```bash
 gcloud services enable \
@@ -63,9 +63,9 @@ gcloud services enable \
   --project cartographie-data-engineer
 ```
 
-Pourquoi : prépare les services requis par l'infra actuelle et la CI WIF.
+Pourquoi : prpare les services requis par l'infra actuelle et la CI WIF.
 
-### 5. Créer les service accounts
+### 5. Crer les service accounts
 
 ```bash
 gcloud iam service-accounts create ingestion-sa --display-name="Ingestion SA"
@@ -75,17 +75,17 @@ gcloud iam service-accounts create scheduler-sa --display-name="Scheduler SA"
 gcloud iam service-accounts create terraform-deployer-sa --display-name="Terraform Deployer SA"
 ```
 
-Pourquoi : chaque usage a son identité dédiée. `scheduler-sa` reste optionnel mais recommandé pour isoler les responsabilités.
+Pourquoi : chaque usage a son identit ddie. `scheduler-sa` reste optionnel mais recommand pour isoler les responsabilits.
 
-### 6. Récupérer les emails à reporter dans `.env`
+### 6. Rcuprer les emails  reporter dans `.env`
 
 ```bash
 gcloud iam service-accounts list --format="table(email,displayName)"
 ```
 
-Pourquoi : ces emails alimentent `TF_VAR_ingestion_service_account_email`, `TF_VAR_dbt_service_account_email`, `TF_VAR_dashboard_service_account_email` et éventuellement `TF_VAR_scheduler_service_account_email`.
+Pourquoi : ces emails alimentent `TF_VAR_ingestion_service_account_email`, `TF_VAR_dbt_service_account_email`, `TF_VAR_dashboard_service_account_email` et ventuellement `TF_VAR_scheduler_service_account_email`.
 
-### 7. Donner les rôles au compte de déploiement Terraform
+### 7. Donner les rles au compte de dploiement Terraform
 
 ```bash
 TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
@@ -118,11 +118,11 @@ gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
   --project=${PROJECT}
 ```
 
-Pourquoi : ce compte est utilisé par Terraform en local et en CI pour créer et mettre à jour les ressources du périmètre infra actuel.
+Pourquoi : ce compte est utilis par Terraform en local et en CI pour crer et mettre  jour les ressources du primtre infra actuel.
 
-La matrice complète des rôles est documentée dans [docs/infra/iam_roles.md](../infra/iam_roles.md).
+La matrice complte des rles est documente dans [docs/infra/iam_roles.md](../infra/iam_roles.md).
 
-### 8. Vérifier que le projet est prêt
+### 8. Vrifier que le projet est prt
 
 ```bash
 gcloud services list --enabled --project cartographie-data-engineer \
@@ -137,25 +137,25 @@ gcloud iam service-accounts get-iam-policy ingestion-sa@cartographie-data-engine
   --project=cartographie-data-engineer
 ```
 
-Pourquoi : confirme les APIs actives, les rôles projet du deployer et le binding `iam.serviceAccountUser`.
+Pourquoi : confirme les APIs actives, les rles projet du deployer et le binding `iam.serviceAccountUser`.
 
-### 9. Étape suivante
+### 9. tape suivante
 
-Une fois ce socle prêt :
-- exécuter Terraform via [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md),
+Une fois ce socle prt :
+- excuter Terraform via [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md),
 - ou via [docs/infra/manual_commands.md](../infra/manual_commands.md),
-- puis charger les valeurs réelles des secrets via [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md).
+- puis charger les valeurs relles des secrets via [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md).
 
-## Option avancée — tags d'organisation
+## Option avance  tags d'organisation
 
-Placeholders utilisés dans cette section :
+Placeholders utiliss dans cette section :
 
-- `ORG_ID` = identifiant numérique de l'organisation GCP parente.
-- `TAG_KEY_ID` = identifiant numérique de la clé de tag GCP.
-- `TAG_VALUE_ID` = identifiant numérique de la valeur de tag à binder au projet.
-- `YOUR_EMAIL` = adresse email de l'utilisateur à autoriser temporairement pour manipuler les tags.
+- `ORG_ID` = identifiant numrique de l'organisation GCP parente.
+- `TAG_KEY_ID` = identifiant numrique de la cl de tag GCP.
+- `TAG_VALUE_ID` = identifiant numrique de la valeur de tag  binder au projet.
+- `YOUR_EMAIL` = adresse email de l'utilisateur  autoriser temporairement pour manipuler les tags.
 
-### Vérifier les tags disponibles
+### Vrifier les tags disponibles
 
 ```bash
 gcloud projects describe cartographie-data-engineer --format="value(parent.id)"
@@ -171,7 +171,7 @@ gcloud resource-manager tags bindings create \
   --tag-value=tagValues/TAG_VALUE_ID
 ```
 
-### Créer la clé `environment` si vous êtes admin org
+### Crer la cl `environment` si vous tes admin org
 
 ```bash
 gcloud resource-manager tags keys create environment \
@@ -184,7 +184,7 @@ gcloud resource-manager tags values create Staging --parent=tagKeys/TAG_KEY_ID
 gcloud resource-manager tags values create Production --parent=tagKeys/TAG_KEY_ID
 ```
 
-### Dépannage `PERMISSION_DENIED` sur les tags
+### Dpannage `PERMISSION_DENIED` sur les tags
 
 ```bash
 gcloud projects add-iam-policy-binding cartographie-data-engineer \
@@ -196,10 +196,10 @@ gcloud resource-manager tags values add-iam-policy-binding tagValues/TAG_VALUE_I
   --role="roles/resourcemanager.tagUser"
 ```
 
-Pourquoi : il faut souvent `roles/resourcemanager.tagUser` à la fois sur le projet et sur la valeur de tag.
+Pourquoi : il faut souvent `roles/resourcemanager.tagUser`  la fois sur le projet et sur la valeur de tag.
 
-## Option avancée — authentification CI GitHub
+## Option avance  authentification CI GitHub
 
-Ne pas détailler WIF ici pour éviter le doublon.
+Ne pas dtailler WIF ici pour viter le doublon.
 
-Guide dédié : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
+Guide ddi : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
