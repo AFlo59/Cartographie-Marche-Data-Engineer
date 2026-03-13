@@ -67,3 +67,9 @@ variable "raw_france_travail_prefix" {
   type        = string
   default     = "raw/france_travail/"
 }
+
+variable "create_external_tables" {
+  description = "Create BigQuery External Tables pointing to GCS Parquet files. Set to true only after at least one ingestion run has populated the bucket (BQ autodetect requires at least one file to exist)."
+  type        = bool
+  default     = false
+}

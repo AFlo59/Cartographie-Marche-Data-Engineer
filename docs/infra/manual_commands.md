@@ -174,6 +174,134 @@ pip install -r ..\requirements.txt
 
 Pourquoi : prépare un environnement local pour les scripts d'ingestion.
 
+## Activer le Cloud Run Job après le premier push d'image
+
+Le Cloud Run Job et les Schedulers sont désactivés par défaut (`create_compute_job = false`)
+car GCP échoue avec 403 si l'image n'existe pas encore dans Artifact Registry.
+
+### Étape 1 — Builder et pusher l'image d'ingestion
+
+```powershell
+# Depuis la racine du repo
+docker compose build ingestion
+
+# Authentifier Docker sur Artifact Registry
+gcloud auth configure-docker europe-west1-docker.pkg.dev
+
+# Tagger et pousser l'image
+docker tag datatalent-ingestion europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
+docker push europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
+
+# Vérifier la présence de l'image
+gcloud artifacts docker images list europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent --project cartographie-data-engineer
+```
+
+### Étape 2 — Activer le job dans Terraform
+
+```powershell
+# Depuis le dossier infra/
+terraform apply -var="create_compute_job=true"
+```
+
+Ou via la CI : mettre `TF_VAR_create_compute_job: "true"` dans `.github/workflows/infra-deploy.yml` puis merger sur `main`.
+
+### Vérifier le job créé
+
+```powershell
+gcloud run jobs list --region=europe-west1 --project cartographie-data-engineer
+gcloud scheduler jobs list --location=europe-west1 --project cartographie-data-engineer
+```
+
+---
+
+## Activer les External Tables BigQuery après la première ingestion
+
+Les External Tables BQ (raw → GCS) sont désactivées par défaut (`create_external_tables = false`)
+car BigQuery refuse de créer une table avec `autodetect = true` si aucun fichier Parquet n'existe encore dans le bucket.
+
+### Prérequis
+
+Vérifier que le bucket contient au moins un fichier Parquet pour chaque source :
+
+```powershell
+# Vérifier la présence de fichiers
+gcloud storage ls gs://datatalent-dev-cartographie-data-engineer-raw/raw/sirene/ --project cartographie-data-engineer
+gcloud storage ls gs://datatalent-dev-cartographie-data-engineer-raw/raw/france_travail/ --project cartographie-data-engineer
+```
+
+### Option A — Après un premier run d'ingestion (recommandé)
+
+Déclencher manuellement le Cloud Run Job d'ingestion pour chaque source :
+
+```powershell
+# France Travail
+gcloud run jobs execute datatalent-ingestion-job \
+  --region=europe-west1 \
+  --project cartographie-data-engineer \
+  --update-env-vars INGESTION_SOURCE=france_travail
+
+# Sirene
+gcloud run jobs execute datatalent-ingestion-job \
+  --region=europe-west1 \
+  --project cartographie-data-engineer \
+  --update-env-vars INGESTION_SOURCE=sirene
+```
+
+Suivre l'exécution :
+
+```powershell
+gcloud run jobs executions list \
+  --job=datatalent-ingestion-job \
+  --region=europe-west1 \
+  --project cartographie-data-engineer
+```
+
+### Option B — Fichier placeholder minimal (test rapide, hors production)
+
+Créer un fichier Parquet vide ou minimal avec Python, puis l'uploader :
+
+```powershell
+# Installer pyarrow si nécessaire
+pip install pyarrow
+
+# Créer un placeholder Parquet vide
+python -c "import pyarrow as pa; import pyarrow.parquet as pq; pq.write_table(pa.table({'_placeholder': pa.array([], type=pa.string())}), 'placeholder.parquet')"
+
+# Uploader dans les deux prefixes
+gcloud storage cp placeholder.parquet \
+  gs://datatalent-dev-cartographie-data-engineer-raw/raw/sirene/etablissements/placeholder.parquet \
+  --project cartographie-data-engineer
+
+gcloud storage cp placeholder.parquet \
+  gs://datatalent-dev-cartographie-data-engineer-raw/raw/sirene/unites_legales/placeholder.parquet \
+  --project cartographie-data-engineer
+
+gcloud storage cp placeholder.parquet \
+  gs://datatalent-dev-cartographie-data-engineer-raw/raw/france_travail/placeholder.parquet \
+  --project cartographie-data-engineer
+```
+
+### Activer les External Tables (après que les fichiers existent)
+
+```powershell
+# Depuis le dossier infra/
+terraform apply -var="create_external_tables=true"
+```
+
+Ou via la CI : mettre `TF_VAR_create_external_tables: "true"` dans `.github/workflows/infra-deploy.yml`
+puis merger sur `main`.
+
+### Vérifier les tables créées
+
+```powershell
+bq ls --project_id=cartographie-data-engineer raw
+bq show --project_id=cartographie-data-engineer raw.sirene_etablissements
+bq show --project_id=cartographie-data-engineer raw.sirene_unites_legales
+bq show --project_id=cartographie-data-engineer raw.france_travail_offres
+```
+
+---
+
 ## Options avancées
 
 ### Vous voulez gérer les secrets runtime

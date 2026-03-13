@@ -46,3 +46,38 @@ services:
       - ./secrets:/workspace/secrets:ro
       - ./.gcloud:/root/.config/gcloud
     command: ["terraform", "version"]
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: src/ingestion/Dockerfile
+    container_name: datatalent-ingestion
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      GCP_PROJECT_ID: ${TF_VAR_project_id:-}
+      INGESTION_FRANCE_TRAVAIL_PREFIX: ${TF_VAR_ingestion_france_travail_prefix:-raw/france_travail/}
+      INGESTION_SIRENE_PREFIX: ${TF_VAR_ingestion_sirene_prefix:-raw/sirene/}
+      INGESTION_GEO_PREFIX: ${TF_VAR_ingestion_geo_prefix:-raw/geo/}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
+    volumes:
+      - ./.gcloud:/root/.config/gcloud
+    profiles:
+      - ingestion
+
+  dbt:
+    build:
+      context: dbt/transformation
+      dockerfile: Dockerfile
+    container_name: datatalent-dbt
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
+    volumes:
+      - ./dbt/transformation:/app
+      - ./.gcloud:/root/.config/gcloud
+    profiles:
+      - dbt

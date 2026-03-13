@@ -87,6 +87,18 @@ variable "manage_project_job_user_bindings" {
   default     = true
 }
 
+variable "create_external_tables" {
+  description = "Create BigQuery External Tables pointing to GCS Parquet files. Set to true only after at least one ingestion run has populated the bucket (BQ autodetect requires at least one file to exist)."
+  type        = bool
+  default     = false
+}
+
+variable "create_compute_job" {
+  description = "Create the Cloud Run Job and Cloud Scheduler jobs. Set to true only after the container image has been pushed to Artifact Registry (job creation fails with 403 if the image does not exist)."
+  type        = bool
+  default     = false
+}
+
 variable "raw_dataset_id" {
   description = "BigQuery dataset ID for raw layer"
   type        = string
