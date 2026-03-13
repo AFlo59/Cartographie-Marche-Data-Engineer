@@ -56,7 +56,9 @@ module "storage" {
   lifecycle_delete_age_days    = var.bucket_lifecycle_delete_age_days
   nearline_transition_age_days = var.bucket_nearline_age_days
   geo_prefix_delete_age_days   = var.bucket_geo_prefix_delete_age_days
+  geo_prefix                   = var.ingestion_geo_prefix
   ingestion_sa_email           = var.ingestion_service_account_email
+  dbt_sa_email                 = var.dbt_service_account_email
 }
 
 module "warehouse" {
