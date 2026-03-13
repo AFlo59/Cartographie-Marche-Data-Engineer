@@ -48,5 +48,27 @@ ingestion_service_account_email = ""
 dbt_service_account_email       = ""
 dashboard_service_account_email = ""
 
+# CI/CD SA (WIF) — pour roles/artifactregistry.writer sur le repo Docker
+# Même email que GCP_WIF_SERVICE_ACCOUNT dans GitHub Secrets
+ci_service_account_email = ""
+
+# Artifact Registry — repository Docker (créé automatiquement, défaut: "datatalent")
+# artifact_registry_repository_id = "datatalent"
+
+# Activation progressive des ressources conditionnelles
+# Passer à true après push de l'image dans Artifact Registry
+create_compute_job = false
+# Passer à true après la première ingestion (BQ autodetect requiert des fichiers Parquet)
+create_external_tables = false
+
+# Cloud Run Job dbt — passer create_dbt_job=true après push de l'image dbt dans AR
+create_dbt_job      = false
+dbt_job_name        = "datatalent-dbt-job"
+dbt_compute_image   = "europe-west1-docker.pkg.dev/my-gcp-project-id/datatalent/dbt:latest"
+dbt_memory          = "1Gi"
+dbt_cpu             = "1"
+dbt_timeout_seconds = 1800
+dbt_max_retries     = 0
+
 # Mettre à false si le compte Terraform n'a pas le droit de modifier l'IAM projet
 manage_project_job_user_bindings = false

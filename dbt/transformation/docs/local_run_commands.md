@@ -40,9 +40,12 @@ Variables minimales :
 
 - `GCP_PROJECT_ID`
 - `GCP_LOCATION`
-- `DBT_BIGQUERY_PROJECT`
 - `DBT_BIGQUERY_DATASET`
 - `DBT_TARGET`
+
+Variable optionnelle :
+
+- `DBT_BIGQUERY_PROJECT` (si vous voulez surcharger `GCP_PROJECT_ID`)
 
 ## 4. Verifier dbt
 

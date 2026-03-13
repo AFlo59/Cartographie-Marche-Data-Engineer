@@ -1,46 +1,46 @@
-# Commandes locales — sans Docker
+# Commandes locales  sans Docker
 
-Ce guide couvre l'exécution Terraform avec les outils installés directement sur votre poste.
+Ce guide couvre l'excution Terraform avec les outils installs directement sur votre poste.
 
 Pour le setup GCP one-shot : [docs/platform/gcp_terminal_setup.md](../platform/gcp_terminal_setup.md)
 
-Pour l'exécution via conteneur : [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md)
+Pour l'excution via conteneur : [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md)
 
-> Ce guide sert principalement au **développement local**, à la validation manuelle et au debug.
-> Dans le périmètre actuel, le **déploiement principal de l'infrastructure Terraform** doit passer par GitHub Actions après merge sur `main`.
+> Ce guide sert principalement au **dveloppement local**,  la validation manuelle et au debug.
+> Dans le primtre actuel, le **dploiement principal de l'infrastructure Terraform** doit passer par GitHub Actions aprs merge sur `main`.
 
 ## Quand utiliser ce fichier
 
-Utiliser ce guide si vous avez installé localement :
+Utiliser ce guide si vous avez install localement :
 - `gcloud`,
 - `terraform` ou `tofu`,
-- et éventuellement Python pour le projet.
+- et ventuellement Python pour le projet.
 
-Si ce n'est pas le cas, préférez le guide Docker.
+Si ce n'est pas le cas, prfrez le guide Docker.
 
-Ce guide couvre uniquement l'exécution manuelle de l'infra pendant le développement, pas la release automatique complète du projet.
+Ce guide couvre uniquement l'excution manuelle de l'infra pendant le dveloppement, pas la release automatique complte du projet.
 
-## Pré-requis
+## Pr-requis
 
-### 1. Se placer à la racine du projet
+### 1. Se placer  la racine du projet
 
 ```powershell
 Set-Location "C:\CHEMIN\VERS\Cartographie-Marche-Data-Engineer"
 ```
 
-Pourquoi : toutes les commandes supposent la racine du repo comme point de départ.
+Pourquoi : toutes les commandes supposent la racine du repo comme point de dpart.
 
-Placeholder utilisé :
-- `C:\CHEMIN\VERS\Cartographie-Marche-Data-Engineer` = chemin local réel du repo sur votre poste.
+Placeholder utilis :
+- `C:\CHEMIN\VERS\Cartographie-Marche-Data-Engineer` = chemin local rel du repo sur votre poste.
 
-### 2. Vérifier ou créer `.env`
+### 2. Vrifier ou crer `.env`
 
 ```powershell
 Copy-Item .\.env.example .\.env -ErrorAction SilentlyContinue
 Get-Content .\.env
 ```
 
-Pourquoi : vérifier les variables projet, région, comptes de service et image Cloud Run.
+Pourquoi : vrifier les variables projet, rgion, comptes de service et image Cloud Run.
 
 ### 3. Authentifier `gcloud`
 
@@ -71,9 +71,9 @@ Pourquoi : les commandes Terraform doivent partir du dossier contenant les fichi
 terraform init -backend=false
 ```
 
-#### Backend GCS réel
+#### Backend GCS rel
 
-Depuis le dossier `infra/`, récupérez le nom du bucket (défini dans le workflow) :
+Depuis le dossier `infra/`, rcuprez le nom du bucket (dfini dans le workflow) :
 
 ```powershell
 # Exemple: datatalent-tfstate-my-gcp-project-id
@@ -86,9 +86,9 @@ Si migration de state depuis local vers GCS:
 terraform init -backend-config="bucket=${TERRAFORM_STATE_BUCKET}" -migrate-state
 ```
 
-Où `${TERRAFORM_STATE_BUCKET}` = nom du bucket de state Terraform (ex: `datatalent-tfstate-my-gcp-project-id`)
+O `${TERRAFORM_STATE_BUCKET}` = nom du bucket de state Terraform (ex: `datatalent-tfstate-my-gcp-project-id`)
 
-### 6. Vérifier la configuration
+### 6. Vrifier la configuration
 
 ```powershell
 terraform fmt -check -recursive
@@ -96,7 +96,7 @@ terraform validate
 terraform plan
 ```
 
-Pourquoi : contrôle style, validité et diff avant application.
+Pourquoi : contrle style, validit et diff avant application.
 
 ### 7. Appliquer
 
@@ -104,18 +104,18 @@ Pourquoi : contrôle style, validité et diff avant application.
 terraform apply
 ```
 
-Pourquoi : crée ou met à jour l'infrastructure dans GCP.
+Pourquoi : cre ou met  jour l'infrastructure dans GCP.
 
-## Gérer une erreur `409 already exists` (drift d'état)
+## Grer une erreur `409 already exists` (drift d'tat)
 
-Quand Terraform tente de créer une ressource qui existe déjà dans GCP, il faut **adopter la ressource dans le state** avec `terraform import`.
+Quand Terraform tente de crer une ressource qui existe dj dans GCP, il faut **adopter la ressource dans le state** avec `terraform import`.
 
-### Règle de décision
+### Rgle de dcision
 
-- Ressource existe dans GCP et doit rester gérée par Terraform ? **import**.
+- Ressource existe dans GCP et doit rester gre par Terraform ? **import**.
 - Ressource existe mais configuration Terraform doit changer ? **import**, puis `terraform plan/apply` pour converger.
-- Ressource existe mais ne doit pas être gérée par ce state ? ne pas importer (ou `terraform state rm` si déjà importée).
-- Ressource créée hors-plan et inutile ? suppression manuelle possible, **uniquement** si impact maîtrisé.
+- Ressource existe mais ne doit pas tre gre par ce state ? ne pas importer (ou `terraform state rm` si dj importe).
+- Ressource cre hors-plan et inutile ? suppression manuelle possible, **uniquement** si impact matris.
 
 ### Important
 
@@ -144,7 +144,7 @@ terraform plan
 terraform apply
 ```
 
-### 8. Vérifier les ressources déployées
+### 8. Vrifier les ressources dployes
 
 ```powershell
 gcloud storage buckets list --project cartographie-data-engineer
@@ -154,17 +154,17 @@ gcloud scheduler jobs list --location=europe-west1 --project cartographie-data-e
 gcloud secrets list --project cartographie-data-engineer
 ```
 
-Pourquoi : confirme les ressources principales après déploiement.
+Pourquoi : confirme les ressources principales aprs dploiement.
 
-### 9. Détruire si nécessaire
+### 9. Dtruire si ncessaire
 
 ```powershell
 terraform destroy
 ```
 
-## Dépendances Python du projet
+## Dpendances Python du projet
 
-Si vous exécutez aussi les scripts Python localement :
+Si vous excutez aussi les scripts Python localement :
 
 ```powershell
 python -m venv .venv
@@ -172,14 +172,43 @@ python -m venv .venv
 pip install -r ..\requirements.txt
 ```
 
-Pourquoi : prépare un environnement local pour les scripts d'ingestion.
+Pourquoi : prpare un environnement local pour les scripts d'ingestion.
 
-## Activer le Cloud Run Job après le premier push d'image
+## Bootstrap Artifact Registry (one-shot avant le premier push CI)
 
-Le Cloud Run Job et les Schedulers sont désactivés par défaut (`create_compute_job = false`)
-car GCP échoue avec 403 si l'image n'existe pas encore dans Artifact Registry.
+Le repo Artifact Registry et la permission `artifactregistry.writer` sont cres par Terraform,
+mais le CI pousse les images **avant** que Terraform ait applique ces ressources la premiere fois.
+Il faut donc les creer manuellement une seule fois, puis Terraform les importera au prochain apply.
 
-### Étape 1 — Builder et pusher l'image d'ingestion
+```powershell
+# 1. Creer le repo Docker dans Artifact Registry
+gcloud artifacts repositories create datatalent `
+  --repository-format=docker `
+  --location=europe-west1 `
+  --project=cartographie-data-engineer
+
+# 2. Accorder artifactregistry.writer au SA WIF (terraform-deployer-sa)
+gcloud projects add-iam-policy-binding cartographie-data-engineer `
+  --member="serviceAccount:terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com" `
+  --role="roles/artifactregistry.writer"
+
+# 3. Verifier
+gcloud artifacts repositories describe datatalent `
+  --location=europe-west1 `
+  --project=cartographie-data-engineer
+```
+
+Apres ces deux commandes, re-declencher le workflow CI (re-push ou workflow_dispatch).
+Terraform importera le repo existant via le step `import_if_needed` au prochain apply.
+
+---
+
+## Activer le Cloud Run Job aprs le premier push d'image
+
+Le Cloud Run Job et les Schedulers sont dsactivs par dfaut (`create_compute_job = false`)
+car GCP choue avec 403 si l'image n'existe pas encore dans Artifact Registry.
+
+### tape 1  Builder et pusher l'image d'ingestion
 
 ```powershell
 # Depuis la racine du repo
@@ -192,11 +221,11 @@ gcloud auth configure-docker europe-west1-docker.pkg.dev
 docker tag datatalent-ingestion europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
 docker push europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
 
-# Vérifier la présence de l'image
+# Vrifier la prsence de l'image
 gcloud artifacts docker images list europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent --project cartographie-data-engineer
 ```
 
-### Étape 2 — Activer le job dans Terraform
+### tape 2  Activer le job dans Terraform
 
 ```powershell
 # Depuis le dossier infra/
@@ -205,7 +234,7 @@ terraform apply -var="create_compute_job=true"
 
 Ou via la CI : mettre `TF_VAR_create_compute_job: "true"` dans `.github/workflows/infra-deploy.yml` puis merger sur `main`.
 
-### Vérifier le job créé
+### Vrifier le job cr
 
 ```powershell
 gcloud run jobs list --region=europe-west1 --project cartographie-data-engineer
@@ -214,24 +243,24 @@ gcloud scheduler jobs list --location=europe-west1 --project cartographie-data-e
 
 ---
 
-## Activer les External Tables BigQuery après la première ingestion
+## Activer les External Tables BigQuery aprs la premire ingestion
 
-Les External Tables BQ (raw ? GCS) sont désactivées par défaut (`create_external_tables = false`)
-car BigQuery refuse de créer une table avec `autodetect = true` si aucun fichier Parquet n'existe encore dans le bucket.
+Les External Tables BQ (raw ? GCS) sont dsactives par dfaut (`create_external_tables = false`)
+car BigQuery refuse de crer une table avec `autodetect = true` si aucun fichier Parquet n'existe encore dans le bucket.
 
-### Prérequis
+### Prrequis
 
-Vérifier que le bucket contient au moins un fichier Parquet pour chaque source :
+Vrifier que le bucket contient au moins un fichier Parquet pour chaque source :
 
 ```powershell
-# Vérifier la présence de fichiers
+# Vrifier la prsence de fichiers
 gcloud storage ls gs://datatalent-dev-cartographie-data-engineer-raw/raw/sirene/ --project cartographie-data-engineer
 gcloud storage ls gs://datatalent-dev-cartographie-data-engineer-raw/raw/france_travail/ --project cartographie-data-engineer
 ```
 
-### Option A — Après un premier run d'ingestion (recommandé)
+### Option A  Aprs un premier run d'ingestion (recommand)
 
-Déclencher manuellement le Cloud Run Job d'ingestion pour chaque source :
+Dclencher manuellement le Cloud Run Job d'ingestion pour chaque source :
 
 ```powershell
 # France Travail
@@ -247,7 +276,7 @@ gcloud run jobs execute datatalent-ingestion-job \
   --update-env-vars INGESTION_SOURCE=sirene
 ```
 
-Suivre l'exécution :
+Suivre l'excution :
 
 ```powershell
 gcloud run jobs executions list \
@@ -256,15 +285,15 @@ gcloud run jobs executions list \
   --project cartographie-data-engineer
 ```
 
-### Option B — Fichier placeholder minimal (test rapide, hors production)
+### Option B  Fichier placeholder minimal (test rapide, hors production)
 
-Créer un fichier Parquet vide ou minimal avec Python, puis l'uploader :
+Crer un fichier Parquet vide ou minimal avec Python, puis l'uploader :
 
 ```powershell
-# Installer pyarrow si nécessaire
+# Installer pyarrow si ncessaire
 pip install pyarrow
 
-# Créer un placeholder Parquet vide
+# Crer un placeholder Parquet vide
 python -c "import pyarrow as pa; import pyarrow.parquet as pq; pq.write_table(pa.table({'_placeholder': pa.array([], type=pa.string())}), 'placeholder.parquet')"
 
 # Uploader dans les deux prefixes
@@ -281,7 +310,7 @@ gcloud storage cp placeholder.parquet \
   --project cartographie-data-engineer
 ```
 
-### Activer les External Tables (après que les fichiers existent)
+### Activer les External Tables (aprs que les fichiers existent)
 
 ```powershell
 # Depuis le dossier infra/
@@ -291,7 +320,7 @@ terraform apply -var="create_external_tables=true"
 Ou via la CI : mettre `TF_VAR_create_external_tables: "true"` dans `.github/workflows/infra-deploy.yml`
 puis merger sur `main`.
 
-### Vérifier les tables créées
+### Vrifier les tables cres
 
 ```powershell
 bq ls --project_id=cartographie-data-engineer raw
@@ -302,16 +331,16 @@ bq show --project_id=cartographie-data-engineer raw.france_travail_offres
 
 ---
 
-## Options avancées
+## Options avances
 
-### Vous voulez gérer les secrets runtime
+### Vous voulez grer les secrets runtime
 
-Utiliser le guide dédié : [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md)
+Utiliser le guide ddi : [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md)
 
-### Vous préparez la CI GitHub Actions
+### Vous prparez la CI GitHub Actions
 
-Utiliser le guide dédié : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
+Utiliser le guide ddi : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
 
-### Vous voulez vérifier les rôles IAM
+### Vous voulez vrifier les rles IAM
 
-Utiliser le guide dédié : [docs/infra/iam_roles.md](../infra/iam_roles.md)
+Utiliser le guide ddi : [docs/infra/iam_roles.md](../infra/iam_roles.md)
