@@ -38,6 +38,35 @@ Note de périmètre : le workflow actuel couvre principalement `terraform plan` 
   - Org : `GITHUB_ORG`
   - Repo : `GITHUB_REPO`
 
+### 2.0) Ordre recommandé avant le premier `terraform apply` depuis GitHub Actions
+
+Avant de configurer ou tester le workflow CI, suivre cet ordre :
+
+1. Activer une fois les APIs GCP requises sur le projet.
+2. Donner au service account WIF les rôles Terraform du périmètre infra.
+3. Configurer WIF GitHub ↔ GCP.
+4. Lancer un `plan` en PR puis un `apply` sur `main`.
+
+Si l'étape 1 n'est pas faite, le workflow peut échouer avant `terraform apply` avec `Required API is disabled`.
+
+Commandes one-shot recommandées :
+
+```bash
+PROJECT="cartographie-data-engineer"
+
+gcloud services enable \
+  storage.googleapis.com \
+  bigquery.googleapis.com \
+  run.googleapis.com \
+  cloudscheduler.googleapis.com \
+  secretmanager.googleapis.com \
+  iam.googleapis.com \
+  iamcredentials.googleapis.com \
+  --project=${PROJECT}
+```
+
+Référence principale pour le socle projet : [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md).
+
 ### 2.1) Donner les droits au service account utilisé par WIF
 
 Le service account référencé dans `GCP_WIF_SERVICE_ACCOUNT` doit avoir les droits pour gérer les ressources Terraform.
@@ -96,9 +125,11 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
 Sinon, activer manuellement une fois les APIs requises :
 
 ```bash
-gcloud services enable run.googleapis.com cloudscheduler.googleapis.com \
+gcloud services enable storage.googleapis.com bigquery.googleapis.com run.googleapis.com cloudscheduler.googleapis.com secretmanager.googleapis.com \
   --project=${PROJECT}
 ```
+
+Le workflow `infra-deploy.yml` vérifie explicitement ces 5 APIs avant l'`apply` sur `main`.
 
 Note : dans le workflow actuel, `TF_VAR_manage_project_job_user_bindings` est positionné à `false`, donc ce rôle optionnel n'est pas requis pour le flux CI standard.
 
