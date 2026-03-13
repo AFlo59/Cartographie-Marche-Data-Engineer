@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime, timezone
 
@@ -8,8 +9,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 GEO_API_BASE_URL = os.environ.get("GEO_API_BASE_URL", "https://geo.api.gouv.fr").rstrip("/")
-BUCKET_NAME = os.environ["INGESTION_RAW_BUCKET"]
-GEO_PREFIX = os.environ.get("INGESTION_GEO_PREFIX", "raw/geo/")
+
+BUCKET_NAME = os.environ.get("TF_VAR_raw_bucket_name")
+GEO_PREFIX = os.environ.get("TF_VAR_ingestion_geo_prefix", "raw/geo/")
+
 REQUEST_TIMEOUT = int(os.environ.get("GEO_API_TIMEOUT_SECONDS", "60"))
 
 REGIONS_FIELDS = "code,nom"
@@ -65,13 +68,11 @@ def extract_lon_lat(centre: dict | None) -> tuple[float | None, float | None]:
 
 
 def to_dataframe_regions(regions: list[dict]) -> pd.DataFrame:
-    df = pd.DataFrame(regions)
-    return df
+    return pd.DataFrame(regions)
 
 
 def to_dataframe_departements(departements: list[dict]) -> pd.DataFrame:
-    df = pd.DataFrame(departements)
-    return df
+    return pd.DataFrame(departements)
 
 
 def to_dataframe_communes(communes: list[dict]) -> pd.DataFrame:
@@ -105,14 +106,18 @@ def upload_manifest_to_gcs(bucket_name: str, gcs_path: str, payload: dict) -> No
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(gcs_path)
 
-    import json
     body = json.dumps(payload, ensure_ascii=False, indent=2)
     blob.upload_from_string(body, content_type="application/json; charset=utf-8")
 
     print(f"✅ Manifest déposé dans gs://{bucket_name}/{gcs_path}")
 
 
-def main() -> None:
+def ingest_geo() -> None:
+    if not BUCKET_NAME:
+        raise ValueError(
+            "Le nom du bucket GCS doit être défini dans la variable d'environnement TF_VAR_raw_bucket_name"
+        )
+
     session = build_session()
     prefix = normalize_prefix(GEO_PREFIX)
 
@@ -191,4 +196,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    ingest_geo()

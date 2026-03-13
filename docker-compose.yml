@@ -94,7 +94,7 @@ services:
       - ./:/workspace
       - ./secrets:/workspace/secrets:ro
       - ./.gcloud:/root/.config/gcloud
-    command: ["python", "--version"]
+    # command: ["python", "--version"]
 
   dbt:
     build:

@@ -20,4 +20,6 @@ COPY requirements.txt /tmp/requirements.txt
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt
 
-CMD ["python", "--version"]
+ENTRYPOINT ["python", "-m","src.ingestion.main"]
+
+CMD ["--source", "sirene"]
