@@ -17,6 +17,7 @@ Obtenir un projet dbt operationnel avec un ordre clair :
 - Les variables sont lues depuis le `.env` racine via Docker Compose.
 - En execution locale, exporter les memes variables d'environnement avant de lancer dbt.
 - Le profil dbt est dans `dbt/transformation/profiles.yml` et lit les variables avec `env_var()`.
+- Convention de target : `DBT_TARGET=dev` en local (machine/Docker local) et `DBT_TARGET=ci` dans GitHub Actions.
 
 ## Ordre recommande
 

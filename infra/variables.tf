@@ -224,3 +224,53 @@ variable "secret_datagouv_api_key_name" {
   type        = string
   default     = ""
 }
+
+variable "ci_service_account_email" {
+  description = "Service account used by CI (WIF) to push Docker images to Artifact Registry"
+  type        = string
+  default     = ""
+}
+
+# ── Cloud Run Job dbt ────────────────────────────────────────────────────────
+
+variable "create_dbt_job" {
+  description = "Create the dbt Cloud Run Job. Set to true only after the dbt image has been pushed to Artifact Registry."
+  type        = bool
+  default     = false
+}
+
+variable "dbt_job_name" {
+  description = "Cloud Run Job name for dbt transformations"
+  type        = string
+  default     = "datatalent-dbt-job"
+}
+
+variable "dbt_compute_image" {
+  description = "Container image for the dbt Cloud Run Job"
+  type        = string
+  default     = ""
+}
+
+variable "dbt_memory" {
+  description = "Memory limit for the dbt job container"
+  type        = string
+  default     = "1Gi"
+}
+
+variable "dbt_cpu" {
+  description = "CPU limit for the dbt job container"
+  type        = string
+  default     = "1"
+}
+
+variable "dbt_timeout_seconds" {
+  description = "dbt Cloud Run Job timeout in seconds"
+  type        = number
+  default     = 1800
+}
+
+variable "dbt_max_retries" {
+  description = "dbt Cloud Run Job max retries"
+  type        = number
+  default     = 0
+}

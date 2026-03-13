@@ -101,6 +101,20 @@ module "compute" {
   ingestion_service_account_email = var.ingestion_service_account_email
   job_invoker_service_accounts    = compact([local.scheduler_service_account_email])
   create_job                      = var.create_compute_job
+  ci_service_account_email        = var.ci_service_account_email
+  create_dbt_job                  = var.create_dbt_job
+  dbt_job_name                    = var.dbt_job_name
+  dbt_image                       = var.dbt_compute_image
+  dbt_service_account_email       = var.dbt_service_account_email
+  dbt_memory                      = var.dbt_memory
+  dbt_cpu                         = var.dbt_cpu
+  dbt_timeout_seconds             = var.dbt_timeout_seconds
+  dbt_max_retries                 = var.dbt_max_retries
+
+  dbt_plain_env = {
+    GCP_PROJECT_ID = var.project_id
+    DBT_TARGET     = "dev"
+  }
 
   plain_env = {
     GCP_PROJECT_ID                  = var.project_id
