@@ -54,8 +54,16 @@ data "google_project" "current" {
 
 # GCP IAM bindings peuvent prendre jusqu'à 60s à se propager.
 # Sans ce délai, la création du Cloud Run Job échoue avec 403 sur Artifact Registry.
+# Les triggers forcent une re-création du sleep si l'un des bindings IAM change lors d'un
+# apply ultérieur — sans triggers, time_sleep resterait en state et ne re-attendrait pas.
 resource "time_sleep" "wait_for_iam_propagation" {
   create_duration = "60s"
+
+  triggers = {
+    # one() retourne null si count=0 (ingestion_sa non fourni), on le remplace par une chaîne vide pour respecter map(string)
+     ingestion_iam_id = coalesce(one(google_project_iam_member.ingestion_artifact_registry_reader[*].id), "")
+    cloud_run_iam_id = google_project_iam_member.cloud_run_service_agent_artifact_registry_reader.id
+  }
 
   depends_on = [
     google_project_iam_member.ingestion_artifact_registry_reader,
