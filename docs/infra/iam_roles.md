@@ -249,37 +249,31 @@ Ce SA est utilisé par Terraform (CI GitHub Actions via WIF, ou ADC en local). I
 
 | Rôle | Portée | Ressource cible | Pourquoi | Statut |
 |------|--------|-----------------|----------|--------|
-| `roles/storage.admin` | Projet | — | Créer / configurer le bucket raw + le bucket tfstate | 🔧 Manuel |
-| `roles/bigquery.admin` | Projet | — | Créer / configurer les datasets BigQuery | 🔧 Manuel |
-| `roles/run.admin` | Projet | — | Déployer le Cloud Run Job (INFRA-04) | 🔧 Manuel ❌ à faire |
-| `roles/cloudscheduler.admin` | Projet | — | Créer / modifier les 3 jobs Cloud Scheduler (INFRA-05) | 🔧 Manuel ❌ à faire |
-| `roles/secretmanager.admin` | Projet | — | Créer les secret containers Secret Manager (INFRA-06) | 🔧 Manuel ❌ à faire |
+| `roles/storage.admin` | Projet | — | Créer / configurer le bucket raw + le bucket tfstate | ✅ Accordé |
+| `roles/bigquery.admin` | Projet | — | Créer / configurer les datasets BigQuery | ✅ Accordé |
+| `roles/artifactregistry.admin` | Projet | — | Créer ET modifier le repo Artifact Registry (update description, settings) | 🔧 Manuel ❌ **À FAIRE EN PRIORITÉ** — cause de l'erreur 403 `repositories.update` |
+| `roles/run.admin` | Projet | — | Déployer les Cloud Run Jobs ingestion + dbt (INFRA-04) | 🔧 Manuel ❌ à faire avant d'activer `create_compute_job=true` |
+| `roles/cloudscheduler.admin` | Projet | — | Créer / modifier les 3 jobs Cloud Scheduler (INFRA-05) | 🔧 Manuel ❌ à faire avant d'activer `create_compute_job=true` |
+| `roles/secretmanager.admin` | Projet | — | Créer les secret containers Secret Manager (INFRA-06) | 🔧 Manuel (secrets déjà créés manuellement + importés en state — non bloquant pour l'instant) |
 | `roles/serviceusage.serviceUsageAdmin` | Projet | — | Activer les APIs GCP manquantes depuis la CI (optionnel) | 🔧 Manuel (recommandé) |
-| `roles/iam.serviceAccountUser` | SA Resource | `ingestion-sa` | Assigner `ingestion-sa` comme `service_account` du Cloud Run Job | 🔧 Manuel ❌ à faire |
+| `roles/iam.serviceAccountUser` | SA Resource | `ingestion-sa`, `dbt-sa` | Assigner les SA aux Cloud Run Jobs (INFRA-04) | 🔧 Manuel ❌ à faire avant d'activer `create_compute_job=true` |
 
-**Commandes gcloud** — rôles déjà accordés (INFRA-01/02/03) :
-
-```bash
-TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
-PROJECT="cartographie-data-engineer"
-
-gcloud projects add-iam-policy-binding ${PROJECT} \
-  --member="serviceAccount:${TF_SA}" \
-  --role="roles/storage.admin"
-
-gcloud projects add-iam-policy-binding ${PROJECT} \
-  --member="serviceAccount:${TF_SA}" \
-  --role="roles/bigquery.admin"
-```
-
-**Commandes gcloud** — rôles manquants pour INFRA-04/05/06 (❌ à exécuter) :
+**Commandes gcloud** — fix immédiat + rôles manquants :
 
 ```bash
 TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
 PROJECT="cartographie-data-engineer"
 INGESTION_SA="ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com"
+DBT_SA="dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com"
 
-# Cloud Run (INFRA-04)
+# ❌ FIX PRIORITAIRE — résout l'erreur 403 artifactregistry.repositories.update
+# Le SA peut créer le repo mais pas le modifier (ajout de description déclenche un update)
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/artifactregistry.admin"
+
+# ❌ Avant d'activer create_compute_job=true (INFRA-04 activation)
+# Cloud Run
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/run.admin"
@@ -289,21 +283,21 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/cloudscheduler.admin"
 
-# Secret Manager (INFRA-06)
-gcloud projects add-iam-policy-binding ${PROJECT} \
-  --member="serviceAccount:${TF_SA}" \
-  --role="roles/secretmanager.admin"
-
-# Optionnel: autoriser la CI à activer les APIs GCP manquantes
-gcloud projects add-iam-policy-binding ${PROJECT} \
-  --member="serviceAccount:${TF_SA}" \
-  --role="roles/serviceusage.serviceUsageAdmin"
-
-# Permet à terraform-deployer-sa d'assigner ingestion-sa au Cloud Run Job
+# Permet d'assigner ingestion-sa et dbt-sa aux Cloud Run Jobs
 gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/iam.serviceAccountUser" \
   --project=${PROJECT}
+
+gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/iam.serviceAccountUser" \
+  --project=${PROJECT}
+
+# Optionnel : autoriser la CI à activer les APIs GCP manquantes
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/serviceusage.serviceUsageAdmin"
 ```
 
 > **En CI (GitHub Actions WIF)** : remplacer `terraform-deployer-sa` par le SA WIF configuré dans le workflow (`GCP_WIF_SERVICE_ACCOUNT`). Les mêmes rôles s'appliquent.
@@ -333,7 +327,7 @@ gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
 | `dbt-sa` | ✅ Créé | BQ dataViewer(raw) ✅ + BQ dataEditor(staging,marts) ✅ + BQ jobUser ✅ + Storage objectViewer(bucket raw) ✅ | ✅ Géré Terraform — `storage.objectViewer` ajouté pour External Tables |
 | `dashboard-sa` | ✅ Créé | BQ dataViewer(marts) + BQ jobUser ✅ | ✅ Géré Terraform (appliqué INFRA-03) |
 | `scheduler-sa` | ✅ Créé | run.invoker (projet) — binding appliqué par terraform apply INFRA-04 | ⏳ En attente terraform apply INFRA-04 |
-| `terraform-deployer-sa` | ✅ Créé | storage.admin + bigquery.admin ✅ / run.admin + cloudscheduler.admin + secretmanager.admin + iam.serviceAccountUser ❌ | ⚠️ Incomplet pour INFRA-04/05/06 |
+| `terraform-deployer-sa` | ✅ Créé | storage.admin ✅ + bigquery.admin ✅ / **artifactregistry.admin ❌ (BLOQUANT)** / run.admin + cloudscheduler.admin + iam.serviceAccountUser ❌ (à faire avant INFRA-04/05) | ⚠️ Incomplet — voir section 6 |
 
 ---
 

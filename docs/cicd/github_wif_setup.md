@@ -33,6 +33,7 @@ Note de primtre : le workflow actuel couvre principalement `terraform plan` sur 
 - Rles du SA dj en place pour le scope actuel :
   - `roles/storage.admin`
   - `roles/bigquery.admin`
+  - `roles/artifactregistry.admin` (requis pour créer ET modifier le repo AR — manquant = erreur 403)
 - Accs admin suffisant sur le projet pour crer pool/provider IAM
 - Repo GitHub cible :
   - Org : `GITHUB_ORG`
@@ -77,8 +78,9 @@ Commandes ( excuter une fois) :
 TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
 PROJECT="cartographie-data-engineer"
 INGESTION_SA="ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com"
+DBT_SA="dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com"
 
-# Ressources infra
+# Ressources infra de base
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/storage.admin"
@@ -87,6 +89,13 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/bigquery.admin"
 
+# ❌ REQUIS — sans ce rôle, terraform apply échoue avec 403 sur le repo AR
+# (update de la description du repo Artifact Registry)
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/artifactregistry.admin"
+
+# À accorder avant d'activer create_compute_job=true (INFRA-04/05)
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/run.admin"
@@ -99,8 +108,13 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/secretmanager.admin"
 
-# Permet d'assigner ingestion-sa au Cloud Run Job
+# Permet d'assigner ingestion-sa et dbt-sa aux Cloud Run Jobs
 gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/iam.serviceAccountUser" \
+  --project=${PROJECT}
+
+gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/iam.serviceAccountUser" \
   --project=${PROJECT}
@@ -280,16 +294,16 @@ Pourquoi :
 
 ## 11) Comment le workflow sauthentifie ensuite
 
-Le workflow fera :
+Le workflow `infra-deploy.yml` orchestre 4 jobs sur push `main` :
 
-1. Checkout du repo
-2. Auth GitHub ? GCP via WIF
-3. Lancement du conteneur `infra-iac`
-4. Excution de `terraform init`, `validate`, `plan`, `apply`
+1. **`ingestion-verify`** — Checkout + `docker build` Dockerfile ingestion (vérifie la validité)
+2. **`dbt-verify`** — Checkout + Auth WIF + `docker build` dbt + `dbt parse` + `dbt compile`
+3. **`terraform`** (bloqué jusqu'au succès des 2 verify) — Auth WIF + `terraform init/validate/apply`
+4. **`push-images`** (bloqué jusqu'au succès de terraform) — Auth WIF + `docker build` + `docker push` ingestion et dbt vers Artifact Registry
 
 Le conteneur Terraform ne porte pas de cl JSON persistante.
 
-Dans le primtre actuel, cette chane correspond  la release infra. Elle ne couvre pas encore l'ensemble du pipeline qualit/dbt dcrit par le backlog INFRA-09.
+Sur PR : seuls `ingestion-verify` + `dbt-verify` + `terraform plan` s'exécutent. Pas de push images, pas d'apply.
 
 ---
 

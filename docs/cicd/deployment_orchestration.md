@@ -72,16 +72,31 @@ Sinon, garder **1 job paramétré** est la meilleure option.
 
 **Cible** : < 5€/mois hors free tier GCP (1 To/mois queries BQ, 5 Go storage BQ, 3 Scheduler jobs, 2M Cloud Run invocations).
 
+## Pipeline CI/CD — workflow `infra-deploy.yml` (push main)
+
+Le workflow unique `infra-deploy.yml` orchestre tout sur push `main` en 4 jobs :
+
+| Job | Rôle | Déclencheur |
+|-----|------|-------------|
+| `ingestion-verify` | Build Dockerfile ingestion (vérification validité) | Toujours |
+| `dbt-verify` | Build image dbt + `dbt parse` + `dbt compile` | Toujours |
+| `terraform` | `terraform apply` (bloqué si verify échoue) | needs: [ingestion-verify, dbt-verify] |
+| `push-images` | Build + push `ingestion:latest` et `dbt:latest` vers AR | needs: [terraform], main seulement |
+
+Sur **PR** : seuls `ingestion-verify` + `dbt-verify` + `terraform plan` s'exécutent (pas de push images, pas d'apply).
+
+Workflows séparés `dbt-ci.yml` / `ingestion-ci.yml` : actifs uniquement sur leurs paths respectifs (`dbt/transformation/**`, `src/ingestion/**`).
+
 ## Périmètre actuel documenté
 
-La documentation opérationnelle restructurée couvre surtout le périmètre infra actuel :
+La documentation opérationnelle couvre :
 
 - provisioning Terraform des ressources GCP,
 - IAM nécessaire au fonctionnement des modules infra,
 - chargement des secrets runtime,
-- release infra via GitHub Actions.
+- release infra + images Docker via GitHub Actions (`infra-deploy.yml`).
 
-Les étapes dbt et dashboard sont rappelées ici pour la vision cible, mais elles ne sont pas encore documentées comme une release complète dans ces guides infra.
+Les étapes dbt run/test et dashboard sont rappelées ici pour la vision cible, mais ne sont pas encore intégrées dans le pipeline CI (INFRA-09 partiel).
 
 ## Guides à suivre selon l'étape
 
@@ -90,25 +105,29 @@ Les étapes dbt et dashboard sont rappelées ici pour la vision cible, mais elle
 - exécution Terraform via Docker : [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md)
 - exécution Terraform locale : [docs/infra/manual_commands.md](../infra/manual_commands.md)
 - secrets runtime : [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md)
-- CI GitHub ↔ GCP : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
-- matrice IAM : [docs/infra/iam_roles.md](../infra/iam_roles.md)
+- CI GitHub ↔ GCP (WIF + IAM SA) : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
+- matrice IAM complète : [docs/infra/iam_roles.md](../infra/iam_roles.md)
+- statut tickets INFRA : [docs/infra/infra_epic4_status.md](../infra/infra_epic4_status.md)
 
 ## État actuel synthétique
 
 **Créé par Terraform (activé par défaut) :**
 - Bucket raw GCS avec lifecycle Nearline (30j) + suppression geo/ (90j)
 - Datasets BigQuery `raw`, `staging`, `marts`
-- IAM complet : tous les SA (ingestion, dbt, dashboard) — y compris IAM Artifact Registry préparés en avance
+- IAM complet : tous les SA (ingestion, dbt, dashboard, CI) — y compris IAM Artifact Registry préparés en avance
 - Secret Manager + bindings `secretAccessor` pour `ingestion-sa`
-- Workflow CI Terraform via WIF (plan PR, apply merge main)
+- Artifact Registry repo `datatalent` (images ingestion + dbt)
+- Pipeline CI : verify ingestion + verify dbt → terraform apply → push images (sur merge main)
 
 **Défini mais désactivé (activer après prérequis) :**
-- `create_compute_job = false` : Cloud Run Job + 3 Schedulers — activer après push de l'image ingestion dans Artifact Registry
+- `create_compute_job = false` : Cloud Run Job ingestion + 3 Schedulers — activer après premier push image réussi
+- `create_dbt_job = false` : Cloud Run Job dbt — activer après premier push image dbt réussi
 - `create_external_tables = false` : External Tables `raw.sirene_etablissements`, `raw.sirene_unites_legales`, `raw.france_travail_offres` — activer après la première ingestion (BQ autodetect requiert des fichiers Parquet)
 
-**Conteneurs Docker disponibles :** `infra-iac` (Terraform), `ingestion` (Python, profile `ingestion`), `dbt` (dbt-bigquery, profile `dbt`)
+**IAM bloquant à corriger avant le prochain apply :**
+- `roles/artifactregistry.admin` manquant sur `terraform-deployer-sa` → voir [docs/infra/iam_roles.md](../infra/iam_roles.md) section 6
 
-Le suivi détaillé des tickets reste dans [docs/infra/infra_epic4_status.md](../infra/infra_epic4_status.md).
+**Conteneurs Docker disponibles :** `infra-iac` (Terraform), `ingestion` (Python), `dbt` (dbt-bigquery)
 
 ## Règle documentaire
 

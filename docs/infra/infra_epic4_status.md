@@ -30,11 +30,61 @@ Guides d'exécution:
 
 ## Actions restantes prioritaires
 
-1. **Pousser la branche** `feature_infra_04` sur `main` — `terraform apply` ne crée que bucket + datasets + IAM (compute et external tables désactivés par défaut).
-2. **Développer les scripts d'ingestion** (`src/ingestion/`), builder et pusher l'image vers Artifact Registry, puis activer `TF_VAR_create_compute_job=true` dans le workflow CI.
-3. **Activer les External Tables BQ** après la première ingestion : re-apply avec `TF_VAR_create_external_tables=true`. Voir [docs/infra/manual_commands.md](manual_commands.md#activer-les-external-tables-bigquery-après-la-première-ingestion).
-4. **Compléter INFRA-09** : ajouter lint Python (`ruff`), puis `dbt run` + `dbt test` sur merge `main` (les checks `parse/compile` sont déjà en place).
-5. **Créer `docs/cost_estimation.md`** (INFRA-08) — estimer les coûts avec Infracost ou manuellement.
+### Bloquant immédiat — Erreur 403 `artifactregistry.repositories.update`
+
+Le workflow `infra-deploy.yml` échoue lors du `terraform apply` sur la branche `main`.
+
+**Cause** : le SA WIF (`terraform-deployer-sa`) n'a pas `roles/artifactregistry.admin`. Terraform essaie de mettre à jour le repo Artifact Registry existant (ajout du champ `description`), ce qui nécessite `artifactregistry.repositories.update`.
+
+**Fix — exécuter une seule fois depuis Cloud Shell** :
+
+```bash
+TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
+PROJECT="cartographie-data-engineer"
+
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/artifactregistry.admin"
+```
+
+Puis relancer le workflow (push ou `workflow_dispatch`).
+
+### Ordre des étapes CI/CD (logique confirmée — mis à jour)
+
+Le workflow `infra-deploy.yml` orchestre l'ensemble sur push `main` en **4 jobs séquentiels/parallèles** :
+
+```
+push main
+    ├──► ingestion-verify  ──────────────────────┐
+    │    (build Dockerfile ingestion)            ├──► terraform (apply) ──► push-images
+    └──► dbt-verify  ──────────────────────────  ┘         (AR repo +        (build + push
+         (build dbt + parse + compile)               IAM bindings)     ingestion + dbt → AR)
+```
+
+1. **`ingestion-verify`** — build du `Dockerfile` ingestion (vérification validité, pas de push)
+2. **`dbt-verify`** — build image dbt + `dbt parse` + `dbt compile` (vérification modèles)
+3. **`terraform`** — bloqué jusqu'à succès des deux verify → `terraform apply` sur main
+4. **`push-images`** — rebuild + push `ingestion:latest` et `dbt:latest` vers Artifact Registry
+
+**Workflows séparés (`dbt-ci.yml` / `ingestion-ci.yml`)** : conservés pour les PR et pushes ciblés sur leurs paths respectifs (`dbt/transformation/**`, `src/ingestion/**`). Sur push main sans ces paths, `infra-deploy.yml` prend le relais via `push-images`.
+
+Les variables de garde restent actives :
+- `TF_VAR_create_compute_job=false` — Cloud Run Job ingestion non créé
+- `TF_VAR_create_dbt_job=false` — Cloud Run Job dbt non créé
+- `TF_VAR_create_external_tables=false` — External Tables BQ non créées
+
+Étapes futures :
+- (après images dans AR) Activer `TF_VAR_create_compute_job=true` + `TF_VAR_create_dbt_job=true`
+- (après première ingestion) Activer `TF_VAR_create_external_tables=true`
+
+### Prochaines étapes après fix IAM
+
+1. **Développer les scripts d'ingestion** (`src/ingestion/`), builder et pusher l'image vers Artifact Registry.
+2. **Développer les modèles dbt** (`dbt/transformation/`), pusher l'image dbt vers Artifact Registry.
+3. **Activer les Cloud Run Jobs** : passer `TF_VAR_create_compute_job=true` + `TF_VAR_create_dbt_job=true` dans le workflow — nécessite aussi d'accorder au préalable `roles/run.admin`, `roles/cloudscheduler.admin`, `roles/iam.serviceAccountUser` au SA WIF (voir [docs/infra/iam_roles.md](iam_roles.md) section 6).
+4. **Activer les External Tables BQ** après la première ingestion : re-apply avec `TF_VAR_create_external_tables=true`.
+5. **Compléter INFRA-09** : ajouter lint Python (`ruff`), puis `dbt run` + `dbt test` sur merge `main`.
+6. **Créer `docs/cost_estimation.md`** (INFRA-08) — estimer les coûts avec Infracost ou manuellement.
 
 ## CI Security
 
