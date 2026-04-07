@@ -1,3 +1,6 @@
+# Local dev — chargement .env (sans effet si vars déjà injectées par Cloud Run)
+python-dotenv==1.0.1
+
 # GCP clients
 google-cloud-storage==2.18.2
 google-cloud-bigquery==3.25.0
