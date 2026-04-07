@@ -122,8 +122,8 @@ jobs:
       TF_VAR_manage_project_job_user_bindings: "false"
       # Cloud Run Job + Scheduler (false tant que l'image n'est pas dans Artifact Registry)
       TF_VAR_create_compute_job: "false"
-      # External Tables BQ (false tant que le bucket est vide — activer après la 1ère ingestion)
-      TF_VAR_create_external_tables: "false"
+      # External Tables BQ — activé, les 3 sources sont dans GCS
+      TF_VAR_create_external_tables: "true"
       # Compute (INFRA-04)
       TF_VAR_compute_job_name: datatalent-ingestion-job
       TF_VAR_compute_image: europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
