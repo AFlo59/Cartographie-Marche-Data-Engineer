@@ -87,7 +87,8 @@ resource "google_bigquery_table" "raw_france_travail_offres" {
     autodetect    = true
     source_format = "PARQUET"
     # Wildcard sur tous les sous-dossiers dt=*
-    source_uris = ["gs://${var.raw_bucket_name}/${trim(var.raw_france_travail_prefix, "/")}/*/*.parquet"]
+    # dt=* = un seul wildcard — BQ Hive AUTO détecte la colonne `dt` depuis le nom du dossier
+    source_uris = ["gs://${var.raw_bucket_name}/${trim(var.raw_france_travail_prefix, "/")}/dt=*/offres.parquet"]
 
     hive_partitioning_options {
       mode                     = "AUTO"
