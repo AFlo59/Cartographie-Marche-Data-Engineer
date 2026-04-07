@@ -221,11 +221,11 @@ Plan: 1 to add, 0 to change, 0 to destroy
 │ 2. Vérifier secrets CI (fail-fast)          │
 │ 3. Auth GCP via WIF                         │
 │ 4. Setup gcloud CLI                         │
-│ 5. Créer bucket d'état si absent ✅         │
+│ 5. Créer bucket d'état si absent            │
 │ 6. terraform init (télécharge state)        │
 │ 7. terraform validate                       │
-│ 8. ❌ PAS DE PLAN                           │
-│ 9. ❌ PAS DE APPLY                          │
+│ 8.  PAS DE PLAN                             │
+│ 9.  PAS DE APPLY                            │
 └─────────────────────────────────────────────┘
 
 💡 Utilité: vérifier le wiring CI et la validité Terraform sans mutation infra.
@@ -235,46 +235,46 @@ Plan: 1 to add, 0 to change, 0 to destroy
 
 ```
 ┌─────────────────────────────────────────────┐
-│ Merge develop → push sur main                │
+│ Merge develop → push sur main               │
 └─────────────────────────────────────────────┘
                     ⬇️
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ GitHub Actions déclenché (event: push) — 4 jobs dans infra-deploy.yml      │
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ GitHub Actions déclenché (event: push) — 4 jobs dans infra-deploy.yml        │
 │                                                                              │
-│  JOB 1 & 2 (parallèles)                                                     │
-│  ┌─────────────────────────────────┐  ┌─────────────────────────────────────┐│
-│  │ ingestion-verify                │  │ dbt-verify                          ││
-│  │ 1. Checkout                     │  │ 1. Checkout                         ││
-│  │ 2. docker build Dockerfile      │  │ 2. Auth GCP via WIF                 ││
-│  │    ingestion (vérif validité)   │  │ 3. docker build dbt image           ││
-│  └─────────────────────────────────┘  │ 4. dbt parse                        ││
-│                                        │ 5. dbt compile                      ││
-│                                        └─────────────────────────────────────┘│
-│                         ⬇️ needs: [ingestion-verify, dbt-verify]              │
+│  JOB 1 & 2 (parallèles)                                                      │
+│  ┌─────────────────────────────────┐  ┌────────────────────────────────────┐ │
+│  │ ingestion-verify                │  │ dbt-verify                         │ │
+│  │ 1. Checkout                     │  │ 1. Checkout                        │ │
+│  │ 2. docker build Dockerfile      │  │ 2. Auth GCP via WIF                │ │
+│  │    ingestion (vérif validité)   │  │ 3. docker build dbt image          │ │
+│  └─────────────────────────────────┘  │ 4. dbt parse                       │ │
+│                                        │ 5. dbt compile                    │ │
+│                                        └───────────────────────────────────┘ │
+│                ⬇️ needs: [ingestion-verify, dbt-verify] ⬇️                  │
 │  JOB 3                                                                       │
-│  ┌───────────────────────────────────────────────────────────────────────────┐│
-│  │ terraform                                                                 ││
-│  │ 1. Checkout + Check secrets CI                                           ││
-│  │ 2. Auth GCP via WIF                                                      ││
-│  │ 3. Setup gcloud CLI                                                      ││
-│  │ 4. Activer APIs (best effort)                                            ││
-│  │ 5. Bootstrap bucket tfstate                                              ││
-│  │ 6. terraform init + validate                                             ││
-│  │ 7. Vérifier APIs requises (bloquant)                                     ││
-│  │ 8. terraform import (best effort)                                        ││
-│  │ 9. terraform apply -auto-approve 🚀                                      ││
-│  └───────────────────────────────────────────────────────────────────────────┘│
-│                         ⬇️ needs: [terraform]                                 │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │ terraform                                                              │  │
+│  │ 1. Checkout + Check secrets CI                                         │  │
+│  │ 2. Auth GCP via WIF                                                    │  │
+│  │ 3. Setup gcloud CLI                                                    │  │
+│  │ 4. Activer APIs (best effort)                                          │  │
+│  │ 5. Bootstrap bucket tfstate                                            │  │
+│  │ 6. terraform init + validate                                           │  │
+│  │ 7. Vérifier APIs requises (bloquant)                                   │  │
+│  │ 8. terraform import (best effort)                                      │  │
+│  │ 9. terraform apply -auto-approve                                       │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                         ⬇️ needs: [terraform] ⬇️                            │
 │  JOB 4                                                                       │
-│  ┌───────────────────────────────────────────────────────────────────────────┐│
-│  │ push-images                                                               ││
-│  │ 1. Checkout                                                               ││
-│  │ 2. Auth GCP via WIF                                                      ││
-│  │ 3. Configure Docker pour Artifact Registry                               ││
-│  │ 4. Build + push ingestion:latest et ingestion:<sha>                      ││
-│  │ 5. Build + push dbt:latest et dbt:<sha>                                  ││
-│  └───────────────────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────────────────┘
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │ push-images                                                            │  │
+│  │ 1. Checkout                                                            │  │
+│  │ 2. Auth GCP via WIF                                                    │  │
+│  │ 3. Configure Docker pour Artifact Registry                             │  │
+│  │ 4. Build + push ingestion:latest et ingestion:<sha>                    │  │
+│  │ 5. Build + push dbt:latest et dbt:<sha>                                │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────┘
 
 🚨 IMPORTANT: terraform apply et push images sont appliqués immédiatement sur main
 ```
@@ -291,13 +291,13 @@ Plan: 1 to add, 0 to change, 0 to destroy
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  Secrets (chiffré):                                              │
-│  ├─ GCP_PROJECT_ID                                              │
-│  ├─ GCP_WIF_PROVIDER                                            │
-│  └─ GCP_WIF_SERVICE_ACCOUNT                                     │
+│  ├─ GCP_PROJECT_ID                                               │
+│  ├─ GCP_WIF_PROVIDER                                             │
+│  └─ GCP_WIF_SERVICE_ACCOUNT                                      │
 │                                                                  │
 │  .github/workflows/infra-deploy.yml:                             │
-│  ├─ Déclenche sur: PR vers main/develop, push sur main/develop │
-│  └─ Env vars: TF_VAR_*, TF_BACKEND_BUCKET                       │
+│  ├─ Déclenche sur: PR vers main/develop, push sur main/develop   │
+│  └─ Env vars: TF_VAR_*, TF_BACKEND_BUCKET                        │
 │                                                                  │
 └──────────────────────────────────────────────────────────────────┘
                             ⬇️
@@ -306,18 +306,18 @@ Plan: 1 to add, 0 to change, 0 to destroy
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  En mémoire (le temps du workflow):                              │
-│  ├─ Code du repo (checkout)                                     │
-│  ├─ Variables d'environnement TF_VAR_*                          │
-│  ├─ Token GCP (via WIF)                                         │
-│  ├─ terraform.tfstate (téléchargé depuis GCS)                  │
-│  └─ tfplan file (résultat du plan)                             │
+│  ├─ Code du repo (checkout)                                      │
+│  ├─ Variables d'environnement TF_VAR_*                           │
+│  ├─ Token GCP (via WIF)                                          │
+│  ├─ terraform.tfstate (téléchargé depuis GCS)                    │
+│  └─ tfplan file (résultat du plan)                               │
 │                                                                  │
 │  Terraform:                                                      │
 │  └─ infra/                                                       │
-│     ├─ variables.tf (structure des inputs)                      │
-│     ├─ main.tf (logique des ressources)                         │
-│     ├─ modules/ (composants réutilisables)                      │
-│     └─ versions.tf (backend GCS, provider GCP)                  │
+│     ├─ variables.tf (structure des inputs)                       │
+│     ├─ main.tf (logique des ressources)                          │
+│     ├─ modules/ (composants réutilisables)                       │
+│     └─ versions.tf (backend GCS, provider GCP)                   │
 │                                                                  │
 └──────────────────────────────────────────────────────────────────┘
                             ⬇️
@@ -326,26 +326,26 @@ Plan: 1 to add, 0 to change, 0 to destroy
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  Authentification:                                               │
-│  └─ Service Account: terraform-deployer-sa                      │
-│     ├─ Rôle: storage.admin                                      │
-│     ├─ Rôle: bigquery.admin                                     │
-│     ├─ Rôle: run.admin                                          │
-│     ├─ Rôle: cloudscheduler.admin                               │
-│     └─ Rôle: secretmanager.admin                                │
+│  └─ Service Account: terraform-deployer-sa                       │
+│     ├─ Rôle: storage.admin                                       │
+│     ├─ Rôle: bigquery.admin                                      │
+│     ├─ Rôle: run.admin                                           │
+│     ├─ Rôle: cloudscheduler.admin                                │
+│     └─ Rôle: secretmanager.admin                                 │
 │                                                                  │
 │  Stockage d'état (Backend Terraform):                            │
-│  └─ Bucket GCS: ${TERRAFORM_STATE_BUCKET}                      │
-│     └─ Fichier: terraform.tfstate (JSON complet)               │
-│        └─ Contient: État réel de TOUTES les ressources         │
+│  └─ Bucket GCS: ${TERRAFORM_STATE_BUCKET}                        │
+│     └─ Fichier: terraform.tfstate (JSON complet)                 │
+│        └─ Contient: État réel de TOUTES les ressources           │
 │                                                                  │
-│  Ressources créées par Terraform:                               │
-│  ├─ Cloud Storage Bucket (raw data)                             │
-│  ├─ BigQuery Datasets (raw, staging, marts)                     │
-│  ├─ BigQuery Tables                                             │
-  ├─ Cloud Run Job (ingestion) avec image Docker                 │
-  ├─ Cloud Scheduler (triggers d'exécution)                      │
-  ├─ Service Accounts (ingestion, transformation, dashboards)   │
-│  └─ Secret Manager (FT_CLIENT_ID, etc.)                        │
+│  Ressources créées par Terraform:                                │
+│  ├─ Cloud Storage Bucket (raw data)                              │
+│  ├─ BigQuery Datasets (raw, staging, marts)                      │
+│  ├─ BigQuery Tables                                              │
+  ├─ Cloud Run Job (ingestion) avec image Docker                   │
+  ├─ Cloud Scheduler (triggers d'exécution)                        │
+  ├─ Service Accounts (ingestion, transformation, dashboards)      │
+│  └─ Secret Manager (FT_CLIENT_ID, etc.)                          │
 │                                                                  │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -389,7 +389,7 @@ Plan: 1 to add, 0 to change, 0 to destroy
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ GitHub Secret Storage (chiffré au repos)                    │
-│                                                              │
+│                                                             │
 │ secrets.GCP_PROJECT_ID                                      │
 │ secrets.GCP_WIF_PROVIDER                                    │
 │ secrets.GCP_WIF_SERVICE_ACCOUNT                             │
@@ -397,7 +397,7 @@ Plan: 1 to add, 0 to change, 0 to destroy
                           ⬇️ (lors du run)
 ┌─────────────────────────────────────────────────────────────┐
 │ Runner - Step: "Check required CI secrets"                  │
-│                                                              │
+│                                                             │
 │ Décrypte les secrets en variables d'environnement           │
 │ Vérifie qu'ils ne sont pas vides                            │
 │ Fail-fast si absent (sortie du workflow)                    │
@@ -405,21 +405,21 @@ Plan: 1 to add, 0 to change, 0 to destroy
                           ⬇️
 ┌─────────────────────────────────────────────────────────────┐
 │ Runner - Step: "Auth GCP via WIF"                           │
-│                                                              │
+│                                                             │
 │ google-github-actions/auth@v3 reçoit:                       │
 │ ├─ workload_identity_provider (secret)                      │
 │ └─ service_account (secret)                                 │
-│                                                              │
+│                                                             │
 │ Échange JWT GitHub → Token GCP                              │
 │ Stocke le token dans GOOGLE_APPLICATION_CREDENTIALS         │
 └─────────────────────────────────────────────────────────────┘
                           ⬇️
 ┌─────────────────────────────────────────────────────────────┐
-│ Runner - Step: "Terraform Init/Plan/Apply"                 │
-│                                                              │
-│ Terraform utilise le token de GOOGLE_APPLICATION_CREDENTIALS
+│ Runner - Step: "Terraform Init/Plan/Apply"                  │
+│                                                             │
+│ Terraform utilise le token de GOOGLE_APPLICATION_CREDENTIALS│
 │ Pour accéder à GCS (bucket state) et GCP (ressources)       │
-│                                                              │
+│                                                             │
 │ gcloud CLI aussi utilise ce token                           │
 └─────────────────────────────────────────────────────────────┘
 ```
