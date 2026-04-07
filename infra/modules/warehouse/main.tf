@@ -61,12 +61,44 @@ resource "google_bigquery_dataset_iam_member" "dashboard_marts_viewer" {
   member     = "serviceAccount:${var.dashboard_service_account}"
 }
 
-# External Tables raw → GCS
+# ── External Tables raw → GCS ────────────────────────────────────────────────
 # BigQuery lit directement le Parquet depuis GCS : zéro copie, zéro stockage BQ facturé.
-# Création conditionnée par create_external_tables = true (défaut false) :
-# BQ autodetect requiert au moins un fichier Parquet présent dans GCS à la création.
-# Activer après la première ingestion.
+# Activer après la première ingestion (create_external_tables = true).
+#
+# Structure GCS réelle :
+#   raw/france_travail/dt=YYYY-MM-DD/offres.parquet   ← Hive-partitioned par jour
+#   raw/sirene/YYYY-MM/StockEtablissement.parquet      ← mensuel, wildcard sur YYYY-MM/
+#   raw/sirene/YYYY-MM/StockUniteLegale.parquet
+#   raw/geo/YYYY-MM/communes.parquet                   ← mensuel, wildcard sur YYYY-MM/
+#   raw/geo/YYYY-MM/departements.parquet
+#   raw/geo/YYYY-MM/regions.parquet
 
+# ── France Travail ───────────────────────────────────────────────────────────
+# Hive-partitioned : dt=YYYY-MM-DD → BQ ajoute automatiquement la colonne `dt`
+resource "google_bigquery_table" "raw_france_travail_offres" {
+  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
+
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.raw.dataset_id
+  table_id            = "france_travail_offres"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "PARQUET"
+    # Wildcard sur tous les sous-dossiers dt=*
+    source_uris = ["gs://${var.raw_bucket_name}/${trim(var.raw_france_travail_prefix, "/")}/*/*.parquet"]
+
+    hive_partitioning_options {
+      mode                     = "AUTO"
+      source_uri_prefix        = "gs://${var.raw_bucket_name}/${trim(var.raw_france_travail_prefix, "/")}/"
+      require_partition_filter = false
+    }
+  }
+}
+
+# ── Sirene ───────────────────────────────────────────────────────────────────
+# Wildcard sur le dossier mensuel YYYY-MM/ : toutes les versions historiques lues
 resource "google_bigquery_table" "raw_sirene_etablissements" {
   count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
 
@@ -78,7 +110,7 @@ resource "google_bigquery_table" "raw_sirene_etablissements" {
   external_data_configuration {
     autodetect    = true
     source_format = "PARQUET"
-    source_uris   = ["gs://${var.raw_bucket_name}/${var.raw_sirene_prefix}etablissements/*.parquet"]
+    source_uris   = ["gs://${var.raw_bucket_name}/${trim(var.raw_sirene_prefix, "/")}/*/StockEtablissement.parquet"]
   }
 }
 
@@ -93,22 +125,53 @@ resource "google_bigquery_table" "raw_sirene_unites_legales" {
   external_data_configuration {
     autodetect    = true
     source_format = "PARQUET"
-    source_uris   = ["gs://${var.raw_bucket_name}/${var.raw_sirene_prefix}unites_legales/*.parquet"]
+    source_uris   = ["gs://${var.raw_bucket_name}/${trim(var.raw_sirene_prefix, "/")}/*/StockUniteLegale.parquet"]
   }
 }
 
-resource "google_bigquery_table" "raw_france_travail_offres" {
+# ── Geo ──────────────────────────────────────────────────────────────────────
+resource "google_bigquery_table" "raw_geo_communes" {
   count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
 
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.raw.dataset_id
-  table_id            = "france_travail_offres"
+  table_id            = "geo_communes"
   deletion_protection = false
 
   external_data_configuration {
     autodetect    = true
     source_format = "PARQUET"
-    source_uris   = ["gs://${var.raw_bucket_name}/${var.raw_france_travail_prefix}*.parquet"]
+    source_uris   = ["gs://${var.raw_bucket_name}/${trim(var.raw_geo_prefix, "/")}/*/communes.parquet"]
+  }
+}
+
+resource "google_bigquery_table" "raw_geo_departements" {
+  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
+
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.raw.dataset_id
+  table_id            = "geo_departements"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "PARQUET"
+    source_uris   = ["gs://${var.raw_bucket_name}/${trim(var.raw_geo_prefix, "/")}/*/departements.parquet"]
+  }
+}
+
+resource "google_bigquery_table" "raw_geo_regions" {
+  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
+
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.raw.dataset_id
+  table_id            = "geo_regions"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "PARQUET"
+    source_uris   = ["gs://${var.raw_bucket_name}/${trim(var.raw_geo_prefix, "/")}/*/regions.parquet"]
   }
 }
 
