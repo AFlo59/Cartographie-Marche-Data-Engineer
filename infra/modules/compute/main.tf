@@ -139,7 +139,7 @@ resource "google_cloud_run_v2_job_iam_member" "job_invoker" {
   project  = var.project_id
   name     = var.job_name
   location = var.region
-  role     = "roles/run.invoker"
+  role     = "roles/run.jobsExecutorWithOverrides"
   member   = "serviceAccount:${each.value}"
 
   depends_on = [google_cloud_run_v2_job.ingestion]
