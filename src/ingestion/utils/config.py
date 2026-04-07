@@ -39,9 +39,7 @@ logger = get_logger(__name__)
 
 
 def _get_secret(secret_id: str) -> str:
-    from google.cloud import (
-        secretmanager,
-    )  # import tardif — évite l'initialisation si inutile
+    from google.cloud import secretmanager  # import tardif — évite l'initialisation si inutile
 
     project_id = os.environ["GCP_PROJECT_ID"]
     client = secretmanager.SecretManagerServiceClient()
