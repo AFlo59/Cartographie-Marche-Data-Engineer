@@ -65,17 +65,22 @@ def find_parquet_urls(resources: list[dict]) -> dict[str, str]:
 
     for res in resources:
         fmt = (res.get("format") or "").lower()
-        title = res.get("title") or res.get("url", "")
+        title = res.get("title") or ""
+        url = res.get("url") or ""
+        logger.info(f"  ressource format={fmt!r} title={title!r} url={url!r}")
         if fmt not in ("parquet", "application/parquet"):
             continue
+        # Utilise l'URL (basename) pour le matching — plus fiable que le titre
+        url_basename = url.split("/")[-1].lower()
         for target_key, keyword in _TARGETS.items():
-            # Match exact : StockEtablissement_utf8 mais pas StockEtablissementLiensSuccession
-            title_lower = title.lower()
             keyword_lower = keyword.lower()
-            if keyword_lower + "_utf8" in title_lower or title_lower.startswith(
+            # Match exact sur le basename : StockEtablissement_utf8.parquet
+            # mais PAS StockEtablissementLiensSuccession_utf8.parquet
+            if url_basename.startswith(keyword_lower + "_") or url_basename.startswith(
                 keyword_lower + "."
             ):
-                found[target_key].append(res)
+                if "liensSuccession".lower() not in url_basename:
+                    found[target_key].append(res)
 
     result: dict[str, str] = {}
     for target_key, candidates in found.items():
