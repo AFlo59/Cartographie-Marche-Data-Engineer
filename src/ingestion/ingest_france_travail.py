@@ -13,20 +13,21 @@ Stratégie de collecte :
   - Retry exponentiel sur 429 / 5xx
   - Déduplication finale par id d'offre
 """
+
 import os
 import sys
 import time
 from datetime import datetime, timezone
+from typing import Optional
 
 import pandas as pd
 import requests
-from typing import Optional
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from utils.config import Config
-from utils.gcs import upload_dataframe_as_parquet
-from utils.logging_config import get_logger
+from utils.config import Config  # noqa: E402
+from utils.gcs import upload_dataframe_as_parquet  # noqa: E402
+from utils.logging_config import get_logger  # noqa: E402
 
 logger = get_logger("ingest_france_travail")
 
@@ -49,9 +50,9 @@ _DEPARTEMENTS = (
     + ["971", "972", "973", "974", "976"]
 )
 
-_PAGE_SIZE = 150       # max autorisé par l'API
+_PAGE_SIZE = 150  # max autorisé par l'API
 _MAX_RETRIES = 3
-_BACKOFF_BASE = 2      # secondes, exponentiel
+_BACKOFF_BASE = 2  # secondes, exponentiel
 _RATE_LIMIT_PAUSE = 1  # pause minimale entre requêtes (secondes)
 
 # Champs à conserver depuis la réponse API
@@ -116,14 +117,16 @@ def _request_with_retry(
         if resp.status_code == 204:
             return None  # aucun résultat
         if resp.status_code in (429, 500, 502, 503, 504):
-            wait = _BACKOFF_BASE ** attempt
+            wait = _BACKOFF_BASE**attempt
             logger.warning(
                 f"HTTP {resp.status_code} — retry {attempt + 1}/{_MAX_RETRIES} dans {wait}s"
             )
             time.sleep(wait)
             continue
         # 400 / 401 / autres : pas la peine de retry
-        logger.error(f"HTTP {resp.status_code} sur {url} params={params}: {resp.text[:200]}")
+        logger.error(
+            f"HTTP {resp.status_code} sur {url} params={params}: {resp.text[:200]}"
+        )
         return None
 
     logger.error(f"Abandon après {_MAX_RETRIES} tentatives : {url} params={params}")

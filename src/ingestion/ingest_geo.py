@@ -6,19 +6,20 @@ Schedule : mensuel — 0 4 1 * *
 Output   : raw/geo/YYYY-MM/{regions,departements,communes}.parquet
 Idempotent : écrasement mensuel (même chemin GCS)
 """
+
 import os
 import sys
 from datetime import datetime, timezone
+from typing import Optional
 
 import pandas as pd
 import requests
-from typing import Optional
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from utils.config import Config
-from utils.gcs import upload_dataframe_as_parquet
-from utils.logging_config import get_logger
+from utils.config import Config  # noqa: E402
+from utils.gcs import upload_dataframe_as_parquet  # noqa: E402
+from utils.logging_config import get_logger  # noqa: E402
 
 logger = get_logger("ingest_geo")
 
@@ -72,7 +73,9 @@ def fetch_communes() -> pd.DataFrame:
         df["latitude"] = df["centre.coordinates"].apply(
             lambda x: x[1] if isinstance(x, list) and len(x) == 2 else None
         )
-        df.drop(columns=["centre.coordinates", "centre.type"], errors="ignore", inplace=True)
+        df.drop(
+            columns=["centre.coordinates", "centre.type"], errors="ignore", inplace=True
+        )
 
     # codesPostaux est une liste — on la sérialise en string CSV
     if "codesPostaux" in df.columns:

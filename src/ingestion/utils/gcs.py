@@ -1,6 +1,7 @@
 """
 Helpers d'upload vers GCS.
 """
+
 import io
 
 import pandas as pd
@@ -12,7 +13,9 @@ from utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def upload_dataframe_as_parquet(df: pd.DataFrame, bucket_name: str, blob_path: str) -> None:
+def upload_dataframe_as_parquet(
+    df: pd.DataFrame, bucket_name: str, blob_path: str
+) -> None:
     """Sérialise un DataFrame en Parquet et l'écrase sur GCS (idempotent)."""
     client = storage.Client()
     blob = client.bucket(bucket_name).blob(blob_path)

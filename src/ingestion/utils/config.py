@@ -5,6 +5,7 @@ Priorité : variable d'environnement → Secret Manager (Cloud Run).
 En local : charge automatiquement le .env trouvé dans le répertoire courant
 ou dans les parents (sans effet si les vars sont déjà injectées par Cloud Run).
 """
+
 import os
 from pathlib import Path
 from typing import Optional
@@ -15,12 +16,20 @@ try:
 
     # Cherche src/ingestion/.env d'abord, puis remonte jusqu'au .env racine
     _env_file = next(
-        (p / ".env" for p in [Path(__file__).parent.parent, Path(__file__).parent.parent.parent.parent]
-         if (p / ".env").is_file()),
+        (
+            p / ".env"
+            for p in [
+                Path(__file__).parent.parent,
+                Path(__file__).parent.parent.parent.parent,
+            ]
+            if (p / ".env").is_file()
+        ),
         None,
     )
     if _env_file:
-        load_dotenv(_env_file, override=False)  # override=False : les vars déjà présentes priment
+        load_dotenv(
+            _env_file, override=False
+        )  # override=False : les vars déjà présentes priment
 except ImportError:
     pass
 
@@ -30,7 +39,9 @@ logger = get_logger(__name__)
 
 
 def _get_secret(secret_id: str) -> str:
-    from google.cloud import secretmanager  # import tardif — évite l'initialisation si inutile
+    from google.cloud import (
+        secretmanager,
+    )  # import tardif — évite l'initialisation si inutile
 
     project_id = os.environ["GCP_PROJECT_ID"]
     client = secretmanager.SecretManagerServiceClient()

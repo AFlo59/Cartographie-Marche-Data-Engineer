@@ -12,6 +12,7 @@ Stratégie :
   - Téléchargement en streaming → upload GCS resumable (aucun chargement en mémoire)
   - Retry avec backoff exponentiel sur erreurs réseau / HTTP 5xx
 """
+
 import os
 import sys
 import time
@@ -20,9 +21,9 @@ import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from utils.config import Config
-from utils.gcs import stream_upload_to_gcs
-from utils.logging_config import get_logger
+from utils.config import Config  # noqa: E402
+from utils.gcs import stream_upload_to_gcs  # noqa: E402
+from utils.logging_config import get_logger  # noqa: E402
 
 logger = get_logger("ingest_sirene")
 
@@ -48,7 +49,9 @@ def get_dataset_resources() -> list[dict]:
     resp = requests.get(url, timeout=30)
     resp.raise_for_status()
     resources: list[dict] = resp.json().get("resources", [])
-    logger.info(f"data.gouv.fr : {len(resources)} ressources trouvées pour le dataset Sirene")
+    logger.info(
+        f"data.gouv.fr : {len(resources)} ressources trouvées pour le dataset Sirene"
+    )
     return resources
 
 
@@ -99,7 +102,7 @@ def download_and_upload(url: str, bucket: str, blob_path: str) -> None:
             stream_upload_to_gcs(resp, bucket, blob_path)
             return
         except (requests.RequestException, Exception) as exc:
-            wait = _BACKOFF_BASE * (2 ** attempt)
+            wait = _BACKOFF_BASE * (2**attempt)
             if attempt < _MAX_RETRIES - 1:
                 logger.warning(f"Erreur téléchargement ({exc}) — retry dans {wait}s")
                 time.sleep(wait)
@@ -126,7 +129,9 @@ def main() -> None:
 
     for target_name, url in parquet_urls.items():
         blob_path = f"{prefix}/{partition}/{target_name}.parquet"
-        logger.info(f"Téléchargement {target_name} → gs://{Config.RAW_BUCKET}/{blob_path}")
+        logger.info(
+            f"Téléchargement {target_name} → gs://{Config.RAW_BUCKET}/{blob_path}"
+        )
         download_and_upload(url, Config.RAW_BUCKET, blob_path)
 
     logger.info("Ingestion Sirene terminée.")
