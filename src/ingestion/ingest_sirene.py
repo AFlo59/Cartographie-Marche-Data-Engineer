@@ -69,7 +69,12 @@ def find_parquet_urls(resources: list[dict]) -> dict[str, str]:
         if fmt not in ("parquet", "application/parquet"):
             continue
         for target_key, keyword in _TARGETS.items():
-            if keyword.lower() in title.lower():
+            # Match exact : StockEtablissement_utf8 mais pas StockEtablissementLiensSuccession
+            title_lower = title.lower()
+            keyword_lower = keyword.lower()
+            if keyword_lower + "_utf8" in title_lower or title_lower.startswith(
+                keyword_lower + "."
+            ):
                 found[target_key].append(res)
 
     result: dict[str, str] = {}

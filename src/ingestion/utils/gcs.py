@@ -30,7 +30,7 @@ def stream_upload_to_gcs(
     response: requests.Response,
     bucket_name: str,
     blob_path: str,
-    chunk_size: int = 256 * 1024 * 1024,  # 256 Mo
+    chunk_size: int = 8 * 1024 * 1024,  # 8 Mo — évite OOM sur conteneur 512Mi
 ) -> int:
     """
     Stream un requests.Response vers GCS sans charger le contenu en mémoire.
