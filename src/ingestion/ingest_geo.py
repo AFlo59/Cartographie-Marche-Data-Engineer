@@ -24,7 +24,10 @@ from utils.logging_config import get_logger  # noqa: E402
 logger = get_logger("ingest_geo")
 
 _COMMUNES_FIELDS = "code,nom,codeRegion,codeDepartement,codesPostaux,population,centre"
-_PAGE_SIZE = 1000
+
+# L'API geo ne supporte pas l'offset — on récupère tout en une seule requête.
+# ~35 000 communes tiennent largement sous la limite de 100 000.
+_COMMUNES_LIMIT = 100000
 
 
 def _get(url: str, params: Optional[dict] = None) -> list:
@@ -48,21 +51,11 @@ def fetch_departements() -> pd.DataFrame:
 
 
 def fetch_communes() -> pd.DataFrame:
-    rows: list[dict] = []
-    offset = 0
-    while True:
-        batch = _get(
-            f"{Config.GEO_API_BASE}/communes",
-            params={"fields": _COMMUNES_FIELDS, "limit": _PAGE_SIZE, "offset": offset},
-        )
-        if not batch:
-            break
-        rows.extend(batch)
-        logger.info(f"Communes : {len(rows):,} récupérées (offset={offset})")
-        if len(batch) < _PAGE_SIZE:
-            break
-        offset += _PAGE_SIZE
-
+    rows = _get(
+        f"{Config.GEO_API_BASE}/communes",
+        params={"fields": _COMMUNES_FIELDS, "limit": _COMMUNES_LIMIT},
+    )
+    logger.info(f"Communes : {len(rows):,} récupérées")
     df = pd.json_normalize(rows)
 
     # Extraire latitude/longitude depuis centre.coordinates [lon, lat]
