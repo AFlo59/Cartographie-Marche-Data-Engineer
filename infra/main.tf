@@ -76,6 +76,7 @@ module "warehouse" {
   raw_bucket_name                  = local.bucket_name
   raw_sirene_prefix                = var.ingestion_sirene_prefix
   raw_france_travail_prefix        = var.ingestion_france_travail_prefix
+  raw_geo_prefix                   = var.ingestion_geo_prefix
   create_external_tables           = var.create_external_tables
 }
 
