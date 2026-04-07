@@ -118,6 +118,7 @@ jobs:
       TF_VAR_ingestion_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_dbt_service_account_email: dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_dashboard_service_account_email: dashboard-sa@cartographie-data-engineer.iam.gserviceaccount.com
+      TF_VAR_scheduler_job_name_prefix: datatalent-ingestion
       TF_VAR_scheduler_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_manage_project_job_user_bindings: "false"
       # Cloud Run Job + Scheduler (false tant que l'image n'est pas dans Artifact Registry)
