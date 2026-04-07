@@ -16,6 +16,14 @@ resource "google_project_iam_member" "ci_artifact_registry_writer" {
   depends_on = [google_artifact_registry_repository.datatalent]
 }
 
+resource "google_project_iam_member" "ci_service_account_user" {
+  count = var.ci_service_account_email != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${var.ci_service_account_email}"
+}
+
 resource "google_cloud_run_v2_job" "ingestion" {
   count    = var.create_job ? 1 : 0
   name     = var.job_name
