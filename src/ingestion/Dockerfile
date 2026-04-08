@@ -27,4 +27,5 @@ COPY . /workspace/
 # Injecté via env var Cloud Run Job ou --env au docker run
 ENV INGESTION_SOURCE=france_travail
 
-CMD ["sh", "-c", "python ingest_${INGESTION_SOURCE}.py"]
+ENTRYPOINT ["python", "-m", "src.ingestion.main"]
+CMD ["--source", "${INGESTION_SOURCE}"]

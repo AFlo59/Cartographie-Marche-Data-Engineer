@@ -43,7 +43,7 @@ services:
       TF_VAR_ingestion_service_account_email: ${TF_VAR_ingestion_service_account_email:-}
       TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
       TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
-      TF_VAR_create_compute_job: ${TF_VAR_create_compute_job:-false}
+      TF_VAR_create_compute_job: ${TF_VAR_create_compute_job:-true}
       TF_VAR_create_external_tables: ${TF_VAR_create_external_tables:-false}
       # CI SA pour Artifact Registry writer (même email que le WIF SA)
       TF_VAR_ci_service_account_email: ${TF_VAR_ci_service_account_email:-}
@@ -114,7 +114,7 @@ services:
       - ./:/workspace
       - ./secrets:/workspace/secrets:ro
       - ./.gcloud:/root/.config/gcloud
-    command: ["python", "--version"]
+    #command: ["python", "--version"]
 
   dbt:
     build:
