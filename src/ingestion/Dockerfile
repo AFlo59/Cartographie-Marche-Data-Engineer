@@ -13,14 +13,16 @@ RUN apt-get update \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /workspace
+WORKDIR /app
 
+# Copie le fichier requirements.txt depuis le contexte de build (src/ingestion)
 COPY requirements.txt /tmp/requirements.txt
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY . /workspace/
+COPY src /app/src
 
-ENTRYPOINT ["python", "main.py"]
-CMD ["--source", "geo"]
+#execute main en tant que module python
+ENTRYPOINT ["python", "-m", "src.ingestion.main"]
+CMD ["--source", "${INGESTION_SOURCE}"]

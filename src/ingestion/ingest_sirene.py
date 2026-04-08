@@ -15,7 +15,7 @@ URLS = {
 
 # BUCKET_NAME = os.environ["INGESTION_RAW_BUCKET"]
 # SIRENE_PREFIX = os.environ.get("INGESTION_SIRENE_PREFIX", "raw/sirene/")
-BUCKET_NAME = os.environ.get("TF_VAR_raw_bucket_name")
+BUCKET_NAME = os.environ.get("INGESTION_RAW_BUCKET")
 SIRENE_PREFIX = os.environ.get("TF_VAR_ingestion_sirene_prefix", "raw/sirene/")
 
 
