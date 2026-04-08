@@ -57,7 +57,7 @@ def ingest_sirene() -> None:
     now = datetime.now()
 
     for name, url in URLS.items():
-        gcs_path = f"{SIRENE_PREFIX}{now.year}/{now.month:02d}/{name}.parquet"
+        gcs_path = f"{SIRENE_PREFIX}{now.strftime('%Y-%m')}/{name}.parquet"
         stream_to_gcs(url, gcs_path)
 
     log.info("✅ Ingestion de la source Sirene terminée")
