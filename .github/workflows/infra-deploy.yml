@@ -118,10 +118,11 @@ jobs:
       TF_VAR_ingestion_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_dbt_service_account_email: dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_dashboard_service_account_email: dashboard-sa@cartographie-data-engineer.iam.gserviceaccount.com
+      TF_VAR_scheduler_job_name_prefix: datatalent-ingestion
       TF_VAR_scheduler_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_manage_project_job_user_bindings: "false"
       # Cloud Run Job + Scheduler (false tant que l'image n'est pas dans Artifact Registry)
-      TF_VAR_create_compute_job: "false"
+      TF_VAR_create_compute_job: "true"
       # External Tables BQ — activé, les 3 sources sont dans GCS
       TF_VAR_create_external_tables: "true"
       # Compute (INFRA-04)
@@ -138,7 +139,7 @@ jobs:
       # CI SA pour push Artifact Registry (même SA que WIF)
       TF_VAR_ci_service_account_email: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
       # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)
-      TF_VAR_create_dbt_job: "false"
+      TF_VAR_create_dbt_job: "true"
       TF_VAR_dbt_job_name: datatalent-dbt-job
       TF_VAR_dbt_compute_image: europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/dbt:latest
       TF_VAR_dbt_memory: 1Gi
@@ -432,6 +433,22 @@ jobs:
           import_if_needed 'module.compute.google_cloud_run_v2_job.dbt[0]' \
             "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_dbt_job_name}" \
             "gcloud run jobs describe ${TF_VAR_dbt_job_name} --region=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.compute.google_cloud_run_v2_job.ingestion[0]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_compute_job_name}" \
+            "gcloud run jobs describe ${TF_VAR_compute_job_name} --region=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["france_travail"]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-france_travail" \
+            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-france_travail --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["sirene"]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-sirene" \
+            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-sirene --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["geo"]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-geo" \
+            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-geo --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
 
       # ── 13. Terraform Apply (merge main uniquement) ──────────────────────────
       - name: Terraform Apply

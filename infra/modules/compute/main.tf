@@ -16,6 +16,14 @@ resource "google_project_iam_member" "ci_artifact_registry_writer" {
   depends_on = [google_artifact_registry_repository.datatalent]
 }
 
+resource "google_project_iam_member" "ci_service_account_user" {
+  count = var.ci_service_account_email != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${var.ci_service_account_email}"
+}
+
 resource "google_cloud_run_v2_job" "ingestion" {
   count    = var.create_job ? 1 : 0
   name     = var.job_name
@@ -131,10 +139,18 @@ resource "google_cloud_run_v2_job_iam_member" "job_invoker" {
   project  = var.project_id
   name     = var.job_name
   location = var.region
-  role     = "roles/run.invoker"
+  role     = "roles/run.jobsExecutorWithOverrides"
   member   = "serviceAccount:${each.value}"
 
   depends_on = [google_cloud_run_v2_job.ingestion]
+}
+
+resource "google_project_iam_member" "job_executor_with_overrides" {
+  for_each = var.create_job ? toset(var.job_invoker_service_accounts) : toset([])
+
+  project = var.project_id
+  role    = "roles/run.jobsExecutorWithOverrides"
+  member  = "serviceAccount:${each.value}"
 }
 
 # ── Cloud Run Job dbt ────────────────────────────────────────────────────────
