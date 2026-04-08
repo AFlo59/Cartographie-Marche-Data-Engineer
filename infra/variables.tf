@@ -231,6 +231,18 @@ variable "ci_service_account_email" {
   default     = ""
 }
 
+variable "artifact_registry_keep_recent_versions" {
+  description = "Number of most recent Artifact Registry versions to keep per package"
+  type        = number
+  default     = 2
+}
+
+variable "artifact_registry_cleanup_dry_run" {
+  description = "Run Artifact Registry cleanup policy in dry-run mode"
+  type        = bool
+  default     = false
+}
+
 # ── Cloud Run Job dbt ────────────────────────────────────────────────────────
 
 variable "create_dbt_job" {

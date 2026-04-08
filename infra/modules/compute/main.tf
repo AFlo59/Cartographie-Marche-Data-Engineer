@@ -4,6 +4,26 @@ resource "google_artifact_registry_repository" "datatalent" {
   repository_id = var.artifact_registry_repository_id
   format        = "DOCKER"
   description   = "Docker images for DataTalent pipeline (ingestion + dbt)"
+  cleanup_policy_dry_run = var.artifact_registry_cleanup_dry_run
+
+  cleanup_policies {
+    id     = "keep-recent-versions"
+    action = "KEEP"
+
+    most_recent_versions {
+      keep_count = var.artifact_registry_keep_recent_versions
+    }
+  }
+
+  cleanup_policies {
+    id     = "delete-older-versions"
+    action = "DELETE"
+
+    condition {
+      tag_state = "ANY"
+      older_than = "1s"
+    }
+  }
 }
 
 resource "google_project_iam_member" "ci_artifact_registry_writer" {

@@ -84,6 +84,18 @@ variable "artifact_registry_repository_id" {
   default     = "datatalent"
 }
 
+variable "artifact_registry_keep_recent_versions" {
+  description = "Number of most recent versions to keep per Artifact Registry package (latest + previous => 2)"
+  type        = number
+  default     = 2
+}
+
+variable "artifact_registry_cleanup_dry_run" {
+  description = "If true, Artifact Registry cleanup policy runs in dry-run mode (no deletions)"
+  type        = bool
+  default     = false
+}
+
 # ── Cloud Run Job dbt ────────────────────────────────────────────────────────
 
 variable "create_dbt_job" {

@@ -103,6 +103,8 @@ module "compute" {
   job_invoker_service_accounts    = compact([local.scheduler_service_account_email])
   create_job                      = var.create_compute_job
   ci_service_account_email        = var.ci_service_account_email
+  artifact_registry_keep_recent_versions = var.artifact_registry_keep_recent_versions
+  artifact_registry_cleanup_dry_run      = var.artifact_registry_cleanup_dry_run
   create_dbt_job                  = var.create_dbt_job
   dbt_job_name                    = var.dbt_job_name
   dbt_image                       = var.dbt_compute_image
