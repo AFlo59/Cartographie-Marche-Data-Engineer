@@ -14,7 +14,7 @@ def main():
         "--source",
         type=str,
         required=True,
-        help="Nom de la source à ingérer (ex: sirene, geo)",
+        help="Nom de la source à ingérer (ex: sirene, geo, france_travail, all)",
     )
     args = parser.parse_args()
 
@@ -24,9 +24,17 @@ def main():
         ingest_sirene()
     elif source == "geo":
         ingest_geo()
+    elif source == "france_travail":
+        ingest_france_travail()
+    elif source == "all":
+        print("Lancement de toutes les ingestions...")
+        ingest_sirene()
+        ingest_geo()
+        ingest_france_travail()
+        print("Toutes les ingestions sont terminées.")
     else:
         print(f"Source inconnue : {args.source}")
-        print("Sources supportées : sirene, geo")
+        print("Sources supportées : sirene, geo, france_travail, all")
         sys.exit(1)
 
 
