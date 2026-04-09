@@ -117,10 +117,10 @@ resource "time_sleep" "wait_for_iam_propagation" {
 
   triggers = {
     # one() retourne null si count=0 (sa non fourni), on le remplace par "" pour respecter map(string)
-    ingestion_iam_id = coalesce(one(google_project_iam_member.ingestion_artifact_registry_reader[*].id), "")
+    ingestion_iam_id = try(one(google_project_iam_member.ingestion_artifact_registry_reader[*].id), "")
     cloud_run_iam_id = google_project_iam_member.cloud_run_service_agent_artifact_registry_reader.id
-    ci_iam_id        = coalesce(one(google_project_iam_member.ci_artifact_registry_writer[*].id), "")
-    dbt_iam_id       = coalesce(one(google_project_iam_member.dbt_artifact_registry_reader[*].id), "")
+    ci_iam_id        = try(one(google_project_iam_member.ci_artifact_registry_writer[*].id), "")
+    dbt_iam_id       = try(one(google_project_iam_member.dbt_artifact_registry_reader[*].id), "")
   }
 
   depends_on = [

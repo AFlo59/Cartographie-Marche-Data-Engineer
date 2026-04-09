@@ -42,7 +42,15 @@ def _get_secret(secret_id: str) -> str:
     # import tardif — évite l'initialisation si inutile
     from google.cloud import secretmanager
 
-    project_id = os.environ["GCP_PROJECT_ID"]
+    project_id = (
+        os.getenv("GCP_PROJECT_ID", "").strip()
+        or os.getenv("GOOGLE_CLOUD_PROJECT", "").strip()
+    )
+    if not project_id:
+        raise ValueError(
+            "GCP_PROJECT_ID (ou GOOGLE_CLOUD_PROJECT) est requis pour lire Secret Manager."
+        )
+
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
     response = client.access_secret_version(request={"name": name})
@@ -60,10 +68,13 @@ def resolve(env_var: str, secret_name_env: Optional[str] = None) -> str:
 
 
 class Config:
-    GCP_PROJECT_ID: str = os.environ["GCP_PROJECT_ID"]
+    GCP_PROJECT_ID: str = (
+        os.getenv("GCP_PROJECT_ID", "").strip()
+        or os.getenv("GOOGLE_CLOUD_PROJECT", "").strip()
+    )
     GCP_REGION: str = os.getenv("GCP_REGION", "europe-west1")
 
-    RAW_BUCKET: str = os.environ["INGESTION_RAW_BUCKET"]
+    RAW_BUCKET: str = os.getenv("INGESTION_RAW_BUCKET", "").strip()
     FT_PREFIX: str = os.getenv("INGESTION_FRANCE_TRAVAIL_PREFIX", "raw/france_travail/")
     SIRENE_PREFIX: str = os.getenv("INGESTION_SIRENE_PREFIX", "raw/sirene/")
     GEO_PREFIX: str = os.getenv("INGESTION_GEO_PREFIX", "raw/geo/")
