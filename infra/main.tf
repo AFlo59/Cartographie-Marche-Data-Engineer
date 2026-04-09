@@ -112,6 +112,7 @@ module "compute" {
   artifact_registry_keep_recent_versions = var.artifact_registry_keep_recent_versions
   artifact_registry_cleanup_dry_run      = var.artifact_registry_cleanup_dry_run
   log_retention_days = var.log_retention_days
+  manage_log_retention              = var.manage_log_retention
   create_dbt_job                  = var.create_dbt_job
   dbt_job_name                    = var.dbt_job_name
   dbt_image                       = var.dbt_compute_image
