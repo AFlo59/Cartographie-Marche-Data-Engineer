@@ -55,10 +55,16 @@ module "storage" {
   force_destroy             = var.bucket_force_destroy
   lifecycle_delete_age_days    = var.bucket_lifecycle_delete_age_days
   nearline_transition_age_days = var.bucket_nearline_age_days
-  geo_prefix_delete_age_days   = var.bucket_geo_prefix_delete_age_days
-  geo_prefix                   = var.ingestion_geo_prefix
-  ingestion_sa_email           = var.ingestion_service_account_email
-  dbt_sa_email                 = var.dbt_service_account_email
+
+  france_travail_prefix                 = var.ingestion_france_travail_prefix
+  france_travail_prefix_delete_age_days = var.bucket_france_travail_prefix_delete_age_days
+  sirene_prefix                         = var.ingestion_sirene_prefix
+  sirene_prefix_delete_age_days         = var.bucket_sirene_prefix_delete_age_days
+  geo_prefix                            = var.ingestion_geo_prefix
+  geo_prefix_delete_age_days            = var.bucket_geo_prefix_delete_age_days
+
+  ingestion_sa_email = var.ingestion_service_account_email
+  dbt_sa_email       = var.dbt_service_account_email
 }
 
 module "warehouse" {
@@ -103,6 +109,9 @@ module "compute" {
   job_invoker_service_accounts    = compact([local.scheduler_service_account_email])
   create_job                      = var.create_compute_job
   ci_service_account_email        = var.ci_service_account_email
+  artifact_registry_keep_recent_versions = var.artifact_registry_keep_recent_versions
+  artifact_registry_cleanup_dry_run      = var.artifact_registry_cleanup_dry_run
+  log_retention_days = var.log_retention_days
   create_dbt_job                  = var.create_dbt_job
   dbt_job_name                    = var.dbt_job_name
   dbt_image                       = var.dbt_compute_image

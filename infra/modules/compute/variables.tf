@@ -84,6 +84,18 @@ variable "artifact_registry_repository_id" {
   default     = "datatalent"
 }
 
+variable "artifact_registry_keep_recent_versions" {
+  description = "Number of most recent versions to keep per Artifact Registry package (latest + previous => 2)"
+  type        = number
+  default     = 2
+}
+
+variable "artifact_registry_cleanup_dry_run" {
+  description = "If true, Artifact Registry cleanup policy runs in dry-run mode (no deletions)"
+  type        = bool
+  default     = false
+}
+
 # ── Cloud Run Job dbt ────────────────────────────────────────────────────────
 
 variable "create_dbt_job" {
@@ -138,4 +150,10 @@ variable "dbt_plain_env" {
   description = "Plain environment variables injected into the dbt job"
   type        = map(string)
   default     = {}
+}
+
+variable "log_retention_days" {
+  description = "Retention in days for _Default Cloud Logging bucket (tous les logs : Cloud Run Job, Scheduler, BigQuery, infra). Default: 60 (2 mois). Gratuit jusqu'à 50 GiB/mois."
+  type        = number
+  default     = 60
 }
