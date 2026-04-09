@@ -22,7 +22,7 @@ URLS = {
 # BUCKET_NAME = os.environ["INGESTION_RAW_BUCKET"]
 # SIRENE_PREFIX = os.environ.get("INGESTION_SIRENE_PREFIX", "raw/sirene/")
 BUCKET_NAME = os.environ.get("INGESTION_RAW_BUCKET")
-SIRENE_PREFIX = os.environ.get("TF_VAR_ingestion_sirene_prefix", "raw/sirene/")
+SIRENE_PREFIX = os.environ.get("INGESTION_SIRENE_PREFIX", "raw/sirene/")
 
 
 def stream_to_gcs(url: str, gcs_path: str) -> None:
