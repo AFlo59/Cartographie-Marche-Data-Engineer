@@ -224,6 +224,7 @@ resource "google_cloud_run_v2_job" "dbt" {
 # Gratuit (ingestion + stockage inclus dans le free tier pour ce volume).
 # 60 jours = 2 mois, couvre latest + 1 run mensuel précédent pour toutes les sources.
 resource "google_logging_project_bucket_config" "default_retention" {
+  count          = var.manage_log_retention ? 1 : 0
   project        = var.project_id
   location       = "global"
   bucket_id      = "_Default"

@@ -157,3 +157,9 @@ variable "log_retention_days" {
   type        = number
   default     = 60
 }
+
+variable "manage_log_retention" {
+  description = "Manage Cloud Logging _Default bucket retention with Terraform. Set to true only if CI identity can read/update Logging bucket config."
+  type        = bool
+  default     = false
+}
