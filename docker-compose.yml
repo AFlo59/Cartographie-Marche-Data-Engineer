@@ -66,7 +66,7 @@ services:
       context: src/ingestion
       dockerfile: Dockerfile
     container_name: datatalent-ingestion-jobs
-    working_dir: /workspace
+    working_dir: /workspace/src/ingestion
     env_file:
       - .env
     environment:
