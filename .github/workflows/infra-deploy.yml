@@ -105,7 +105,9 @@ jobs:
       TF_VAR_bucket_force_destroy: "false"
       TF_VAR_bucket_lifecycle_delete_age_days: "365"
       TF_VAR_bucket_nearline_age_days: "30"
-      TF_VAR_bucket_geo_prefix_delete_age_days: "90"
+      TF_VAR_bucket_geo_prefix_delete_age_days: "60"
+      TF_VAR_bucket_france_travail_prefix_delete_age_days: "60"
+      TF_VAR_bucket_sirene_prefix_delete_age_days: "60"
       # BigQuery
       TF_VAR_raw_dataset_id: raw
       TF_VAR_staging_dataset_id: staging
@@ -261,6 +263,26 @@ jobs:
               --uniform-bucket-level-access
             gcloud storage buckets update "gs://${TF_BACKEND_BUCKET}" --versioning
           fi
+
+          # Lifecycle tfstate bucket : garder latest + 1 version précédente.
+          # numNewerVersions=2 → supprimer une version ARCHIVED seulement quand
+          # 2+ versions plus récentes existent → conserve live + 1 previous.
+          cat <<'LIFECYCLE_EOF' > /tmp/tfstate_lifecycle.json
+          {
+            "rule": [
+              {
+                "action": { "type": "Delete" },
+                "condition": {
+                  "isLive": false,
+                  "numNewerVersions": 2
+                }
+              }
+            ]
+          }
+          LIFECYCLE_EOF
+          gcloud storage buckets update "gs://${TF_BACKEND_BUCKET}" \
+            --lifecycle-file=/tmp/tfstate_lifecycle.json \
+            --project="${TF_VAR_project_id}"
 
       # ── 7. Setup Terraform ───────────────────────────────────────────────────
       - name: Setup Terraform
@@ -437,6 +459,10 @@ jobs:
           import_if_needed 'module.compute.google_cloud_run_v2_job.ingestion[0]' \
             "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_compute_job_name}" \
             "gcloud run jobs describe ${TF_VAR_compute_job_name} --region=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          # _Default log bucket existe dans tout projet GCP — import pour éviter conflit
+          import_if_needed 'module.compute.google_logging_project_bucket_config.default_retention' \
+            "${TF_VAR_project_id}/global/_Default"
 
           import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["france_travail"]' \
             "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-france_travail" \

@@ -10,6 +10,7 @@ resource "google_storage_bucket" "raw" {
     enabled = var.versioning_enabled
   }
 
+  # Purge globale des objets très anciens (filet de sécurité)
   dynamic "lifecycle_rule" {
     for_each = var.lifecycle_delete_age_days == null ? [] : [1]
 
@@ -38,7 +39,40 @@ resource "google_storage_bucket" "raw" {
     }
   }
 
-  # Suppression des anciennes versions des données geo/ (référentiel stable, rotation mensuelle)
+  # --- Purge par source (garder latest + 1 run précédent) ---
+
+  # france_travail : partition quotidienne dt=YYYY-MM-DD — purge après N jours
+  # Garde uniquement les N derniers jours de partitions.
+  dynamic "lifecycle_rule" {
+    for_each = var.france_travail_prefix_delete_age_days == null ? [] : [1]
+
+    content {
+      condition {
+        age            = var.france_travail_prefix_delete_age_days
+        matches_prefix = [var.france_travail_prefix]
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
+
+  # sirene : snapshot mensuel YYYY-MM/ — purge après N jours (2 mois = latest + précédent)
+  dynamic "lifecycle_rule" {
+    for_each = var.sirene_prefix_delete_age_days == null ? [] : [1]
+
+    content {
+      condition {
+        age            = var.sirene_prefix_delete_age_days
+        matches_prefix = [var.sirene_prefix]
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
+
+  # geo : référentiel mensuel YYYY-MM/ — purge après N jours
   dynamic "lifecycle_rule" {
     for_each = var.geo_prefix_delete_age_days == null ? [] : [1]
 
@@ -46,6 +80,26 @@ resource "google_storage_bucket" "raw" {
       condition {
         age            = var.geo_prefix_delete_age_days
         matches_prefix = [var.geo_prefix]
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
+
+  # Versions non-courantes (ARCHIVED) — garder latest + 1 version précédente par objet.
+  # Comportement : si raw/geo/2026-04/regions.parquet est écrasé N fois dans le mois,
+  # seules la version courante (live) et la version immédiatement précédente sont conservées.
+  # num_newer_versions = 2 → supprimer une version ARCHIVED dès qu'il existe 2+ versions plus récentes.
+  # Exemple : run1(v1) → run2(v2, v1=archived) → run3(v3, v2=archived, v1 supprimé car 2 newer)
+  # Pour france_travail (chemin unique par jour), les fichiers ne sont jamais réécrits → sans effet.
+  dynamic "lifecycle_rule" {
+    for_each = var.versioning_enabled ? [1] : []
+
+    content {
+      condition {
+        with_state         = "ARCHIVED"
+        num_newer_versions = 2
       }
       action {
         type = "Delete"

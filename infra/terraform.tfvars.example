@@ -54,6 +54,10 @@ ci_service_account_email = ""
 
 # Artifact Registry — repository Docker (créé automatiquement, défaut: "datatalent")
 # artifact_registry_repository_id = "datatalent"
+# Nettoyage auto Artifact Registry : conserve N versions récentes par image (latest + N-1)
+artifact_registry_keep_recent_versions = 2
+# true = simulation sans suppression; false = suppression effective
+artifact_registry_cleanup_dry_run = false
 
 # Activation progressive des ressources conditionnelles
 # Passer à true après push de l'image dans Artifact Registry

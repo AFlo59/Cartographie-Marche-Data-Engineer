@@ -38,7 +38,7 @@ variable "nearline_transition_age_days" {
 }
 
 variable "geo_prefix_delete_age_days" {
-  description = "Delete objects under geo_prefix after N days. Null (module default) disables — controlled by root var bucket_geo_prefix_delete_age_days (default 90)."
+  description = "Delete raw/geo/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Null disables."
   type        = number
   default     = null
 }
@@ -47,6 +47,30 @@ variable "geo_prefix" {
   description = "GCS prefix for geo data objects, used in the lifecycle delete rule. Must end with '/'."
   type        = string
   default     = "raw/geo/"
+}
+
+variable "france_travail_prefix" {
+  description = "GCS prefix for France Travail data (daily partitions dt=YYYY-MM-DD/). Must end with '/'."
+  type        = string
+  default     = "raw/france_travail/"
+}
+
+variable "france_travail_prefix_delete_age_days" {
+  description = "Delete raw/france_travail/ objects older than N days. Default: 60 (~2 months of daily partitions). Null disables."
+  type        = number
+  default     = 60
+}
+
+variable "sirene_prefix" {
+  description = "GCS prefix for Sirene data (monthly snapshots YYYY-MM/). Must end with '/'."
+  type        = string
+  default     = "raw/sirene/"
+}
+
+variable "sirene_prefix_delete_age_days" {
+  description = "Delete raw/sirene/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Null disables."
+  type        = number
+  default     = 60
 }
 
 variable "ingestion_sa_email" {
