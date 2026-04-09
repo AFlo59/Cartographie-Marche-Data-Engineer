@@ -251,14 +251,15 @@ Ce SA est utilisé par Terraform (CI GitHub Actions via WIF, ou ADC en local). I
 |------|--------|-----------------|----------|--------|
 | `roles/storage.admin` | Projet | — | Créer / configurer le bucket raw + le bucket tfstate | ✅ Accordé |
 | `roles/bigquery.admin` | Projet | — | Créer / configurer les datasets BigQuery | ✅ Accordé |
-| `roles/artifactregistry.admin` | Projet | — | Créer ET modifier le repo Artifact Registry (update description, settings) | 🔧 Manuel ❌ **À FAIRE EN PRIORITÉ** — cause de l'erreur 403 `repositories.update` |
-| `roles/run.admin` | Projet | — | Déployer les Cloud Run Jobs ingestion + dbt (INFRA-04) | 🔧 Manuel ❌ à faire avant d'activer `create_compute_job=true` |
-| `roles/cloudscheduler.admin` | Projet | — | Créer / modifier les 3 jobs Cloud Scheduler (INFRA-05) | 🔧 Manuel ❌ à faire avant d'activer `create_compute_job=true` |
-| `roles/secretmanager.admin` | Projet | — | Créer les secret containers Secret Manager (INFRA-06) | 🔧 Manuel (secrets déjà créés manuellement + importés en state — non bloquant pour l'instant) |
-| `roles/serviceusage.serviceUsageAdmin` | Projet | — | Activer les APIs GCP manquantes depuis la CI (optionnel) | 🔧 Manuel (recommandé) |
-| `roles/iam.serviceAccountUser` | SA Resource | `ingestion-sa`, `dbt-sa` | Assigner les SA aux Cloud Run Jobs (INFRA-04) | 🔧 Manuel ❌ à faire avant d'activer `create_compute_job=true` |
+| `roles/artifactregistry.admin` | Projet | — | Créer ET modifier le repo Artifact Registry | ✅ Accordé |
+| `roles/run.admin` | Projet | — | Déployer les Cloud Run Jobs ingestion + dbt | ✅ Accordé |
+| `roles/cloudscheduler.admin` | Projet | — | Créer / modifier les 3 jobs Cloud Scheduler | ✅ Accordé |
+| `roles/secretmanager.admin` | Projet | — | Créer les secret containers Secret Manager | ✅ Accordé |
+| `roles/serviceusage.serviceUsageAdmin` | Projet | — | Activer les APIs GCP manquantes depuis la CI | ✅ Accordé |
+| `roles/iam.serviceAccountUser` | SA Resource | `ingestion-sa`, `dbt-sa` | Assigner les SA aux Cloud Run Jobs | ✅ Accordé |
+| `roles/logging.configWriter` | Projet | — | Gérer la rétention du bucket `_Default` Cloud Logging (`TF_VAR_manage_log_retention=true`) | 🔧 Manuel ❌ **MANQUANT** — cause erreur 403 `logging.buckets.create` |
 
-**Commandes gcloud** — fix immédiat + rôles manquants :
+**Commandes gcloud** :
 
 ```bash
 TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
@@ -266,24 +267,19 @@ PROJECT="cartographie-data-engineer"
 INGESTION_SA="ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com"
 DBT_SA="dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com"
 
-# ❌ FIX PRIORITAIRE — résout l'erreur 403 artifactregistry.repositories.update
-# Le SA peut créer le repo mais pas le modifier (ajout de description déclenche un update)
+# Tous ces rôles sont déjà accordés sauf logging.configWriter (voir ci-dessous)
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/artifactregistry.admin"
 
-# ❌ Avant d'activer create_compute_job=true (INFRA-04 activation)
-# Cloud Run
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/run.admin"
 
-# Cloud Scheduler (INFRA-05)
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/cloudscheduler.admin"
 
-# Permet d'assigner ingestion-sa et dbt-sa aux Cloud Run Jobs
 gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/iam.serviceAccountUser" \
@@ -294,10 +290,16 @@ gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
   --role="roles/iam.serviceAccountUser" \
   --project=${PROJECT}
 
-# Optionnel : autoriser la CI à activer les APIs GCP manquantes
 gcloud projects add-iam-policy-binding ${PROJECT} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/serviceusage.serviceUsageAdmin"
+
+# ❌ MANQUANT — résout l'erreur 403 logging.buckets.create
+# Requis pour que Terraform gère la rétention du bucket _Default Cloud Logging
+# (TF_VAR_manage_log_retention=true dans le CI)
+gcloud projects add-iam-policy-binding ${PROJECT} \
+  --member="serviceAccount:${TF_SA}" \
+  --role="roles/logging.configWriter"
 ```
 
 > **En CI (GitHub Actions WIF)** : remplacer `terraform-deployer-sa` par le SA WIF configuré dans le workflow (`GCP_WIF_SERVICE_ACCOUNT`). Les mêmes rôles s'appliquent.

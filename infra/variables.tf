@@ -261,6 +261,12 @@ variable "log_retention_days" {
   default     = 60
 }
 
+variable "manage_log_retention" {
+  description = "Manage Cloud Logging _Default bucket retention with Terraform. Disable when CI identity lacks logging bucket config permissions."
+  type        = bool
+  default     = false
+}
+
 # ── Cloud Run Job dbt ────────────────────────────────────────────────────────
 
 variable "create_dbt_job" {
