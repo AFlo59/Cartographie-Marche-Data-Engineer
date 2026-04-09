@@ -13,16 +13,18 @@ RUN apt-get update \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /workspace
 
-# Copie le fichier requirements.txt depuis le contexte de build (src/ingestion)
+# Build context = src/ingestion/ (coherent with CI workflows)
 COPY requirements.txt /tmp/requirements.txt
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY . /app/src
+COPY . /workspace/
 
-#execute main en tant que module python
+# Source selector injected by Cloud Run Job override or docker --env
+ENV INGESTION_SOURCE=france_travail
 
-CMD python -m src.ingestion.main --source ${INGESTION_SOURCE}
+# Use shell form so ${INGESTION_SOURCE} expands at runtime.
+CMD ["sh", "-c", "python main.py --source ${INGESTION_SOURCE}"]

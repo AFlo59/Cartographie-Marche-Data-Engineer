@@ -1,16 +1,22 @@
+import logging
 import os
 from datetime import datetime
 
 import requests
 from google.cloud import storage
-import logging
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 URLS = {
-    "StockUniteLegale": "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/StockUniteLegale_utf8.parquet",
-    "StockEtablissement": "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/StockEtablissement_utf8.parquet",
+    "StockUniteLegale": (
+        "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/"
+        "StockUniteLegale_utf8.parquet"
+    ),
+    "StockEtablissement": (
+        "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/"
+        "StockEtablissement_utf8.parquet"
+    ),
 }
 
 # BUCKET_NAME = os.environ["INGESTION_RAW_BUCKET"]
@@ -21,7 +27,9 @@ SIRENE_PREFIX = os.environ.get("TF_VAR_ingestion_sirene_prefix", "raw/sirene/")
 
 def stream_to_gcs(url: str, gcs_path: str) -> None:
     if not BUCKET_NAME:
-        raise ValueError("Le nom du bucket GCS doit être défini dans la variable d'environnement INGESTION_RAW_BUCKET")
+        raise ValueError(
+            "Le nom du bucket GCS doit être défini dans la variable d'environnement INGESTION_RAW_BUCKET"
+        )
     client = storage.Client()
     bucket = client.bucket(BUCKET_NAME)
     blob = bucket.blob(gcs_path)

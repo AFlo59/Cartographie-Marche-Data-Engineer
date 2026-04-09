@@ -1,9 +1,14 @@
 import argparse
 import sys
 
-from .ingest_sirene import ingest_sirene
-from .ingest_geo import main as ingest_geo
-from .ingest_france_travail import main as ingest_france_travail
+try:
+    from .ingest_france_travail import main as ingest_france_travail
+    from .ingest_geo import main as ingest_geo
+    from .ingest_sirene import ingest_sirene
+except ImportError:
+    from ingest_france_travail import main as ingest_france_travail
+    from ingest_geo import main as ingest_geo
+    from ingest_sirene import ingest_sirene
 
 
 def main():
