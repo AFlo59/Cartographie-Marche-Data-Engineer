@@ -21,8 +21,8 @@ COPY requirements.txt /tmp/requirements.txt
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY src /app/src
+COPY . /app/src
 
 #execute main en tant que module python
-ENTRYPOINT ["python", "-m", "src.ingestion.main"]
-CMD ["--source", "${INGESTION_SOURCE}"]
+
+CMD python -m src.ingestion.main --source ${INGESTION_SOURCE}
