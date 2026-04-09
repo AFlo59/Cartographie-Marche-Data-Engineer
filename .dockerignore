@@ -5,7 +5,6 @@
 .github
 .gcloud
 secrets
-infra
 dbt
 docs
 objectif
