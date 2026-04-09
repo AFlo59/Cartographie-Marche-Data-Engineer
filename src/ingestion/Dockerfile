@@ -15,7 +15,7 @@ RUN apt-get update \
 
 WORKDIR /workspace
 
-# Build context = src/ingestion/ (cohérent avec CI ingestion-ci.yml)
+# Build context = src/ingestion/ (coherent with CI workflows)
 COPY requirements.txt /tmp/requirements.txt
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
@@ -23,8 +23,8 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 
 COPY . /workspace/
 
-# INGESTION_SOURCE sélectionne le script à lancer (france_travail | sirene | geo)
-# Injecté via env var Cloud Run Job ou --env au docker run
+# Source selector injected by Cloud Run Job override or docker --env
 ENV INGESTION_SOURCE=france_travail
 
-CMD ["sh", "-c", "python ingest_${INGESTION_SOURCE}.py"]
+# On lance le module Python avec son chemin complet depuis la racine /workspace
+CMD ["sh", "-c", "python -m src.ingestion.main --source ${INGESTION_SOURCE}"]
