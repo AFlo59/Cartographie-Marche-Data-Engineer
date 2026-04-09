@@ -1,9 +1,9 @@
+import logging
 import os
 from datetime import datetime
 
 import requests
 from google.cloud import storage
-import logging
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -21,7 +21,9 @@ SIRENE_PREFIX = os.environ.get("TF_VAR_ingestion_sirene_prefix", "raw/sirene/")
 
 def stream_to_gcs(url: str, gcs_path: str) -> None:
     if not BUCKET_NAME:
-        raise ValueError("Le nom du bucket GCS doit être défini dans la variable d'environnement INGESTION_RAW_BUCKET")
+        raise ValueError(
+            "Le nom du bucket GCS doit être défini dans la variable d'environnement INGESTION_RAW_BUCKET"
+        )
     client = storage.Client()
     bucket = client.bucket(BUCKET_NAME)
     blob = bucket.blob(gcs_path)
