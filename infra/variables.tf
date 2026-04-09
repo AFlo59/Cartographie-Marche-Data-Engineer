@@ -58,9 +58,21 @@ variable "bucket_nearline_age_days" {
 }
 
 variable "bucket_geo_prefix_delete_age_days" {
-  description = "Delete raw/geo/ objects older than N days (stable monthly ref data, no long history needed). Default: 90 (enabled). Override to null in terraform.tfvars to disable."
+  description = "Delete raw/geo/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Override to null to disable."
   type        = number
-  default     = 90
+  default     = 60
+}
+
+variable "bucket_france_travail_prefix_delete_age_days" {
+  description = "Delete raw/france_travail/ objects older than N days. Default: 60 (keeps ~2 months of daily partitions). Override to null to disable."
+  type        = number
+  default     = 60
+}
+
+variable "bucket_sirene_prefix_delete_age_days" {
+  description = "Delete raw/sirene/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Override to null to disable."
+  type        = number
+  default     = 60
 }
 
 variable "ingestion_service_account_email" {
@@ -232,15 +244,21 @@ variable "ci_service_account_email" {
 }
 
 variable "artifact_registry_keep_recent_versions" {
-  description = "Number of most recent Artifact Registry versions to keep per package"
+  description = "Number of most recent Artifact Registry versions to keep per package (latest + N-1 previous)"
   type        = number
   default     = 2
 }
 
 variable "artifact_registry_cleanup_dry_run" {
-  description = "Run Artifact Registry cleanup policy in dry-run mode"
+  description = "Run Artifact Registry cleanup policy in dry-run mode (no deletions)"
   type        = bool
   default     = false
+}
+
+variable "log_retention_days" {
+  description = "Retention in days for _Default Cloud Logging bucket (tous les logs). Default: 60 (2 mois). Gratuit jusqu'à 50 GiB/mois."
+  type        = number
+  default     = 60
 }
 
 # ── Cloud Run Job dbt ────────────────────────────────────────────────────────

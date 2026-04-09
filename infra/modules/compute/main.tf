@@ -20,8 +20,8 @@ resource "google_artifact_registry_repository" "datatalent" {
     action = "DELETE"
 
     condition {
-      tag_state = "ANY"
-      older_than = "1s"
+      tag_state  = "ANY"
+      older_than = "604800s" # 7 jours — buffer pour que les images déployées restent disponibles
     }
   }
 }
@@ -218,4 +218,14 @@ resource "google_cloud_run_v2_job" "dbt" {
   depends_on = [
     time_sleep.wait_for_iam_propagation
   ]
+}
+
+# Rétention explicite du bucket _Default Cloud Logging.
+# Gratuit (ingestion + stockage inclus dans le free tier pour ce volume).
+# 60 jours = 2 mois, couvre latest + 1 run mensuel précédent pour toutes les sources.
+resource "google_logging_project_bucket_config" "default_retention" {
+  project        = var.project_id
+  location       = "global"
+  bucket_id      = "_Default"
+  retention_days = var.log_retention_days
 }

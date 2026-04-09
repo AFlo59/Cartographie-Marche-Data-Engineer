@@ -151,3 +151,9 @@ variable "dbt_plain_env" {
   type        = map(string)
   default     = {}
 }
+
+variable "log_retention_days" {
+  description = "Retention in days for _Default Cloud Logging bucket (tous les logs : Cloud Run Job, Scheduler, BigQuery, infra). Default: 60 (2 mois). Gratuit jusqu'à 50 GiB/mois."
+  type        = number
+  default     = 60
+}
