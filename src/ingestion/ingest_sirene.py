@@ -9,8 +9,14 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 URLS = {
-    "StockUniteLegale": "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/StockUniteLegale_utf8.parquet",
-    "StockEtablissement": "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/StockEtablissement_utf8.parquet",
+    "StockUniteLegale": (
+        "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/"
+        "StockUniteLegale_utf8.parquet"
+    ),
+    "StockEtablissement": (
+        "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/"
+        "StockEtablissement_utf8.parquet"
+    ),
 }
 
 # BUCKET_NAME = os.environ["INGESTION_RAW_BUCKET"]
