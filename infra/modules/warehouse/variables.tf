@@ -91,9 +91,3 @@ variable "create_external_tables" {
   type        = bool
   default     = false
 }
-
-variable "create_apec_external_table" {
-  description = "Create BigQuery External Table for APEC offres. Set to true only after the first APEC ingestion has created at least one Parquet file in GCS (BQ autodetect requires at least one file)."
-  type        = bool
-  default     = false
-}

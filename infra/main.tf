@@ -88,7 +88,6 @@ module "warehouse" {
   raw_geo_prefix                   = var.ingestion_geo_prefix
   raw_apec_prefix                  = var.ingestion_apec_prefix
   create_external_tables           = var.create_external_tables
-  create_apec_external_table       = var.create_apec_external_table
 }
 
 module "secrets" {
