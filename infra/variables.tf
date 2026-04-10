@@ -111,6 +111,12 @@ variable "create_external_tables" {
   default     = false
 }
 
+variable "create_apec_external_table" {
+  description = "Create BigQuery External Table for APEC offres. Set to true only after the first APEC ingestion has created at least one Parquet file in GCS."
+  type        = bool
+  default     = false
+}
+
 variable "create_compute_job" {
   description = "Create the Cloud Run Job and Cloud Scheduler jobs. Set to true only after the container image has been pushed to Artifact Registry (job creation fails with 403 if the image does not exist)."
   type        = bool
