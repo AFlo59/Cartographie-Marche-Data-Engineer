@@ -75,9 +75,6 @@ manage_log_retention = false
 create_compute_job = false
 # Passer à true après la première ingestion (BQ autodetect requiert des fichiers Parquet)
 create_external_tables = false
-# Passer à true uniquement après la première ingestion APEC (crée le fichier Parquet GCS)
-create_apec_external_table = false
-
 # Cloud Run Job dbt — passer create_dbt_job=true après push de l'image dbt dans AR
 create_dbt_job      = false
 dbt_job_name        = "datatalent-dbt-job"
