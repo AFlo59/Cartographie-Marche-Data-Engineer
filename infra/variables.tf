@@ -69,6 +69,12 @@ variable "bucket_france_travail_prefix_delete_age_days" {
   default     = 60
 }
 
+variable "bucket_apec_prefix_delete_age_days" {
+  description = "Delete raw/apec/ objects older than N days. Default: 60 (~8 weekly partitions). Override to null to disable."
+  type        = number
+  default     = 60
+}
+
 variable "bucket_sirene_prefix_delete_age_days" {
   description = "Delete raw/sirene/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Override to null to disable."
   type        = number
@@ -123,6 +129,12 @@ variable "staging_dataset_id" {
   default     = "staging"
 }
 
+variable "intermediate_dataset_id" {
+  description = "BigQuery dataset ID for intermediate layer (between staging and marts)"
+  type        = string
+  default     = "intermediate"
+}
+
 variable "marts_dataset_id" {
   description = "BigQuery dataset ID for marts layer"
   type        = string
@@ -145,6 +157,12 @@ variable "ingestion_geo_prefix" {
   description = "Prefix for Geo API raw files"
   type        = string
   default     = "raw/geo/"
+}
+
+variable "ingestion_apec_prefix" {
+  description = "Prefix for APEC raw files"
+  type        = string
+  default     = "raw/apec/"
 }
 
 variable "compute_job_name" {
@@ -217,6 +235,12 @@ variable "scheduler_geo_schedule" {
   description = "Cron schedule for Geo ingestion"
   type        = string
   default     = "0 4 1 * *"
+}
+
+variable "scheduler_apec_schedule" {
+  description = "Cron schedule for APEC ingestion (weekly, offres 7 derniers jours)"
+  type        = string
+  default     = "0 7 * * 1"
 }
 
 variable "secret_ft_client_id_name" {

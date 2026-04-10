@@ -10,6 +10,12 @@ resource "google_bigquery_dataset" "staging" {
   location   = var.location
 }
 
+resource "google_bigquery_dataset" "intermediate" {
+  project    = var.project_id
+  dataset_id = var.intermediate_dataset_id
+  location   = var.location
+}
+
 resource "google_bigquery_dataset" "marts" {
   project    = var.project_id
   dataset_id = var.marts_dataset_id
@@ -39,6 +45,15 @@ resource "google_bigquery_dataset_iam_member" "dbt_staging_editor" {
 
   project    = var.project_id
   dataset_id = google_bigquery_dataset.staging.dataset_id
+  role       = "roles/bigquery.dataEditor"
+  member     = "serviceAccount:${var.dbt_service_account}"
+}
+
+resource "google_bigquery_dataset_iam_member" "dbt_intermediate_editor" {
+  count = var.dbt_service_account == "" ? 0 : 1
+
+  project    = var.project_id
+  dataset_id = google_bigquery_dataset.intermediate.dataset_id
   role       = "roles/bigquery.dataEditor"
   member     = "serviceAccount:${var.dbt_service_account}"
 }
@@ -173,6 +188,29 @@ resource "google_bigquery_table" "raw_geo_regions" {
     autodetect    = true
     source_format = "PARQUET"
     source_uris   = ["gs://${var.raw_bucket_name}/${trim(var.raw_geo_prefix, "/")}/*/regions.parquet"]
+  }
+}
+
+# ── APEC ─────────────────────────────────────────────────────────────────────
+# Hive-partitioned : dt=YYYY-MM-DD → BQ ajoute automatiquement la colonne `dt`
+resource "google_bigquery_table" "raw_apec_offres" {
+  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
+
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.raw.dataset_id
+  table_id            = "apec_offres"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "PARQUET"
+    source_uris   = ["gs://${var.raw_bucket_name}/${trim(var.raw_apec_prefix, "/")}/dt=*/offres.parquet"]
+
+    hive_partitioning_options {
+      mode                     = "AUTO"
+      source_uri_prefix        = "gs://${var.raw_bucket_name}/${trim(var.raw_apec_prefix, "/")}/"
+      require_partition_filter = false
+    }
   }
 }
 

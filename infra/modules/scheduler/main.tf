@@ -3,6 +3,7 @@ locals {
     france_travail = var.france_travail_schedule
     sirene         = var.sirene_schedule
     geo            = var.geo_schedule
+    apec           = var.apec_schedule
   }
 }
 

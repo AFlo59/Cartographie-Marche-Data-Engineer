@@ -73,6 +73,18 @@ variable "sirene_prefix_delete_age_days" {
   default     = 60
 }
 
+variable "apec_prefix" {
+  description = "GCS prefix for APEC data (weekly partitions dt=YYYY-MM-DD/). Must end with '/'."
+  type        = string
+  default     = "raw/apec/"
+}
+
+variable "apec_prefix_delete_age_days" {
+  description = "Delete raw/apec/ objects older than N days. Default: 60 (~8 weeks of weekly partitions). Null disables."
+  type        = number
+  default     = 60
+}
+
 variable "ingestion_sa_email" {
   description = "Ingestion service account email for bucket access"
   type        = string
