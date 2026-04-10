@@ -1,51 +1,46 @@
-# Commandes Docker  workflow infra rcurrent
+# Commandes Docker — workflow infra récurrent
 
-Ce guide couvre uniquement l'excution Terraform via le conteneur `infra-iac`.
+Ce guide couvre uniquement l'exécution Terraform via le conteneur `infra-iac`.
 
 Pour le setup GCP one-shot : [docs/platform/gcp_terminal_setup.md](../platform/gcp_terminal_setup.md)
 
 Pour la vue d'ensemble : [docs/setup_guide.md](../setup_guide.md)
 
-> Ce guide sert principalement au **dveloppement local**,  la validation manuelle et au debug.
-> Dans le primtre actuel, le **dploiement principal de l'infrastructure Terraform** doit passer par GitHub Actions aprs merge sur `main`.
+> Ce guide sert principalement au **développement local**, à la validation manuelle et au debug.
+> Dans le périmètre actuel, le **déploiement principal de l'infrastructure Terraform** doit passer par GitHub Actions après merge sur `main`.
 
 ## Quand utiliser ce fichier
 
-Utiliser ce guide pour les oprations rcurrentes :
+Utiliser ce guide pour les opérations récurrentes :
+
 - build de l'image infra,
 - authentification locale,
 - `init`, `validate`, `plan`, `apply`,
-- vrifications aprs dploiement.
+- vérifications après déploiement.
 
-Ce guide ne dfinit pas la release fonctionnelle complte du projet : il couvre seulement l'excution manuelle de l'infra pendant le dveloppement.
+Les opérations sensibles ou one-shot ont leur guide dédié :
 
-Les oprations sensibles ou one-shot ont leur guide ddi :
 - secrets : [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md)
 - IAM : [docs/infra/iam_roles.md](../infra/iam_roles.md)
 - WIF GitHub : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
 
-## Ordre recommand
+---
 
-### 0. Pr-requis
+## Ordre recommandé
 
-- Le setup GCP manuel est termin.
-- Le fichier `.env` existe.
-- Les `TF_VAR_*` ncessaires sont renseigns.
+### 0. Pré-requis
+
+- Le setup GCP manuel est terminé.
+- Le fichier `.env` existe et est renseigné (copier depuis `.env.example` si absent).
+- Les `TF_VAR_*` nécessaires sont renseignés dans `.env`.
 
 Depuis la racine du repo :
 
 ```bash
-cd D:/PROJETS/Cartographie-Marche-Data-Engineer
 ls -l .env
-```
-
-Si `.env` est absent :
-
-```bash
+# Si absent :
 cp .env.example .env
 ```
-
-Si votre repo n'est pas dans `D:/PROJETS/...`, remplacez le chemin par le chemin local rel du workspace.
 
 ### 1. Construire l'image infra
 
@@ -57,26 +52,26 @@ Pourquoi : reconstruit l'image qui contient `terraform`, `tofu` et `gcloud`.
 
 ### 2. Choisir un mode d'authentification local
 
-#### Option A  ADC recommand
+#### Option A — ADC recommandé
 
 ```bash
 docker compose run --rm infra-iac gcloud auth login
 docker compose run --rm infra-iac gcloud auth application-default login
-docker compose run --rm infra-iac gcloud config set project cartographie-data-engineer
+docker compose run --rm infra-iac gcloud config set project ${GCP_PROJECT_ID}
 docker compose run --rm infra-iac sh -lc 'ls -l /root/.config/gcloud/application_default_credentials.json'
 ```
 
-Pourquoi : c'est le mode standard local quand les cls JSON sont bloques.
+Pourquoi : mode standard local quand les clés JSON sont bloquées.
 
-#### Option B  OAuth fallback
+#### Option B — OAuth fallback
 
 ```bash
 docker compose run --rm infra-iac gcloud auth login
-docker compose run --rm infra-iac gcloud config set project cartographie-data-engineer
+docker compose run --rm infra-iac gcloud config set project ${GCP_PROJECT_ID}
 docker compose run --rm infra-iac gcloud auth list
 ```
 
-Puis utiliser le wrapper intgr :
+Puis utiliser le wrapper intégré :
 
 ```bash
 docker compose run --rm infra-iac terraform-oauth init -reconfigure
@@ -85,7 +80,7 @@ docker compose run --rm infra-iac terraform-oauth plan
 docker compose run --rm infra-iac terraform-oauth apply
 ```
 
-Pourquoi : `terraform-oauth` rafrachit automatiquement le token OAuth avant chaque commande.
+Pourquoi : `terraform-oauth` rafraîchit automatiquement le token OAuth avant chaque commande.
 
 ### 3. Initialiser Terraform
 
@@ -97,9 +92,11 @@ docker compose run --rm infra-iac terraform init -backend=false
 
 Pourquoi : utile pour valider la config sans toucher au backend GCS.
 
-#### Backend GCS rel
+#### Backend GCS réel
 
 ```bash
+# Le nom du bucket tfstate est défini dans TF_BACKEND_BUCKET (.env ou workflow)
+# Convention : datatalent-tfstate-<project_id>
 docker compose run --rm infra-iac terraform init -reconfigure
 ```
 
@@ -109,9 +106,7 @@ Si vous migrez un state local existant vers GCS :
 docker compose run --rm infra-iac terraform init -migrate-state
 ```
 
-Pourquoi : initialise le backend rel utilis par les dploiements.
-
-### 4. Vrifier la configuration avant dploiement
+### 4. Vérifier la configuration avant déploiement
 
 ```bash
 docker compose run --rm infra-iac terraform fmt -check -recursive
@@ -119,46 +114,43 @@ docker compose run --rm infra-iac terraform validate
 docker compose run --rm infra-iac terraform plan
 ```
 
-Pourquoi : dtecte les erreurs avant l'application.
-
 ### 5. Appliquer l'infrastructure
 
 ```bash
 docker compose run --rm infra-iac terraform apply
 ```
 
-Pourquoi : cre ou met  jour les ressources GCP dcrites dans Terraform.
-
-### 6. Vrifier le rsultat ct GCP
+### 6. Vérifier le résultat côté GCP
 
 ```bash
-docker compose run --rm infra-iac gcloud storage buckets list --project cartographie-data-engineer
-docker compose run --rm infra-iac bq ls --project_id=cartographie-data-engineer
-docker compose run --rm infra-iac gcloud run jobs list --region=europe-west1 --project cartographie-data-engineer
-docker compose run --rm infra-iac gcloud scheduler jobs list --location=europe-west1 --project cartographie-data-engineer
-docker compose run --rm infra-iac gcloud secrets list --project cartographie-data-engineer
+docker compose run --rm infra-iac gcloud storage buckets list --project=${GCP_PROJECT_ID}
+docker compose run --rm infra-iac bq ls --project_id=${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud run jobs list --region=${GCP_REGION:-europe-west1} --project=${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud scheduler jobs list --location=${GCP_REGION:-europe-west1} --project=${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud secrets list --project=${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud artifacts repositories list --location=${GCP_REGION:-europe-west1} --project=${GCP_PROJECT_ID}
 ```
 
-Pourquoi : confirme bucket, datasets, Cloud Run Job, Scheduler et secrets.
+Pourquoi : confirme bucket, datasets, Cloud Run Jobs, Schedulers, secrets et Artifact Registry.
 
-### 7. Dtruire les ressources si ncessaire
+### 7. Détruire les ressources si nécessaire
 
 ```bash
 docker compose run --rm infra-iac terraform destroy
 ```
 
-Pourquoi : supprime les ressources gres par le state courant.
+---
 
 ## Commandes utiles par objectif
 
-### Vrifier les versions d'outils du conteneur
+### Vérifier les versions d'outils du conteneur
 
 ```bash
 docker compose run --rm infra-iac terraform version
 docker compose run --rm infra-iac gcloud --version
 ```
 
-### Chane rapide `init + validate + fmt`
+### Chaîne rapide `init + validate + fmt`
 
 ```bash
 docker compose run --rm infra-iac sh -lc 'terraform init -backend=false && terraform validate && terraform fmt -check -recursive'
@@ -171,7 +163,9 @@ docker compose run --rm infra-iac terraform-oauth plan
 docker compose run --rm infra-iac terraform-oauth apply
 ```
 
-## Dpannage rapide
+---
+
+## Dépannage rapide
 
 ### Le fichier ADC n'existe pas
 
@@ -182,82 +176,85 @@ docker compose run --rm infra-iac sh -lc 'ls -l /root/.config/gcloud/application
 
 ### Erreur de credentials persistante
 
-Basculez temporairement sur l'option OAuth :
+Basculer temporairement sur l'option OAuth :
 
 ```bash
 docker compose run --rm infra-iac terraform-oauth plan
 ```
 
-### Vous devez crer ou peupler les secrets
+### Créer ou peupler les secrets
 
-Ne pas le faire dans ce guide pour viter le doublon.
+Guide dédié : [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md)
 
-Guide ddi : [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md)
+---
 
-### Activer le Cloud Run Job aprs le premier push d'image
-
-Le Cloud Run Job et les Schedulers sont dsactivs par dfaut (`create_compute_job = false`).
-GCP choue avec 403 si l'image n'existe pas dans Artifact Registry.
-
-**tape 1**  Builder et pusher l'image d'ingestion :
+## Déclencher le Cloud Run Job ingestion via Docker
 
 ```bash
-# Builder l'image ingestion via docker compose
-docker compose build ingestion
+GCP_PROJECT_ID="$(docker compose run --rm infra-iac gcloud config get project 2>/dev/null)"
+GCP_REGION="${GCP_REGION:-europe-west1}"
+JOB_NAME="${TF_VAR_compute_job_name:-datatalent-ingestion-job}"
 
-# Authentifier Docker sur Artifact Registry
-docker compose run --rm infra-iac gcloud auth configure-docker europe-west1-docker.pkg.dev
+# France Travail
+docker compose run --rm infra-iac gcloud run jobs execute ${JOB_NAME} \
+  --region=${GCP_REGION} \
+  --project=${GCP_PROJECT_ID} \
+  --update-env-vars INGESTION_SOURCE=france_travail
 
-# Tagger et pousser l'image
-docker tag datatalent-ingestion europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
-docker push europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
-```
-
-**tape 2**  Activer le job dans Terraform :
-
-```bash
-docker compose run --rm infra-iac terraform apply -var="create_compute_job=true"
+# Sirene
+docker compose run --rm infra-iac gcloud run jobs execute ${JOB_NAME} \
+  --region=${GCP_REGION} \
+  --project=${GCP_PROJECT_ID} \
+  --update-env-vars INGESTION_SOURCE=sirene
 ```
 
 ---
 
-### Activer les External Tables BigQuery aprs la premire ingestion
-
-Les External Tables sont dsactives par dfaut (`create_external_tables = false`).
-BigQuery refuse de crer une table avec `autodetect = true` si le bucket est vide.
-
-**tape 1**  Vrifier que des fichiers Parquet existent dans le bucket :
+## Vérifier les fichiers dans le bucket raw
 
 ```bash
-docker compose run --rm infra-iac gcloud storage ls \
-  gs://datatalent-dev-cartographie-data-engineer-raw/raw/sirene/ \
-  --project cartographie-data-engineer
+RAW_BUCKET="${INGESTION_RAW_BUCKET}"
 
 docker compose run --rm infra-iac gcloud storage ls \
-  gs://datatalent-dev-cartographie-data-engineer-raw/raw/france_travail/ \
-  --project cartographie-data-engineer
+  gs://${RAW_BUCKET}/raw/sirene/ \
+  --project=${GCP_PROJECT_ID}
+
+docker compose run --rm infra-iac gcloud storage ls \
+  gs://${RAW_BUCKET}/raw/france_travail/ \
+  --project=${GCP_PROJECT_ID}
+
+docker compose run --rm infra-iac gcloud storage ls \
+  gs://${RAW_BUCKET}/raw/geo/ \
+  --project=${GCP_PROJECT_ID}
 ```
 
-**tape 2**  Dclencher manuellement le Cloud Run Job pour peupler le bucket (recommand) :
+---
 
-```bash
-docker compose run --rm infra-iac gcloud run jobs execute datatalent-ingestion-job \
-  --region=europe-west1 \
-  --project cartographie-data-engineer \
-  --update-env-vars INGESTION_SOURCE=france_travail
+## Activer les External Tables BigQuery après la première ingestion
 
-docker compose run --rm infra-iac gcloud run jobs execute datatalent-ingestion-job \
-  --region=europe-west1 \
-  --project cartographie-data-engineer \
-  --update-env-vars INGESTION_SOURCE=sirene
-```
+Une fois des fichiers Parquet présents dans le bucket, les External Tables peuvent être créées.
+En CI, `TF_VAR_create_external_tables=true` est déjà actif — le prochain `terraform apply` les crée.
 
-**tape 3**  Une fois les fichiers prsents, appliquer avec les External Tables actives :
+Pour forcer localement :
 
 ```bash
 docker compose run --rm infra-iac terraform apply -var="create_external_tables=true"
 ```
 
-Pour activer en CI : mettre `TF_VAR_create_external_tables: "true"` dans `.github/workflows/infra-deploy.yml`.
+Vérifier les tables créées :
 
-Voir le guide complet : [docs/infra/manual_commands.md](../infra/manual_commands.md#activer-les-external-tables-bigquery-aprs-la-premire-ingestion)
+```bash
+docker compose run --rm infra-iac bq ls --project_id=${GCP_PROJECT_ID} raw
+docker compose run --rm infra-iac bq show --project_id=${GCP_PROJECT_ID} raw.sirene_etablissements
+docker compose run --rm infra-iac bq show --project_id=${GCP_PROJECT_ID} raw.sirene_unites_legales
+docker compose run --rm infra-iac bq show --project_id=${GCP_PROJECT_ID} raw.france_travail_offres
+```
+
+---
+
+## Options avancées
+
+- Gestion des secrets runtime : [docs/platform/secret_manager_setup.md](../platform/secret_manager_setup.md)
+- Préparer la CI GitHub Actions : [docs/cicd/github_wif_setup.md](../cicd/github_wif_setup.md)
+- Vérifier les rôles IAM : [docs/infra/iam_roles.md](../infra/iam_roles.md)
+- Commandes sans Docker : [docs/infra/manual_commands.md](../infra/manual_commands.md)
