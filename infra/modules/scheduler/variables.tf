@@ -47,3 +47,9 @@ variable "geo_schedule" {
   type        = string
   default     = "0 4 1 * *"
 }
+
+variable "apec_schedule" {
+  description = "Cron schedule for APEC ingestion (weekly, offres 7 derniers jours)"
+  type        = string
+  default     = "0 7 * * 1"
+}
