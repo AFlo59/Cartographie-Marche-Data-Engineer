@@ -12,7 +12,7 @@
   - **Cloud Run Job ingestion** (`datatalent-ingestion-job`) : **ACTIF** en CI (`TF_VAR_create_compute_job=true`)
   - **Cloud Run Job dbt** (`datatalent-dbt-job`) : **ACTIF** en CI (`TF_VAR_create_dbt_job=true`)
   - `time_sleep` 90s avant création des jobs (propagation IAM)
-  - Artifact Registry repo `datatalent` avec cleanup policy : **garder 2 versions** (latest + précédente), supprimer les autres après 7 jours
+  - Artifact Registry repo `datatalent` avec cleanup policy : **garder 2 versions** (latest + précédente), suppression des versions excédentaires avec délai minimal puis purge asynchrone côté GCP
   - **Rétention logs Cloud Logging** : bucket `_Default` configuré à 60j (`TF_VAR_manage_log_retention=true`)
   - CI SA reçoit `roles/artifactregistry.writer` et `roles/iam.serviceAccountUser` via Terraform
 - ✅ **INFRA-05** : Module scheduler (`infra/modules/scheduler`) avec 3 jobs cron actifs :

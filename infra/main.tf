@@ -111,6 +111,7 @@ module "compute" {
   ci_service_account_email        = var.ci_service_account_email
   artifact_registry_keep_recent_versions = var.artifact_registry_keep_recent_versions
   artifact_registry_cleanup_dry_run      = var.artifact_registry_cleanup_dry_run
+  artifact_registry_cleanup_delete_older_than_seconds = var.artifact_registry_cleanup_delete_older_than_seconds
   log_retention_days = var.log_retention_days
   manage_log_retention              = var.manage_log_retention
   create_dbt_job                  = var.create_dbt_job

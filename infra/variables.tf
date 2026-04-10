@@ -255,6 +255,12 @@ variable "artifact_registry_cleanup_dry_run" {
   default     = false
 }
 
+variable "artifact_registry_cleanup_delete_older_than_seconds" {
+  description = "Minimum age before deleting Artifact Registry versions not covered by the keep policy"
+  type        = number
+  default     = 1
+}
+
 variable "log_retention_days" {
   description = "Retention in days for _Default Cloud Logging bucket (tous les logs). Default: 60 (2 mois). Gratuit jusqu'à 50 GiB/mois."
   type        = number
