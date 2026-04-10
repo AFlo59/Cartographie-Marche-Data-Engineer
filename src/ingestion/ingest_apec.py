@@ -40,11 +40,11 @@ _DETAIL_PATH_PREFIX = "/candidat/recherche-emploi.html/emploi/detail-offre/"
 
 # ── Filtres de recherche ──────────────────────────────────────────────────────
 _DEFAULT_TYPES_CONVENTION = [143684, 143685, 143686, 143687]
-_DEFAULT_SECTEUR = 101753          # Activités informatiques
-_DEFAULT_ANCIENNETE = 101851       # 7 derniers jours
-_DEFAULT_SALAIRE_MIN = 20          # k€
-_DEFAULT_SALAIRE_MAX = 200         # k€
-_DEFAULT_PAGE_SIZE = 50            # max 50 par page via l'API
+_DEFAULT_SECTEUR = 101753  # Activités informatiques
+_DEFAULT_ANCIENNETE = 101851  # 7 derniers jours
+_DEFAULT_SALAIRE_MIN = 20  # k€
+_DEFAULT_SALAIRE_MAX = 200  # k€
+_DEFAULT_PAGE_SIZE = 50  # max 50 par page via l'API
 _DEFAULT_SORT_TYPE = "DATE"
 _DEFAULT_SORT_DIR = "DESCENDING"
 
@@ -63,7 +63,7 @@ _TYPE_CONTRAT: dict[int, str] = {
 # ── HTTP ──────────────────────────────────────────────────────────────────────
 _MAX_RETRIES = 4
 _BACKOFF_BASE = 2
-_PAGE_DELAY_SECONDS = (0.3, 0.8)   # délai inter-pages : API JSON, pas de HTML à parser
+_PAGE_DELAY_SECONDS = (0.3, 0.8)  # délai inter-pages : API JSON, pas de HTML à parser
 _REQUEST_TIMEOUT = 30
 
 _USER_AGENTS = [
@@ -103,10 +103,14 @@ def _new_session() -> requests.Session:
 
     # Warm-up : visite homepage pour établir les cookies de session
     try:
-        session.headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        session.headers["Accept"] = (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        )
         r = session.get(Config.APEC_BASE_URL, timeout=_REQUEST_TIMEOUT)
         if r.status_code == 200:
-            logger.debug("Warm-up homepage OK (cookies: %s)", list(session.cookies.keys()))
+            logger.debug(
+                "Warm-up homepage OK (cookies: %s)", list(session.cookies.keys())
+            )
         else:
             logger.warning("Warm-up homepage HTTP %s", r.status_code)
     except requests.RequestException as exc:
@@ -119,7 +123,9 @@ def _new_session() -> requests.Session:
         {
             "Accept": "application/json, text/plain, */*",
             "Content-Type": "application/json",
-            "Referer": urljoin(Config.APEC_BASE_URL, "/candidat/recherche-emploi.html/emploi"),
+            "Referer": urljoin(
+                Config.APEC_BASE_URL, "/candidat/recherche-emploi.html/emploi"
+            ),
             "Origin": Config.APEC_BASE_URL,
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
@@ -140,10 +146,13 @@ def _post_with_retry(
         try:
             response = session.post(url, json=body, timeout=_REQUEST_TIMEOUT)
         except requests.RequestException as exc:
-            wait = _BACKOFF_BASE ** attempt
+            wait = _BACKOFF_BASE**attempt
             logger.warning(
                 "APEC API request error (%s) attempt %s/%s; retry in %ss",
-                exc, attempt + 1, _MAX_RETRIES, wait,
+                exc,
+                attempt + 1,
+                _MAX_RETRIES,
+                wait,
             )
             time.sleep(wait)
             continue
@@ -159,20 +168,27 @@ def _post_with_retry(
 
         if response.status_code in {429, 500, 502, 503, 504}:
             jitter = random.uniform(0.5, 1.5)
-            wait = (_BACKOFF_BASE ** attempt) * jitter
+            wait = (_BACKOFF_BASE**attempt) * jitter
             if response.status_code == 429:
                 wait = max(wait, 10.0)
             session.headers["User-Agent"] = random.choice(_USER_AGENTS)
             logger.warning(
                 "HTTP %s on %s attempt %s/%s; retry in %.1fs",
-                response.status_code, url, attempt + 1, _MAX_RETRIES, wait,
+                response.status_code,
+                url,
+                attempt + 1,
+                _MAX_RETRIES,
+                wait,
             )
             time.sleep(wait)
             continue
 
         logger.error(
             "HTTP %s on %s body=%s: %s",
-            response.status_code, url, body, response.text[:300],
+            response.status_code,
+            url,
+            body,
+            response.text[:300],
         )
         return None
 
@@ -211,7 +227,9 @@ def _split_location(location_text: str | None) -> tuple[str | None, str | None]:
     cleaned = _clean_text(location_text)
     if not cleaned:
         return None, None
-    match = re.match(r"(?P<commune>.+?)\s*-\s*(?P<departement>[0-9]{2,3}[A-Z]?)$", cleaned)
+    match = re.match(
+        r"(?P<commune>.+?)\s*-\s*(?P<departement>[0-9]{2,3}[A-Z]?)$", cleaned
+    )
     if not match:
         return cleaned, None
     return match.group("commune"), match.group("departement")
@@ -224,14 +242,20 @@ def _parse_offer(raw: dict) -> dict:
     type_contrat_id = raw.get("typeContrat")
     return {
         "apec_id": offre_id or None,
-        "detail_url": urljoin(
-            Config.APEC_BASE_URL,
-            _DETAIL_PATH_PREFIX + offre_id,
-        ) if offre_id else None,
+        "detail_url": (
+            urljoin(
+                Config.APEC_BASE_URL,
+                _DETAIL_PATH_PREFIX + offre_id,
+            )
+            if offre_id
+            else None
+        ),
         "job_title": _clean_text(raw.get("intitule")),
         "company_name": _clean_text(raw.get("nomCommercial")),
         "salary_text": _clean_text(raw.get("salaireTexte")),
-        "contract_type": _TYPE_CONTRAT.get(type_contrat_id, str(type_contrat_id) if type_contrat_id else None),
+        "contract_type": _TYPE_CONTRAT.get(
+            type_contrat_id, str(type_contrat_id) if type_contrat_id else None
+        ),
         "location_text": _clean_text(raw.get("lieuTexte")),
         "commune": commune,
         "departement": departement,
@@ -271,7 +295,9 @@ def _collect_offers(session: requests.Session) -> list[dict]:
     total_pages = max(1, math.ceil(total_count / _DEFAULT_PAGE_SIZE))
     logger.info(
         "APEC page 1/%s — %s offres reçues, total annoncé %s",
-        total_pages, len(raw_results), total_count,
+        total_pages,
+        len(raw_results),
+        total_count,
     )
 
     offers = [_parse_offer(r) for r in raw_results]
@@ -302,7 +328,11 @@ def _collect_offers(session: requests.Session) -> list[dict]:
 
         logger.info(
             "APEC page %s/%s — %s reçues, %s nouvelles, cumul=%s",
-            page + 1, total_pages, len(raw_results), added, len(offers),
+            page + 1,
+            total_pages,
+            len(raw_results),
+            added,
+            len(offers),
         )
 
         if added == 0:
@@ -380,7 +410,9 @@ def main() -> None:
 
     df = _build_dataframe(offers)
     if df.empty:
-        logger.warning("DataFrame APEC vide après normalisation — fichier Parquet non créé.")
+        logger.warning(
+            "DataFrame APEC vide après normalisation — fichier Parquet non créé."
+        )
         return
 
     partition = datetime.now(timezone.utc).strftime("%Y-%m-%d")
