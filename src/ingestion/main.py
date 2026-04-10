@@ -3,6 +3,15 @@ import sys
 
 
 def _run_source(source: str) -> None:
+    if source == "apec":
+        try:
+            from .ingest_apec import main as ingest_apec
+        except ImportError:
+            from ingest_apec import main as ingest_apec
+
+        ingest_apec()
+        return
+
     if source == "sirene":
         try:
             from .ingest_sirene import ingest_sirene
@@ -35,11 +44,12 @@ def _run_source(source: str) -> None:
         _run_source("sirene")
         _run_source("geo")
         _run_source("france_travail")
+        _run_source("apec")
         print("Toutes les ingestions sont terminées.")
         return
 
     print(f"Source inconnue : {source}")
-    print("Sources supportées : sirene, geo, france_travail, all")
+    print("Sources supportées : sirene, geo, france_travail, apec, all")
     sys.exit(1)
 
 
@@ -51,7 +61,7 @@ def main():
         "--source",
         type=str,
         required=True,
-        help="Nom de la source à ingérer (ex: sirene, geo, france_travail, all)",
+        help="Nom de la source à ingérer (ex: sirene, geo, france_travail, apec, all)",
     )
     args = parser.parse_args()
 

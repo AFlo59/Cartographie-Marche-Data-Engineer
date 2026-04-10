@@ -62,6 +62,8 @@ module "storage" {
   sirene_prefix_delete_age_days         = var.bucket_sirene_prefix_delete_age_days
   geo_prefix                            = var.ingestion_geo_prefix
   geo_prefix_delete_age_days            = var.bucket_geo_prefix_delete_age_days
+  apec_prefix                           = var.ingestion_apec_prefix
+  apec_prefix_delete_age_days           = var.bucket_apec_prefix_delete_age_days
 
   ingestion_sa_email = var.ingestion_service_account_email
   dbt_sa_email       = var.dbt_service_account_email
@@ -74,6 +76,7 @@ module "warehouse" {
   location                     = var.location
   raw_dataset_id               = var.raw_dataset_id
   staging_dataset_id           = var.staging_dataset_id
+  intermediate_dataset_id      = var.intermediate_dataset_id
   marts_dataset_id             = var.marts_dataset_id
   ingestion_service_account    = var.ingestion_service_account_email
   dbt_service_account          = var.dbt_service_account_email
@@ -83,6 +86,7 @@ module "warehouse" {
   raw_sirene_prefix                = var.ingestion_sirene_prefix
   raw_france_travail_prefix        = var.ingestion_france_travail_prefix
   raw_geo_prefix                   = var.ingestion_geo_prefix
+  raw_apec_prefix                  = var.ingestion_apec_prefix
   create_external_tables           = var.create_external_tables
 }
 
@@ -134,6 +138,7 @@ module "compute" {
     INGESTION_FRANCE_TRAVAIL_PREFIX = var.ingestion_france_travail_prefix
     INGESTION_SIRENE_PREFIX         = var.ingestion_sirene_prefix
     INGESTION_GEO_PREFIX            = var.ingestion_geo_prefix
+    INGESTION_APEC_PREFIX           = var.ingestion_apec_prefix
   }
 
   secret_env = merge(local.compute_secret_env, local.compute_secret_env_optional)
@@ -154,6 +159,7 @@ module "scheduler" {
   france_travail_schedule         = var.scheduler_france_travail_schedule
   sirene_schedule                 = var.scheduler_sirene_schedule
   geo_schedule                    = var.scheduler_geo_schedule
+  apec_schedule                   = var.scheduler_apec_schedule
 
   depends_on = [module.compute]
 }

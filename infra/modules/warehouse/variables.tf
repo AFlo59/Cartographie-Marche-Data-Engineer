@@ -20,6 +20,12 @@ variable "staging_dataset_id" {
   default     = "staging"
 }
 
+variable "intermediate_dataset_id" {
+  description = "Dataset ID for intermediate layer (between staging and marts)"
+  type        = string
+  default     = "intermediate"
+}
+
 variable "marts_dataset_id" {
   description = "Dataset ID for marts layer"
   type        = string
@@ -72,6 +78,12 @@ variable "raw_geo_prefix" {
   description = "GCS prefix for Geo raw Parquet files"
   type        = string
   default     = "raw/geo/"
+}
+
+variable "raw_apec_prefix" {
+  description = "GCS prefix for APEC raw Parquet files"
+  type        = string
+  default     = "raw/apec/"
 }
 
 variable "create_external_tables" {

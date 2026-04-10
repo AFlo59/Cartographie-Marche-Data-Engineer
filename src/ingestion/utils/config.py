@@ -78,12 +78,14 @@ class Config:
     FT_PREFIX: str = os.getenv("INGESTION_FRANCE_TRAVAIL_PREFIX", "raw/france_travail/")
     SIRENE_PREFIX: str = os.getenv("INGESTION_SIRENE_PREFIX", "raw/sirene/")
     GEO_PREFIX: str = os.getenv("INGESTION_GEO_PREFIX", "raw/geo/")
+    APEC_PREFIX: str = os.getenv("INGESTION_APEC_PREFIX", "raw/apec/")
 
     FT_API_BASE: str = os.getenv(
         "FRANCE_TRAVAIL_API_BASE_URL",
         "https://api.francetravail.io/partenaire/offresdemploi/v2",
     )
     GEO_API_BASE: str = os.getenv("GEO_API_BASE_URL", "https://geo.api.gouv.fr")
+    APEC_BASE_URL: str = os.getenv("APEC_BASE_URL", "https://www.apec.fr")
     SIRENE_DATASET_SLUG: str = (
         "base-sirene-des-entreprises-et-de-leurs-etablissements-siren-siret"
     )
