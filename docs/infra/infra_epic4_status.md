@@ -83,6 +83,58 @@ Guides d'exécution :
 
 ---
 
+## Incidents / correctifs appliqués
+
+### [2026-04-10] Échec scheduler France Travail 6h + CI bloqué — correctifs appliqués
+
+**Symptômes** :
+
+- Le scheduler Cloud Scheduler `datatalent-ingestion-france_travail` (6h00 Europe/Paris) a échoué.
+- Aucun workflow GitHub Actions ne s'est exécuté depuis plusieurs jours.
+
+**Causes identifiées (du plus critique au moins critique)** :
+
+1. ❌ **CMD Dockerfile incorrect** — `python -m src.ingestion.main` cherche `/workspace/src/ingestion/main.py`
+   mais le build context CI est `src/ingestion/` : les fichiers sont copiés à plat dans `/workspace/`.
+   → `ModuleNotFoundError: No module named 'src'` dès le démarrage du container. Ingestion ne démarre jamais.
+
+2. ❌ **Dépendance circulaire dans infra-deploy.yml** — `terraform` avait `needs: [..., push-images]`
+   et `push-images` avait `needs: [terraform]`. GitHub Actions refuse de valider → aucun job ne tourne.
+   CI entièrement bloqué.
+
+3. ⚠️ **`roles/logging.configWriter` manquant** sur `terraform-deployer-sa`
+   → 403 lors du `terraform apply` sur `google_logging_project_bucket_config`.
+   Terraform apply échoue partiellement.
+
+**Correctifs appliqués** :
+
+1. **Dockerfile CMD** — `src/ingestion/Dockerfile` corrigé :
+
+   ```dockerfile
+   # Avant (incorrect — src/ n'existe pas dans le container)
+   CMD ["sh", "-c", "python -m src.ingestion.main --source ${INGESTION_SOURCE}"]
+
+   # Après (correct — main.py est à la racine /workspace/)
+   CMD ["sh", "-c", "python main.py --source ${INGESTION_SOURCE}"]
+   ```
+
+2. **CI workflow** — `infra-deploy.yml` corrigé :
+
+   ```yaml
+   # Avant (cycle)
+   terraform:
+     needs: [ingestion-verify, dbt-verify, push-images]
+
+   # Après (correct)
+   terraform:
+     needs: [ingestion-verify, dbt-verify]
+     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+   ```
+
+3. **IAM `roles/logging.configWriter`** — à appliquer manuellement (voir section ci-dessous).
+
+---
+
 ## Actions restantes
 
 ### IAM manquant — `roles/logging.configWriter` sur SA WIF
