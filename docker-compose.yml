@@ -47,6 +47,9 @@ services:
       TF_VAR_create_external_tables: ${TF_VAR_create_external_tables:-false}
       # CI SA pour Artifact Registry writer (même email que le WIF SA)
       TF_VAR_ci_service_account_email: ${TF_VAR_ci_service_account_email:-}
+      TF_VAR_artifact_registry_keep_recent_versions: ${TF_VAR_artifact_registry_keep_recent_versions:-2}
+      TF_VAR_artifact_registry_cleanup_dry_run: ${TF_VAR_artifact_registry_cleanup_dry_run:-false}
+      TF_VAR_artifact_registry_cleanup_delete_older_than_seconds: ${TF_VAR_artifact_registry_cleanup_delete_older_than_seconds:-1}
       # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)
       TF_VAR_create_dbt_job: ${TF_VAR_create_dbt_job:-false}
       TF_VAR_dbt_job_name: ${TF_VAR_dbt_job_name:-datatalent-dbt-job}

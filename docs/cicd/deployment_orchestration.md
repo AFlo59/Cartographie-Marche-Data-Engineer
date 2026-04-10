@@ -80,12 +80,16 @@ Le workflow unique `infra-deploy.yml` orchestre tout sur push `main` en 4 jobs :
 |-----|------|-------------|
 | `ingestion-verify` | Build Dockerfile ingestion (vérification validité) | Toujours |
 | `dbt-verify` | Build image dbt + `dbt parse` + `dbt compile` | Toujours |
-| `terraform` | `terraform apply` (bloqué si verify échoue) | needs: [ingestion-verify, dbt-verify] |
-| `push-images` | Build + push `ingestion:latest` et `dbt:latest` vers AR | needs: [terraform], main seulement |
+| `terraform` | `terraform plan` sur PR, puis `terraform import` + `terraform apply` après merge sur `main` | needs: [ingestion-verify, dbt-verify] |
+| `push-images` | Build + push `ingestion:latest` et `dbt:latest` vers AR | needs: [terraform], merge `main` seulement |
 
-Sur **PR** : seuls `ingestion-verify` + `dbt-verify` + `terraform plan` s'exécutent (pas de push images, pas d'apply).
+Sur **PR** vers `develop` ou `main` : seuls `ingestion-verify` + `dbt-verify` + `terraform plan` s'exécutent.
 
-Workflows séparés `dbt-ci.yml` / `ingestion-ci.yml` : actifs uniquement sur leurs paths respectifs (`dbt/transformation/**`, `src/ingestion/**`).
+Sur **merge vers `main`** : `terraform import` + `terraform apply`, puis `push-images`.
+
+Workflows séparés `dbt-ci.yml` / `ingestion-ci.yml` et `python-lint.yml` : déclenchés uniquement sur PR et limités à la vérification locale.
+
+Le push Artifact Registry ne doit être fait que par `push-images` dans `infra-deploy.yml`, sinon un second push du même `${GITHUB_SHA::8}` retague la nouvelle image et laisse la précédente sans tag.
 
 ## Périmètre actuel documenté
 

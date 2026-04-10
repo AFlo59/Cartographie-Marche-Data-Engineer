@@ -9,7 +9,7 @@ on:
   push:
     # Pas de filtre paths sur push : terraform apply doit toujours s'exécuter
     # sur merge main, quelle que soit la source du changement (code, dbt, docs…).
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
@@ -193,9 +193,9 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
 
-      # ── 5.1 Activer les APIs requises (push trusted uniquement, best effort) ──
+      # ── 5.1 Activer les APIs requises (merge main uniquement, best effort) ──
       - name: Enable required GCP APIs (best effort)
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
@@ -248,9 +248,9 @@ jobs:
             exit 1
           fi
 
-      # ── 6. Bootstrap backend bucket sur push main/develop ─────────────────────
+      # ── 6. Bootstrap backend bucket sur merge main uniquement ─────────────────
       - name: Ensure Terraform backend bucket exists
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail

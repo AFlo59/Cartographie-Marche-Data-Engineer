@@ -58,6 +58,9 @@ ci_service_account_email = ""
 artifact_registry_keep_recent_versions = 2
 # true = simulation sans suppression; false = suppression effective
 artifact_registry_cleanup_dry_run = false
+# Age minimal avant suppression d'une version non retenue par la policy KEEP.
+# 1 = purge quasi immédiate, mais Artifact Registry applique la policy de façon asynchrone.
+artifact_registry_cleanup_delete_older_than_seconds = 1
 # Gestion Terraform de la retention Cloud Logging (_Default).
 # Activer seulement si l'identite Terraform/CI a les droits Logging bucket config.
 manage_log_retention = false
