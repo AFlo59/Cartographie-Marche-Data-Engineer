@@ -86,8 +86,9 @@ jobs:
             dbt compile --project-dir /app --profiles-dir /app
 
   terraform:
-    needs: [ingestion-verify, dbt-verify]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Changement : Ce job attend maintenant que les images soient poussées
+    needs: [ingestion-verify, dbt-verify, push-images]
+    if: always() && (needs.ingestion-verify.result == 'success' && needs.dbt-verify.result == 'success')
     name: Terraform ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'Apply' || 'Plan' }}
     runs-on: ubuntu-latest
 
