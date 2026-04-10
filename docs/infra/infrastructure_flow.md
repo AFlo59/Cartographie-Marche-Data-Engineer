@@ -52,6 +52,7 @@ TF_VAR_create_external_tables: "true"  # External Tables BQ actives
 
 # Artifact Registry cleanup
 TF_VAR_artifact_registry_keep_recent_versions: "2"  # garder latest + 1 version précédente
+TF_VAR_artifact_registry_cleanup_delete_older_than_seconds: "1"  # versions excédentaires supprimées quasi immédiatement, purge asynchrone
 
 # Cloud Logging retention
 TF_VAR_manage_log_retention: "true"

@@ -96,6 +96,12 @@ variable "artifact_registry_cleanup_dry_run" {
   default     = false
 }
 
+variable "artifact_registry_cleanup_delete_older_than_seconds" {
+  description = "Minimum age before deleting Artifact Registry versions that are not protected by the keep policy. Use a small value to enforce near-immediate cleanup beyond the N most recent versions."
+  type        = number
+  default     = 1
+}
+
 # ── Cloud Run Job dbt ────────────────────────────────────────────────────────
 
 variable "create_dbt_job" {

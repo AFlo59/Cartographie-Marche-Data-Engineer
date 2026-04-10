@@ -21,7 +21,7 @@ resource "google_artifact_registry_repository" "datatalent" {
 
     condition {
       tag_state  = "ANY"
-      older_than = "604800s" # 7 jours — buffer pour que les images déployées restent disponibles
+      older_than = "${var.artifact_registry_cleanup_delete_older_than_seconds}s"
     }
   }
 }
