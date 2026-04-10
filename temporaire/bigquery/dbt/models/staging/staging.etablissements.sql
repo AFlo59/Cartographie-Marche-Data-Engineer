@@ -1,0 +1,73 @@
+WITH CLEANUP AS (
+    SELECT
+        {{ CLEAN_STRING('enseigne1Etablissement') }}              AS NOM_1,
+        {{ CLEAN_STRING('enseigne2Etablissement') }}              AS NOM_2,
+        {{ CLEAN_STRING('enseigne3Etablissement') }}              AS NOM_3,
+        {{ CLEAN_STRING('denominationUsuelleEtablissement') }}    AS NOM_4,
+        {{ CLEAN_STRING('codePostalEtablissement') }}             AS CODE_POSTAL,
+        {{ CLEAN_COMMUNE_TOKENS(CLEAN_STRING('libelleCommuneEtablissement')) }}         AS NOM_COMMUNE_1,
+        {{ CLEAN_COMMUNE_TOKENS(CLEAN_STRING('libelleCommuneEtrangerEtablissement')) }} AS NOM_COMMUNE_2,
+        {{ CLEAN_STRING('codeCommuneEtablissement') }}            AS CODE_INSEE,
+        IF(
+            SAFE_CAST(coordonneeLambertAbscisseEtablissement AS FLOAT64) IS NOT NULL
+            AND SAFE_CAST(coordonneeLambertOrdonneeEtablissement AS FLOAT64) IS NOT NULL,
+            {{ lambert93_to_latlon(
+                'coordonneeLambertAbscisseEtablissement',
+                'coordonneeLambertOrdonneeEtablissement'
+            ) }},
+            NULL
+        ) AS coords
+    FROM {{ source('raw', 'sirene_etablissements') }}
+),
+
+CLEANUP_FLAT AS (
+    SELECT
+        NOM_1, NOM_2, NOM_3, NOM_4,
+        CODE_POSTAL, NOM_COMMUNE_1, NOM_COMMUNE_2, CODE_INSEE,
+        coords.lat AS LATITUDE,
+        coords.lon AS LONGITUDE,
+        COALESCE(
+            -- Depuis code_postal (5 chiffres)
+            CASE
+                WHEN REGEXP_CONTAINS(COALESCE(CODE_POSTAL, ''), r'^(97[1-6]|98[0-9])\d{2}$') THEN SUBSTR(CODE_POSTAL, 1, 3)
+                WHEN REGEXP_CONTAINS(COALESCE(CODE_POSTAL, ''), r'^\d{5}$')                   THEN SUBSTR(CODE_POSTAL, 1, 2)
+                ELSE NULL
+            END,
+            -- Depuis code commune INSEE (distingue 2A/2B que le code_postal ne peut pas)
+            CASE
+                WHEN REGEXP_CONTAINS(COALESCE(CODE_INSEE, ''), r'^2[AB]\d{3}$')              THEN SUBSTR(CODE_INSEE, 1, 2)
+                WHEN REGEXP_CONTAINS(COALESCE(CODE_INSEE, ''), r'^(97[1-6]|98[0-9])\d{2}$') THEN SUBSTR(CODE_INSEE, 1, 3)
+                WHEN REGEXP_CONTAINS(COALESCE(CODE_INSEE, ''), r'^\d{5}$')                   THEN SUBSTR(CODE_INSEE, 1, 2)
+                ELSE NULL
+            END
+        ) AS DEPARTEMENT
+    FROM CLEANUP
+),
+
+UNION_DATA AS (
+    SELECT NOM_1 AS NOM, NOM_COMMUNE_1 AS NOM_COMMUNE, CODE_INSEE, CODE_POSTAL, DEPARTEMENT, LATITUDE, LONGITUDE FROM CLEANUP_FLAT WHERE NOM_1 IS NOT NULL AND NOM_1 != '' AND NOM_COMMUNE_1 IS NOT NULL
+    UNION ALL
+    SELECT NOM_2, NOM_COMMUNE_1, CODE_INSEE, CODE_POSTAL, DEPARTEMENT, LATITUDE, LONGITUDE FROM CLEANUP_FLAT WHERE NOM_2 IS NOT NULL AND NOM_2 != '' AND NOM_COMMUNE_1 IS NOT NULL
+    UNION ALL
+    SELECT NOM_3, NOM_COMMUNE_1, CODE_INSEE, CODE_POSTAL, DEPARTEMENT, LATITUDE, LONGITUDE FROM CLEANUP_FLAT WHERE NOM_3 IS NOT NULL AND NOM_3 != '' AND NOM_COMMUNE_1 IS NOT NULL
+    UNION ALL
+    SELECT NOM_4, NOM_COMMUNE_1, CODE_INSEE, CODE_POSTAL, DEPARTEMENT, LATITUDE, LONGITUDE FROM CLEANUP_FLAT WHERE NOM_4 IS NOT NULL AND NOM_4 != '' AND NOM_COMMUNE_1 IS NOT NULL
+    UNION ALL
+    SELECT NOM_1, NOM_COMMUNE_2, CODE_INSEE, CODE_POSTAL, DEPARTEMENT, LATITUDE, LONGITUDE FROM CLEANUP_FLAT WHERE NOM_1 IS NOT NULL AND NOM_1 != '' AND NOM_COMMUNE_2 IS NOT NULL
+    UNION ALL
+    SELECT NOM_2, NOM_COMMUNE_2, CODE_INSEE, CODE_POSTAL, DEPARTEMENT, LATITUDE, LONGITUDE FROM CLEANUP_FLAT WHERE NOM_2 IS NOT NULL AND NOM_2 != '' AND NOM_COMMUNE_2 IS NOT NULL
+    UNION ALL
+    SELECT NOM_3, NOM_COMMUNE_2, CODE_INSEE, CODE_POSTAL, DEPARTEMENT, LATITUDE, LONGITUDE FROM CLEANUP_FLAT WHERE NOM_3 IS NOT NULL AND NOM_3 != '' AND NOM_COMMUNE_2 IS NOT NULL
+    UNION ALL
+    SELECT NOM_4, NOM_COMMUNE_2, CODE_INSEE, CODE_POSTAL, DEPARTEMENT, LATITUDE, LONGITUDE FROM CLEANUP_FLAT WHERE NOM_4 IS NOT NULL AND NOM_4 != '' AND NOM_COMMUNE_2 IS NOT NULL
+)
+
+SELECT DISTINCT
+    NOM,
+    NOM_COMMUNE,
+    CODE_INSEE,
+    CODE_POSTAL,
+    DEPARTEMENT,
+    LATITUDE,
+    LONGITUDE
+FROM UNION_DATA

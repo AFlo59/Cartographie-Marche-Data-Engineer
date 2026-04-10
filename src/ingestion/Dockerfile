@@ -26,5 +26,5 @@ COPY . /workspace/
 # Source selector injected by Cloud Run Job override or docker --env
 ENV INGESTION_SOURCE=france_travail
 
-# On lance le module Python avec son chemin complet depuis la racine /workspace
-CMD ["sh", "-c", "python -m src.ingestion.main --source ${INGESTION_SOURCE}"]
+# Exécution directe depuis /workspace — les fichiers sont copiés à la racine du contexte src/ingestion/
+CMD ["sh", "-c", "python main.py --source ${INGESTION_SOURCE}"]
