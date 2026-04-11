@@ -402,13 +402,15 @@ def main() -> None:
     if not Config.RAW_BUCKET:
         raise ValueError("INGESTION_RAW_BUCKET est requis pour l'ingestion APEC.")
 
-    session = _new_session()
-    offers = _collect_offers(session)
+    with _new_session() as session:
+        offers = _collect_offers(session)
+
     if not offers:
         logger.warning("Aucune offre APEC récupérée — fichier Parquet non créé.")
         return
 
     df = _build_dataframe(offers)
+    del offers  # libère les dicts parsés, df seul suffit
     if df.empty:
         logger.warning(
             "DataFrame APEC vide après normalisation — fichier Parquet non créé."

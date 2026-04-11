@@ -57,6 +57,7 @@ def fetch_communes() -> pd.DataFrame:
     )
     logger.info(f"Communes : {len(rows):,} récupérées")
     df = pd.json_normalize(rows)
+    del rows  # libère les ~35k dicts bruts, df seul suffit
 
     # Extraire latitude/longitude depuis centre.coordinates [lon, lat]
     if "centre.coordinates" in df.columns:

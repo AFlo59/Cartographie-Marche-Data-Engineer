@@ -195,21 +195,22 @@ def _flatten(offre: dict) -> dict:
 # ---------------------------------------------------------------------------
 def main() -> None:
     token = get_token()
-    session = requests.Session()
-    session.headers.update({"Authorization": f"Bearer {token}"})
 
     all_offres: list[dict] = []
     total_combos = len(_DEPARTEMENTS) * len(_ROME_CODES)
     combo_idx = 0
 
-    for dept in _DEPARTEMENTS:
-        for rome in _ROME_CODES:
-            combo_idx += 1
-            offres = fetch_offres_for_combo(session, dept, rome)
-            logger.info(
-                f"[{combo_idx}/{total_combos}] dept={dept} rome={rome} → {len(offres)} offres"
-            )
-            all_offres.extend(offres)
+    with requests.Session() as session:
+        session.headers.update({"Authorization": f"Bearer {token}"})
+
+        for dept in _DEPARTEMENTS:
+            for rome in _ROME_CODES:
+                combo_idx += 1
+                offres = fetch_offres_for_combo(session, dept, rome)
+                logger.info(
+                    f"[{combo_idx}/{total_combos}] dept={dept} rome={rome} → {len(offres)} offres"
+                )
+                all_offres.extend(offres)
 
     if not all_offres:
         logger.warning("Aucune offre récupérée — fichier Parquet non créé.")
@@ -217,6 +218,7 @@ def main() -> None:
 
     # Normalisation + déduplication par id
     df = pd.DataFrame([_flatten(o) for o in all_offres])
+    del all_offres  # libère les dicts bruts, df seul suffit
     before = len(df)
     df.drop_duplicates(subset=["id"], keep="first", inplace=True)
     logger.info(f"Total : {before:,} offres → {len(df):,} après déduplication")
