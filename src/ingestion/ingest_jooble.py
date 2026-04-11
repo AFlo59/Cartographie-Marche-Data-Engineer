@@ -1,9 +1,9 @@
+import html
+import http.client
+import json
 import logging
 import os
-import json
-import http.client
 import re
-import html
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -12,9 +12,9 @@ import pandas as pd
 # Ajout du path pour les imports relatifs si exécuté en script direct
 sys.path.insert(0, os.path.dirname(__file__))
 
+from utils.config import Config
 from utils.gcs import upload_dataframe_as_parquet
 from utils.logging_config import get_logger
-from utils.config import Config
 
 logger = get_logger("ingest_jooble")
 
