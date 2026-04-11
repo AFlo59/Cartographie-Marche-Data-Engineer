@@ -97,9 +97,3 @@ variable "create_external_tables" {
   type        = bool
   default     = false
 }
-
-variable "create_jooble_external_table" {
-  description = "Create BigQuery External Table for Jooble raw data. Independent of create_external_tables so it can be activated after the first Jooble ingestion run without affecting other sources."
-  type        = bool
-  default     = false
-}
