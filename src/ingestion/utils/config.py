@@ -79,6 +79,7 @@ class Config:
     SIRENE_PREFIX: str = os.getenv("INGESTION_SIRENE_PREFIX", "raw/sirene/")
     GEO_PREFIX: str = os.getenv("INGESTION_GEO_PREFIX", "raw/geo/")
     APEC_PREFIX: str = os.getenv("INGESTION_APEC_PREFIX", "raw/apec/")
+    JOOBLE_PREFIX: str = os.getenv("INGESTION_JOOBLE_PREFIX", "raw/jooble/")
 
     FT_API_BASE: str = os.getenv(
         "FRANCE_TRAVAIL_API_BASE_URL",
@@ -86,6 +87,7 @@ class Config:
     )
     GEO_API_BASE: str = os.getenv("GEO_API_BASE_URL", "https://geo.api.gouv.fr")
     APEC_BASE_URL: str = os.getenv("APEC_BASE_URL", "https://www.apec.fr")
+    JOOBLE_HOST: str = os.getenv("JOOBLE_HOST", "fr.jooble.org")
     SIRENE_DATASET_SLUG: str = (
         "base-sirene-des-entreprises-et-de-leurs-etablissements-siren-siret"
     )
@@ -101,3 +103,7 @@ class Config:
     @staticmethod
     def datagouv_api_key() -> str:
         return resolve("DATAGOUV_API_KEY", "DATAGOUV_API_KEY_SECRET_NAME")
+
+    @staticmethod
+    def jooble_api_key() -> str:
+        return resolve("JOOBLE_API_KEY", "JOOBLE_API_KEY_SECRET_NAME")

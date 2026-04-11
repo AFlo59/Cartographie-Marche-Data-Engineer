@@ -214,6 +214,29 @@ resource "google_bigquery_table" "raw_apec_offres" {
   }
 }
 
+# ── Jooble ──────────────────────────────────────────────────────────────────
+# Hive-partitioned : dt=YYYY-MM-DD → BQ ajoute automatiquement la colonne `dt`
+resource "google_bigquery_table" "raw_jooble_offres" {
+  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
+
+  project             = var.project_id
+  dataset_id          = google_bigquery_dataset.raw.dataset_id
+  table_id            = "jooble_offres"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "PARQUET"
+    source_uris   = ["gs://${var.raw_bucket_name}/${trim(var.raw_jooble_prefix, "/")}/dt=*/offres.parquet"]
+
+    hive_partitioning_options {
+      mode                     = "AUTO"
+      source_uri_prefix        = "gs://${var.raw_bucket_name}/${trim(var.raw_jooble_prefix, "/")}/"
+      require_partition_filter = false
+    }
+  }
+}
+
 resource "google_project_iam_member" "ingestion_job_user" {
   count = var.manage_project_job_user_bindings && var.ingestion_service_account != "" ? 1 : 0
 

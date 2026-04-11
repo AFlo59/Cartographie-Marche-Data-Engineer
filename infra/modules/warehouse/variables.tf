@@ -86,6 +86,12 @@ variable "raw_apec_prefix" {
   default     = "raw/apec/"
 }
 
+variable "raw_jooble_prefix" {
+  description = "GCS prefix for Jooble raw Parquet files"
+  type        = string
+  default     = "raw/jooble/"
+}
+
 variable "create_external_tables" {
   description = "Create BigQuery External Tables pointing to GCS Parquet files. Set to true only after at least one ingestion run has populated the bucket (BQ autodetect requires at least one file to exist)."
   type        = bool

@@ -27,6 +27,7 @@ services:
       TF_VAR_ingestion_sirene_prefix: ${TF_VAR_ingestion_sirene_prefix:-raw/sirene/}
       TF_VAR_ingestion_geo_prefix: ${TF_VAR_ingestion_geo_prefix:-raw/geo/}
       TF_VAR_ingestion_apec_prefix: ${TF_VAR_ingestion_apec_prefix:-raw/apec/}
+      TF_VAR_ingestion_jooble_prefix: ${TF_VAR_ingestion_jooble_prefix:-raw/jooble/}
       TF_VAR_bucket_apec_prefix_delete_age_days: ${TF_VAR_bucket_apec_prefix_delete_age_days:-60}
       TF_VAR_compute_job_name: ${TF_VAR_compute_job_name:-datatalent-ingestion-job}
       TF_VAR_compute_image: ${TF_VAR_compute_image:-}
@@ -41,9 +42,11 @@ services:
       TF_VAR_scheduler_sirene_schedule: ${TF_VAR_scheduler_sirene_schedule:-0 3 1 * *}
       TF_VAR_scheduler_geo_schedule: ${TF_VAR_scheduler_geo_schedule:-0 4 1 * *}
       TF_VAR_scheduler_apec_schedule: ${TF_VAR_scheduler_apec_schedule:-0 7 * * 1}
+      TF_VAR_scheduler_jooble_schedule: ${TF_VAR_scheduler_jooble_schedule:-0 8 * * 1}
       TF_VAR_secret_ft_client_id_name: ${TF_VAR_secret_ft_client_id_name:-FT_CLIENT_ID}
       TF_VAR_secret_ft_client_secret_name: ${TF_VAR_secret_ft_client_secret_name:-FT_CLIENT_SECRET}
       TF_VAR_secret_datagouv_api_key_name: ${TF_VAR_secret_datagouv_api_key_name:-DATAGOUV_API_KEY}
+      TF_VAR_secret_jooble_api_key_name: ${TF_VAR_secret_jooble_api_key_name:-JOOBLE_API_KEY}
       TF_VAR_ingestion_service_account_email: ${TF_VAR_ingestion_service_account_email:-}
       TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
       TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
@@ -104,6 +107,7 @@ services:
       INGESTION_SIRENE_PREFIX: ${INGESTION_SIRENE_PREFIX:-raw/sirene/}
       INGESTION_GEO_PREFIX: ${INGESTION_GEO_PREFIX:-raw/geo/}
       INGESTION_APEC_PREFIX: ${INGESTION_APEC_PREFIX:-raw/apec/}
+      INGESTION_JOOBLE_PREFIX: ${INGESTION_JOOBLE_PREFIX:-raw/jooble/}
       APEC_BASE_URL: ${APEC_BASE_URL:-https://www.apec.fr}
       APEC_FETCH_DETAIL: ${APEC_FETCH_DETAIL:-true}
 
@@ -111,8 +115,9 @@ services:
       FT_CLIENT_ID_SECRET_NAME: ${FT_CLIENT_ID_SECRET_NAME:-FT_CLIENT_ID}
       FT_CLIENT_SECRET_SECRET_NAME: ${FT_CLIENT_SECRET_SECRET_NAME:-FT_CLIENT_SECRET}
       DATAGOUV_API_KEY_SECRET_NAME: ${DATAGOUV_API_KEY_SECRET_NAME:-DATAGOUV_API_KEY}
+      JOOBLE_API_KEY_SECRET_NAME: ${JOOBLE_API_KEY_SECRET_NAME:-JOOBLE_API_KEY}
 
-      # Source à exécuter (france_travail | sirene | geo | apec | all) — overridable au docker run
+      # Source à exécuter (france_travail | sirene | geo | apec | jooble | all) — overridable au docker run
       INGESTION_SOURCE: ${INGESTION_SOURCE:-france_travail}
 
       # Endpoints APIs sources
