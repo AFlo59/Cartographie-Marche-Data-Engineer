@@ -29,11 +29,7 @@ def fetch_jobs_page(page: int) -> dict:
             "La clé API Jooble doit être définie (env JOOBLE_API_KEY ou Secret Manager)"
         )
 
-    body = json.dumps({
-        "keywords": "data engineer",
-        "location": "France",
-        "page": page
-    })
+    body = json.dumps({"keywords": "data engineer", "location": "France", "page": page})
 
     headers = {"Content-type": "application/json"}
     connection = http.client.HTTPSConnection(Config.JOOBLE_HOST)
@@ -62,9 +58,7 @@ def parse_date(updated_str: str) -> datetime | None:
     """Parse la date au format ISO Jooble."""
     try:
         updated_str_clean = updated_str[:26]
-        return datetime.fromisoformat(updated_str_clean).replace(
-            tzinfo=timezone.utc
-        )
+        return datetime.fromisoformat(updated_str_clean).replace(tzinfo=timezone.utc)
     except Exception as e:
         logger.warning(f"Impossible de parser la date '{updated_str}' : {e}")
         return None
@@ -106,7 +100,7 @@ def ingest_jooble() -> None:
 
         old_jobs_count = len(jobs) - len(recent_jobs)
         all_jobs.extend(recent_jobs)
-        
+
         logger.info(
             f"  → {len(recent_jobs)} offres récentes gardées, "
             f"{old_jobs_count} trop anciennes ignorées "
@@ -128,11 +122,11 @@ def ingest_jooble() -> None:
 
     # Conversion en DataFrame pour normalisation et export Parquet
     df = pd.DataFrame(all_jobs)
-    
+
     # Normalisation des colonnes
     df["scraped_at"] = now
     df["source_name"] = "jooble"
-    
+
     # Renommage/Nettoyage pour BigQuery
     if "id" in df.columns:
         df = df.rename(columns={"id": "jooble_id"})
@@ -140,7 +134,7 @@ def ingest_jooble() -> None:
     # Chemin Hive-partitionné
     partition = now.strftime("%Y-%m-%d")
     blob_path = f"{Config.JOOBLE_PREFIX.rstrip('/')}/dt={partition}/offres.parquet"
-    
+
     upload_dataframe_as_parquet(df, bucket_name, blob_path)
 
     logger.info(

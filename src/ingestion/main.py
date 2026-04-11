@@ -47,7 +47,7 @@ def _run_source(source: str) -> None:
 
         ingest_jooble()
         return
-    
+
     if source == "all":
         print("Lancement de toutes les ingestions...")
         _run_source("sirene")
