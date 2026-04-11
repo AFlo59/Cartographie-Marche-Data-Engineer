@@ -46,18 +46,16 @@ def _fetch_jobs_page(page: int) -> dict:
         )
 
     body = json.dumps({"keywords": "data engineer", "location": "France", "page": page})
-
     headers = {"Content-type": "application/json"}
-    connection = http.client.HTTPSConnection(Config.JOOBLE_HOST)
-    connection.request("POST", f"/api/{api_key}", body, headers)
-    response = connection.getresponse()
 
-    if response.status != 200:
-        raise ValueError(f"Erreur API Jooble : {response.status} {response.reason}")
+    with http.client.HTTPSConnection(Config.JOOBLE_HOST) as connection:
+        connection.request("POST", f"/api/{api_key}", body, headers)
+        response = connection.getresponse()
 
-    data = json.loads(response.read())
-    connection.close()
-    return data
+        if response.status != 200:
+            raise ValueError(f"Erreur API Jooble : {response.status} {response.reason}")
+
+        return json.loads(response.read())
 
 
 def _clean_snippet(text: str) -> str:
@@ -136,6 +134,7 @@ def main() -> None:
         return
 
     df = pd.DataFrame(all_jobs)
+    del all_jobs  # libère la liste de dicts bruts, df seul suffit
 
     df["scraped_at"] = now
     df["source_name"] = "jooble"

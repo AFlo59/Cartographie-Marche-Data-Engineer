@@ -117,12 +117,6 @@ variable "create_external_tables" {
   default     = false
 }
 
-variable "create_jooble_external_table" {
-  description = "Create BigQuery External Table for Jooble raw data. Independent of create_external_tables so it can be activated after the first Jooble ingestion run without affecting other sources."
-  type        = bool
-  default     = false
-}
-
 variable "create_compute_job" {
   description = "Create the Cloud Run Job and Cloud Scheduler jobs. Set to true only after the container image has been pushed to Artifact Registry (job creation fails with 403 if the image does not exist)."
   type        = bool

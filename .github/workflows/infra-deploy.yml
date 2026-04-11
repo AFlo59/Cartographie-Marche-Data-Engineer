@@ -145,8 +145,6 @@ jobs:
       TF_VAR_secret_jooble_api_key_name: JOOBLE_API_KEY
       # Scheduler Jooble (hebdomadaire, lundi 8h)
       TF_VAR_scheduler_jooble_schedule: "0 8 * * 1"
-      # Table externe Jooble — false tant que la première ingestion Jooble n'a pas tourné
-      TF_VAR_create_jooble_external_table: "false"
       # CI SA pour push Artifact Registry (même SA que WIF)
       TF_VAR_ci_service_account_email: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
       # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)
