@@ -102,6 +102,21 @@ resource "google_storage_bucket" "raw" {
     }
   }
 
+  # jooble : partition quotidienne YYYY-MM/YYYY-MM-DD.json — purge après N jours
+  dynamic "lifecycle_rule" {
+    for_each = var.jooble_prefix_delete_age_days == null ? [] : [1]
+
+    content {
+      condition {
+        age            = var.jooble_prefix_delete_age_days
+        matches_prefix = [var.jooble_prefix]
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
+
   # Versions non-courantes (ARCHIVED) — garder latest + 1 version précédente par objet.
   # Comportement : si raw/geo/2026-04/regions.parquet est écrasé N fois dans le mois,
   # seules la version courante (live) et la version immédiatement précédente sont conservées.

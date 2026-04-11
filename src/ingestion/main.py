@@ -39,17 +39,27 @@ def _run_source(source: str) -> None:
         ingest_france_travail()
         return
 
+    if source == "jooble":
+        try:
+            from .ingest_jooble import ingest_jooble
+        except ImportError:
+            from ingest_jooble import ingest_jooble
+
+        ingest_jooble()
+        return
+    
     if source == "all":
         print("Lancement de toutes les ingestions...")
         _run_source("sirene")
         _run_source("geo")
         _run_source("france_travail")
         _run_source("apec")
+        _run_source("jooble")
         print("Toutes les ingestions sont terminées.")
         return
 
     print(f"Source inconnue : {source}")
-    print("Sources supportées : sirene, geo, france_travail, apec, all")
+    print("Sources supportées : sirene, geo, france_travail, apec, jooble, all")
     sys.exit(1)
 
 
@@ -61,7 +71,7 @@ def main():
         "--source",
         type=str,
         required=True,
-        help="Nom de la source à ingérer (ex: sirene, geo, france_travail, apec, all)",
+        help="Nom de la source à ingérer (ex: sirene, geo, france_travail, apec, jooble, all)",
     )
     args = parser.parse_args()
 
