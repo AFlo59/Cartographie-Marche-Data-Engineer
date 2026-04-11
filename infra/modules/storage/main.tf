@@ -102,7 +102,7 @@ resource "google_storage_bucket" "raw" {
     }
   }
 
-  # jooble : partition quotidienne YYYY-MM/YYYY-MM-DD.json — purge après N jours
+  # jooble : partition hebdomadaire dt=YYYY-MM-DD/offres.parquet — purge après N jours
   dynamic "lifecycle_rule" {
     for_each = var.jooble_prefix_delete_age_days == null ? [] : [1]
 

@@ -41,9 +41,9 @@ def _run_source(source: str) -> None:
 
     if source == "jooble":
         try:
-            from .ingest_jooble import ingest_jooble
+            from .ingest_jooble import main as ingest_jooble
         except ImportError:
-            from ingest_jooble import ingest_jooble
+            from ingest_jooble import main as ingest_jooble
 
         ingest_jooble()
         return

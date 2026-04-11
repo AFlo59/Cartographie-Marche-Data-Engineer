@@ -86,7 +86,7 @@ variable "apec_prefix_delete_age_days" {
 }
 
 variable "jooble_prefix" {
-  description = "GCS prefix for Jooble data (daily partitions YYYY-MM/YYYY-MM-DD.json). Must end with '/'."
+  description = "GCS prefix for Jooble data (weekly partitions dt=YYYY-MM-DD/offres.parquet). Must end with '/'."
   type        = string
   default     = "raw/jooble/"
 }

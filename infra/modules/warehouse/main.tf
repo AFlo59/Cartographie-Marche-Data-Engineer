@@ -217,7 +217,7 @@ resource "google_bigquery_table" "raw_apec_offres" {
 # ── Jooble ──────────────────────────────────────────────────────────────────
 # Hive-partitioned : dt=YYYY-MM-DD → BQ ajoute automatiquement la colonne `dt`
 resource "google_bigquery_table" "raw_jooble_offres" {
-  count = var.create_external_tables && var.raw_bucket_name != "" ? 1 : 0
+  count = var.create_jooble_external_table && var.raw_bucket_name != "" ? 1 : 0
 
   project             = var.project_id
   dataset_id          = google_bigquery_dataset.raw.dataset_id
