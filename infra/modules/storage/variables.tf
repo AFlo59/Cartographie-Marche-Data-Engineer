@@ -85,6 +85,18 @@ variable "apec_prefix_delete_age_days" {
   default     = 60
 }
 
+variable "jooble_prefix" {
+  description = "GCS prefix for Jooble data (weekly partitions dt=YYYY-MM-DD/offres.parquet). Must end with '/'."
+  type        = string
+  default     = "raw/jooble/"
+}
+
+variable "jooble_prefix_delete_age_days" {
+  description = "Delete raw/jooble/ objects older than N days. Default: 60 (~2 months of daily partitions). Null disables."
+  type        = number
+  default     = 60
+}
+
 variable "ingestion_sa_email" {
   description = "Ingestion service account email for bucket access"
   type        = string

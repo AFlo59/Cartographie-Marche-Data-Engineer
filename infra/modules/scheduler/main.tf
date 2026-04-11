@@ -4,6 +4,7 @@ locals {
     sirene         = var.sirene_schedule
     geo            = var.geo_schedule
     apec           = var.apec_schedule
+    jooble         = var.jooble_schedule
   }
 }
 

@@ -6,12 +6,14 @@ locals {
   secret_ids = compact([
     var.secret_ft_client_id_name,
     var.secret_ft_client_secret_name,
-    var.secret_datagouv_api_key_name
+    var.secret_datagouv_api_key_name,
+    var.secret_jooble_api_key_name
   ])
 
   compute_secret_env = {
     FT_CLIENT_ID     = var.secret_ft_client_id_name
     FT_CLIENT_SECRET = var.secret_ft_client_secret_name
+    JOOBLE_API_KEY   = var.secret_jooble_api_key_name
   }
 
   compute_secret_env_optional = var.secret_datagouv_api_key_name != "" ? {
@@ -64,6 +66,8 @@ module "storage" {
   geo_prefix_delete_age_days            = var.bucket_geo_prefix_delete_age_days
   apec_prefix                           = var.ingestion_apec_prefix
   apec_prefix_delete_age_days           = var.bucket_apec_prefix_delete_age_days
+  jooble_prefix                         = var.ingestion_jooble_prefix
+  jooble_prefix_delete_age_days         = var.bucket_jooble_prefix_delete_age_days
 
   ingestion_sa_email = var.ingestion_service_account_email
   dbt_sa_email       = var.dbt_service_account_email
@@ -87,7 +91,9 @@ module "warehouse" {
   raw_france_travail_prefix        = var.ingestion_france_travail_prefix
   raw_geo_prefix                   = var.ingestion_geo_prefix
   raw_apec_prefix                  = var.ingestion_apec_prefix
+  raw_jooble_prefix                = var.ingestion_jooble_prefix
   create_external_tables           = var.create_external_tables
+  create_jooble_external_table     = var.create_jooble_external_table
 }
 
 module "secrets" {
@@ -139,6 +145,7 @@ module "compute" {
     INGESTION_SIRENE_PREFIX         = var.ingestion_sirene_prefix
     INGESTION_GEO_PREFIX            = var.ingestion_geo_prefix
     INGESTION_APEC_PREFIX           = var.ingestion_apec_prefix
+    INGESTION_JOOBLE_PREFIX         = var.ingestion_jooble_prefix
   }
 
   secret_env = merge(local.compute_secret_env, local.compute_secret_env_optional)
@@ -160,6 +167,7 @@ module "scheduler" {
   sirene_schedule                 = var.scheduler_sirene_schedule
   geo_schedule                    = var.scheduler_geo_schedule
   apec_schedule                   = var.scheduler_apec_schedule
+  jooble_schedule                 = var.scheduler_jooble_schedule
 
   depends_on = [module.compute]
 }
