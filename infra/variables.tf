@@ -81,6 +81,12 @@ variable "bucket_sirene_prefix_delete_age_days" {
   default     = 60
 }
 
+variable "bucket_jooble_prefix_delete_age_days" {
+  description = "Delete raw/jooble/ objects older than N days. Default: 60 (~8 weekly partitions). Override to null to disable."
+  type        = number
+  default     = 60
+}
+
 variable "ingestion_service_account_email" {
   description = "Service account used by ingestion jobs"
   type        = string
@@ -107,6 +113,12 @@ variable "manage_project_job_user_bindings" {
 
 variable "create_external_tables" {
   description = "Create BigQuery External Tables pointing to GCS Parquet files. Set to true only after at least one ingestion run has populated the bucket (BQ autodetect requires at least one file to exist)."
+  type        = bool
+  default     = false
+}
+
+variable "create_jooble_external_table" {
+  description = "Create BigQuery External Table for Jooble raw data. Independent of create_external_tables so it can be activated after the first Jooble ingestion run without affecting other sources."
   type        = bool
   default     = false
 }
@@ -163,6 +175,12 @@ variable "ingestion_apec_prefix" {
   description = "Prefix for APEC raw files"
   type        = string
   default     = "raw/apec/"
+}
+
+variable "ingestion_jooble_prefix" {
+  description = "Prefix for Jooble raw files"
+  type        = string
+  default     = "raw/jooble/"
 }
 
 variable "compute_job_name" {
@@ -243,6 +261,12 @@ variable "scheduler_apec_schedule" {
   default     = "0 7 * * 1"
 }
 
+variable "scheduler_jooble_schedule" {
+  description = "Cron schedule for Jooble ingestion (weekly)"
+  type        = string
+  default     = "0 8 * * 1"
+}
+
 variable "secret_ft_client_id_name" {
   description = "Secret Manager secret id for France Travail client id"
   type        = string
@@ -259,6 +283,12 @@ variable "secret_datagouv_api_key_name" {
   description = "Secret Manager secret id for data.gouv API key"
   type        = string
   default     = ""
+}
+
+variable "secret_jooble_api_key_name" {
+  description = "Secret Manager secret id for Jooble API key"
+  type        = string
+  default     = "JOOBLE_API_KEY"
 }
 
 variable "ci_service_account_email" {

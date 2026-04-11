@@ -116,6 +116,10 @@ jobs:
       TF_VAR_ingestion_france_travail_prefix: raw/france_travail/
       TF_VAR_ingestion_sirene_prefix: raw/sirene/
       TF_VAR_ingestion_geo_prefix: raw/geo/
+      TF_VAR_ingestion_apec_prefix: raw/apec/
+      TF_VAR_ingestion_jooble_prefix: raw/jooble/
+      TF_VAR_bucket_apec_prefix_delete_age_days: "60"
+      TF_VAR_bucket_jooble_prefix_delete_age_days: "60"
       # Service accounts (nécessaire pour maintenir les IAM bindings en state)
       TF_VAR_ingestion_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_dbt_service_account_email: dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com
@@ -138,6 +142,11 @@ jobs:
       TF_VAR_secret_ft_client_id_name: FT_CLIENT_ID
       TF_VAR_secret_ft_client_secret_name: FT_CLIENT_SECRET
       TF_VAR_secret_datagouv_api_key_name: DATAGOUV_API_KEY
+      TF_VAR_secret_jooble_api_key_name: JOOBLE_API_KEY
+      # Scheduler Jooble (hebdomadaire, lundi 8h)
+      TF_VAR_scheduler_jooble_schedule: "0 8 * * 1"
+      # Table externe Jooble — false tant que la première ingestion Jooble n'a pas tourné
+      TF_VAR_create_jooble_external_table: "false"
       # CI SA pour push Artifact Registry (même SA que WIF)
       TF_VAR_ci_service_account_email: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
       # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)
@@ -450,6 +459,10 @@ jobs:
             "projects/${TF_VAR_project_id}/secrets/DATAGOUV_API_KEY" \
             "gcloud secrets describe DATAGOUV_API_KEY --project=${TF_VAR_project_id} >/dev/null 2>&1"
 
+          import_if_needed 'module.secrets.google_secret_manager_secret.secrets["JOOBLE_API_KEY"]' \
+            "projects/${TF_VAR_project_id}/secrets/JOOBLE_API_KEY" \
+            "gcloud secrets describe JOOBLE_API_KEY --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
           import_if_needed 'module.compute.google_artifact_registry_repository.datatalent' \
             "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/repositories/datatalent" \
             "gcloud artifacts repositories describe datatalent --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
@@ -482,6 +495,14 @@ jobs:
           import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["geo"]' \
             "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-geo" \
             "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-geo --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["apec"]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-apec" \
+            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-apec --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["jooble"]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-jooble" \
+            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-jooble --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
 
       # ── 13. Terraform Apply (merge main uniquement) ──────────────────────────
       - name: Terraform Apply
