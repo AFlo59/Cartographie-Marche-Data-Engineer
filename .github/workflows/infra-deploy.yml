@@ -111,6 +111,7 @@ jobs:
       # BigQuery
       TF_VAR_raw_dataset_id: raw
       TF_VAR_staging_dataset_id: staging
+      TF_VAR_intermediate_dataset_id: intermediate
       TF_VAR_marts_dataset_id: marts
       # Ingestion prefixes
       TF_VAR_ingestion_france_travail_prefix: raw/france_travail/
@@ -440,6 +441,10 @@ jobs:
           import_if_needed 'module.warehouse.google_bigquery_dataset.staging' \
             "projects/${TF_VAR_project_id}/datasets/${TF_VAR_staging_dataset_id}" \
             "bq --project_id=${TF_VAR_project_id} show --dataset ${TF_VAR_staging_dataset_id} >/dev/null 2>&1"
+
+          import_if_needed 'module.warehouse.google_bigquery_dataset.intermediate' \
+            "projects/${TF_VAR_project_id}/datasets/${TF_VAR_intermediate_dataset_id}" \
+            "bq --project_id=${TF_VAR_project_id} show --dataset ${TF_VAR_intermediate_dataset_id} >/dev/null 2>&1"
 
           import_if_needed 'module.warehouse.google_bigquery_dataset.marts' \
             "projects/${TF_VAR_project_id}/datasets/${TF_VAR_marts_dataset_id}" \
