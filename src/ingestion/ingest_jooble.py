@@ -48,7 +48,8 @@ def _fetch_jobs_page(page: int) -> dict:
     body = json.dumps({"keywords": "data engineer", "location": "France", "page": page})
     headers = {"Content-type": "application/json"}
 
-    with http.client.HTTPSConnection(Config.JOOBLE_HOST) as connection:
+    connection = http.client.HTTPSConnection(Config.JOOBLE_HOST)
+    try:
         connection.request("POST", f"/api/{api_key}", body, headers)
         response = connection.getresponse()
 
@@ -56,6 +57,8 @@ def _fetch_jobs_page(page: int) -> dict:
             raise ValueError(f"Erreur API Jooble : {response.status} {response.reason}")
 
         return json.loads(response.read())
+    finally:
+        connection.close()
 
 
 def _clean_snippet(text: str) -> str:
