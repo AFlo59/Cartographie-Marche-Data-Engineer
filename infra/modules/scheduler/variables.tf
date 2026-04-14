@@ -55,7 +55,7 @@ variable "apec_schedule" {
 }
 
 variable "jooble_schedule" {
-  description = "Cron schedule for Jooble ingestion (daily)"
+  description = "Cron schedule for Jooble ingestion (weekly)"
   type        = string
-  default     = "0 8 * * *"
+  default     = "0 8 * * 1"
 }
