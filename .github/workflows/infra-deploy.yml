@@ -130,8 +130,9 @@ jobs:
       TF_VAR_manage_project_job_user_bindings: "false"
       # Cloud Run Job + Scheduler (false tant que l'image n'est pas dans Artifact Registry)
       TF_VAR_create_compute_job: "true"
-      # External Tables BQ — activé, les 3 sources sont dans GCS
-      TF_VAR_create_external_tables: "true"
+      # External Tables BQ — false pendant migration US (bucket vide, autodetect échouerait)
+      # Remettre à "true" après restauration des données GCS (étape 5 migration)
+      TF_VAR_create_external_tables: "false"
       # Compute (INFRA-04)
       TF_VAR_compute_job_name: datatalent-ingestion-job
       TF_VAR_compute_image: us-central1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
