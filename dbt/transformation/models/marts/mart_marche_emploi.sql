@@ -1,16 +1,21 @@
-with source_data as (
-    select *
-    from {{ ref('int_offres_enrichies') }}
-)
+{{ config(materialized='view') }}
 
-select
+SELECT
     offre_id,
-    intitule_poste,
+    intitule,
+    code_contrat,
     type_contrat,
-    date_publication,
+    duree_contrat_mois,
+    date_creation,
+    departement,
+    commune,
+    code_region,
     siret,
     siren,
     code_naf,
-    commune,
-    region
-from source_data
+    salaire,
+    code_rome,
+    appellation,
+    experience,
+    date_insertion
+FROM {{ ref('int_offres_enrichies') }}

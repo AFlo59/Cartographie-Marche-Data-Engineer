@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_geo__regions
+    description: >
+      Referentiel regions françaises (18 regions : 13 metropole + 5 DOM).
+      Source : API geo.api.gouv.fr, mise a jour mensuelle.
+      Materialisee en VIEW (18 lignes, trivial).
+    config:
+      materialized: view
+    columns:
+      - name: CODE_REGION
+        data_type: STRING
+        description: "Code region (ex: 11, 93, 01)"
+        tests:
+          - not_null
+          - unique
+
+      - name: NOM
+        data_type: STRING
+        description: "Nom de la region normalise UPPER sans accents"
+        tests:
+          - not_null

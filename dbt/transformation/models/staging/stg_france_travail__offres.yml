@@ -1,0 +1,98 @@
+version: 2
+
+models:
+  - name: stg_france_travail__offres
+    description: >
+      Offres France Travail nettoyees et normalisees.
+      Dedoublonnage sur offre_id (derniere date_creation / date_insertion).
+      Salaire et contrat structures en STRUCT via UDFs BigQuery.
+      Materialisee en TABLE pour eviter le re-scan des external tables BQ.
+    config:
+      materialized: table
+    columns:
+      - name: offre_id
+        data_type: STRING
+        description: "Identifiant unique de l offre (champ id source)"
+        tests:
+          - not_null
+          - unique
+
+      - name: intitule
+        data_type: STRING
+        description: "Titre du poste normalise UPPER sans accents, indicateurs H/F supprimes"
+
+      - name: description
+        data_type: STRING
+        description: "Description du poste, HTML supprime et texte normalise"
+
+      - name: date_creation
+        data_type: TIMESTAMP
+        description: "Date de creation de l offre (ISO 8601 parse par parse_event_ts)"
+
+      - name: code_postal
+        data_type: STRING
+        description: "Code postal normalise 5 chiffres (prefixe 0 ajoute pour DOM-TOM 4 chiffres)"
+
+      - name: code_insee
+        data_type: STRING
+        description: "Code INSEE de la commune du lieu de travail (5 chars)"
+
+      - name: departement
+        data_type: STRING
+        description: "Code departement deduit du code postal (2 chars) ou libelle (2A/2B/97x)"
+
+      - name: nom_commune
+        data_type: STRING
+        description: "Nom de la commune extrait du libelle lieuTravail apres suppression du code dept"
+
+      - name: nom
+        data_type: STRING
+        description: "Nom de l entreprise recruteur normalise (peut etre NULL)"
+
+      - name: siret
+        data_type: STRING
+        description: "SIRET de l entreprise valide 14 chiffres ou NULL si invalide"
+
+      - name: salaire
+        data_type: "STRUCT<type STRING, min_amount NUMERIC, max_amount NUMERIC, nb_mois INT64, min_mensuel NUMERIC, max_mensuel NUMERIC, min_annuel NUMERIC, max_annuel NUMERIC>"
+        description: >
+          Salaire parse par l UDF parse_salaire_auto.
+          type MENSUEL ou ANNUEL (NULL si non detecte).
+          min/max_amount montants bruts. nb_mois base de calcul (defaut 12).
+          min/max_mensuel et min/max_annuel projections calculees.
+
+      - name: bonus
+        data_type: STRING
+        description: "Complement salaire primes et avantages normalise"
+
+      - name: code_contrat
+        data_type: STRING
+        description: "Code type de contrat brut France Travail (CDI, CDD, MIS, SAI, etc.)"
+
+      - name: contrat
+        data_type: "STRUCT<type_contrat STRING, duree_mois NUMERIC, type_duree STRING>"
+        description: >
+          Type de contrat parse par l UDF parse_contrat.
+          type_contrat premier token du libelle.
+          duree_mois converti en mois (NULL si non precise).
+          type_duree unite d origine (MOIS, AN, SEMAINE, JOUR).
+
+      - name: code_rome
+        data_type: STRING
+        description: "Code ROME du metier (5 chars, ex: M1811)"
+
+      - name: appellation
+        data_type: STRING
+        description: "Libelle ROME de l appellation du poste normalise"
+
+      - name: experience
+        data_type: STRING
+        description: "Niveau experience normalise (D debutant, S confirme, E expert)"
+
+      - name: qualification
+        data_type: STRING
+        description: "Code qualification du poste normalise"
+
+      - name: date_insertion
+        data_type: DATE
+        description: "Date d insertion derivee de la partition Hive dt"

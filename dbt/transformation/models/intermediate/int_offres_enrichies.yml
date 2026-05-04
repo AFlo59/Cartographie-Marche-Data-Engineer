@@ -1,0 +1,86 @@
+version: 2
+
+models:
+  - name: int_offres_enrichies
+    description: >
+      Couche gold — offres France Travail enrichies avec SIRENE (SIREN, code NAF)
+      et referentiel geo (commune, region).
+      Incremental (merge sur offre_id) : seules les nouvelles partitions dt sont
+      traitees a chaque run. Fenetrage -7j pour absorber les arrivees tardives.
+      Jointure SIRET vers SIRENE dedoublonne (1 ligne par SIRET via ROW_NUMBER).
+      Jointure code_postal vers geo_communes dedoublonne (1 ligne par code postal).
+    config:
+      materialized: incremental
+      unique_key: offre_id
+      incremental_strategy: merge
+    columns:
+      - name: offre_id
+        data_type: STRING
+        description: "Identifiant unique de l offre France Travail"
+        tests:
+          - not_null
+          - unique
+
+      - name: intitule
+        data_type: STRING
+        description: "Titre du poste normalise UPPER sans accents"
+
+      - name: code_contrat
+        data_type: STRING
+        description: "Code type de contrat brut France Travail (CDI, CDD, MIS, SAI, etc.)"
+
+      - name: type_contrat
+        data_type: STRING
+        description: "Type de contrat parse extrait de contrat.type_contrat"
+
+      - name: duree_contrat_mois
+        data_type: NUMERIC
+        description: "Duree du contrat en mois extrait de contrat.duree_mois (NULL si non precise)"
+
+      - name: date_creation
+        data_type: TIMESTAMP
+        description: "Date de creation de l offre"
+
+      - name: departement
+        data_type: STRING
+        description: "Code departement deduit du code postal de l offre France Travail"
+
+      - name: commune
+        data_type: STRING
+        description: "Nom de la commune (priorite geo_communes, fallback nom_commune France Travail)"
+
+      - name: code_region
+        data_type: STRING
+        description: "Code region depuis le referentiel geo_communes"
+
+      - name: siret
+        data_type: STRING
+        description: "SIRET de l entreprise recruteur (14 chiffres) ou NULL"
+
+      - name: siren
+        data_type: STRING
+        description: "SIREN de l entreprise (9 premiers chiffres du SIRET SIRENE) ou NULL"
+
+      - name: code_naf
+        data_type: STRING
+        description: "Code APE/NAF de l activite principale SIRENE (ex: 6201Z)"
+
+      - name: salaire
+        data_type: "STRUCT<type STRING, min_amount NUMERIC, max_amount NUMERIC, nb_mois INT64, min_mensuel NUMERIC, max_mensuel NUMERIC, min_annuel NUMERIC, max_annuel NUMERIC>"
+        description: "Salaire parse herite de stg_france_travail__offres"
+
+      - name: code_rome
+        data_type: STRING
+        description: "Code ROME du metier (5 chars)"
+
+      - name: appellation
+        data_type: STRING
+        description: "Libelle ROME de l appellation du poste normalise"
+
+      - name: experience
+        data_type: STRING
+        description: "Niveau experience (D debutant, S confirme, E expert)"
+
+      - name: date_insertion
+        data_type: DATE
+        description: "Date d insertion derivee de la partition Hive dt"

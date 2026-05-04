@@ -16,6 +16,19 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+# Création automatique des UDFs BigQuery avant chaque run.
+# Les macros *_udf_ddl() retournent un CREATE OR REPLACE FUNCTION exécuté par dbt.
+# En cas d'erreur de droits, créer les UDFs manuellement :
+#   dbt run-operation create_parse_event_ts_udf
+#   dbt run-operation create_parse_contrat_udf
+#   dbt run-operation create_parse_salaire_auto_udf
+#   dbt run-operation create_lambert93_udf
+on-run-start:
+  - "{{ parse_event_ts_udf_ddl() if execute }}"
+  - "{{ parse_contrat_udf_ddl() if execute }}"
+  - "{{ parse_salaire_auto_udf_ddl() if execute }}"
+  - "{{ lambert93_udf_ddl() if execute }}"
+
 models:
   datatalent_transformation:
     +persist_docs:
@@ -23,15 +36,15 @@ models:
       columns: true
 
     staging:
-      +materialized: view
+      +materialized: view    # defaut view, modeles lourds surchargent via config()
       +schema: staging
 
     intermediate:
-      +materialized: table
-      +schema: staging
+      +materialized: incremental    # couche gold, merge sur unique_key
+      +schema: staging              # non expose au dashboard-sa (acces marts uniquement)
 
     marts:
-      +materialized: table
+      +materialized: view           # passthrough depuis intermediate gold
       +schema: marts
 
 seeds:

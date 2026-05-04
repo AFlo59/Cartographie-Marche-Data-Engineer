@@ -1,25 +1,46 @@
-{% set raw_schema = var('raw_schema', 'raw') %}
+{{ config(materialized='table') }}
 
-with source_data as (
-    select
-        cast(code_postal as string) as code_postal,
-        cast(code_insee as string) as code_insee,
-        cast(nom_commune as string) as commune,
-        cast(region as string) as region
-    from {{ target.database }}.{{ raw_schema }}.geo_communes
+WITH cleanup AS (
+    SELECT
+        {{ clean_string('code') }}            AS CODE_INSEE,
+        {{ clean_string('nom') }}             AS NOM,
+        {{ clean_string('codeRegion') }}      AS CODE_REGION,
+        {{ clean_string('codeDepartement') }} AS DEPARTEMENT,
+        codesPostaux,
+        CAST(ROUND(population) AS INT64)      AS POPULATION,
+        SAFE_CAST(latitude  AS FLOAT64)       AS LATITUDE,
+        SAFE_CAST(longitude AS FLOAT64)       AS LONGITUDE
+    FROM {{ source('raw', 'geo_communes') }}
 ),
 
-cleaned as (
-    select
-        trim(regexp_replace(code_postal, r'[\t\r\n\s]+', '')) as code_postal,
-        trim(regexp_replace(code_insee, r'[\t\r\n\s]+', '')) as code_insee,
-        upper(trim(regexp_replace(regexp_replace(regexp_replace(commune, r'[\t\r\n]+', ' '), r'[-''’]+', ' '), r'\s+', ' '))) as commune,
-        regexp_replace(normalize(upper(trim(regexp_replace(regexp_replace(regexp_replace(commune, r'[\t\r\n]+', ' '), r'[-''’]+', ' '), r'\s+', ' '))), NFD), r'\pM', '') as commune_normalized,
-        upper(trim(regexp_replace(regexp_replace(regexp_replace(region, r'[\t\r\n]+', ' '), r'[-''’]+', ' '), r'\s+', ' '))) as region,
-        regexp_replace(normalize(upper(trim(regexp_replace(regexp_replace(regexp_replace(region, r'[\t\r\n]+', ' '), r'[-''’]+', ' '), r'\s+', ' '))), NFD), r'\pM', '') as region_normalized
-    from source_data
-    where code_postal is not null and trim(regexp_replace(code_postal, r'[\t\r\n\s]+', '')) != ''
+-- codesPostaux serialise en CSV par l ingestion (format "75001,75002,...")
+exploded AS (
+    SELECT
+        CODE_INSEE,
+        NOM,
+        CODE_REGION,
+        DEPARTEMENT,
+        {{ clean_string('TRIM(cp)') }} AS CODE_POSTAL,
+        POPULATION,
+        LATITUDE,
+        LONGITUDE
+    FROM cleanup,
+    UNNEST(SPLIT(codesPostaux, ',')) AS cp
+),
+
+filtered AS (
+    SELECT * FROM exploded
+    WHERE CODE_POSTAL IS NOT NULL AND CODE_POSTAL != ''
+),
+
+-- Dédoublonnage : garde la première occurrence par (NOM, CODE_POSTAL)
+dedup AS (
+    SELECT *
+    FROM filtered
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY NOM, CODE_POSTAL
+        ORDER BY CODE_INSEE
+    ) = 1
 )
 
-select *
-from cleaned
+SELECT * FROM dedup

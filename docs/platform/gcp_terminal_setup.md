@@ -10,6 +10,19 @@ Pour les excutions rcurrentes :
 
 Pour la vue d'ensemble : [docs/setup_guide.md](../setup_guide.md)
 
+## Variables a definir
+
+Definir ces variables en debut de session Cloud Shell avant d'executer les commandes de ce guide :
+
+```bash
+GCP_PROJECT_ID="your-gcp-project-id"   # identifiant de votre projet GCP  <- a renseigner
+USER_EMAIL="your-email@domain.com"      # email de votre compte utilisateur <- a renseigner
+
+# Service accounts (construits a partir de GCP_PROJECT_ID)
+TF_SA="terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+INGESTION_SA="ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+```
+
 ## Quand utiliser ce fichier
 
 Utiliser ce guide pour :
@@ -24,7 +37,7 @@ Utiliser ce guide pour :
 ### 1. Slectionner le projet
 
 ```bash
-gcloud config set project cartographie-data-engineer
+gcloud config set project ${GCP_PROJECT_ID}
 ```
 
 Pourquoi : fixe le projet actif pour toutes les commandes suivantes.
@@ -32,7 +45,7 @@ Pourquoi : fixe le projet actif pour toutes les commandes suivantes.
 ### 2. Vrifier le contexte projet
 
 ```bash
-gcloud projects describe cartographie-data-engineer --format="value(projectId,projectNumber,parent.type,parent.id)"
+gcloud projects describe ${GCP_PROJECT_ID} --format="value(projectId,projectNumber,parent.type,parent.id)"
 ```
 
 Pourquoi : confirme le projet, le project number et le parent org/folder.
@@ -42,7 +55,7 @@ Pourquoi : confirme le projet, le project number et le parent org/folder.
 Cette tape est optionnelle et dpend des policies de votre organisation.
 
 ```bash
-gcloud resource-manager tags bindings list --parent=//cloudresourcemanager.googleapis.com/projects/cartographie-data-engineer
+gcloud resource-manager tags bindings list --parent=//cloudresourcemanager.googleapis.com/projects/${GCP_PROJECT_ID}
 ```
 
 Pourquoi : certaines organisations exigent un tag `environment` avant d'autoriser certains usages.
@@ -60,7 +73,7 @@ gcloud services enable \
   secretmanager.googleapis.com \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
-  --project cartographie-data-engineer
+  --project ${GCP_PROJECT_ID}
 ```
 
 Pourquoi : prpare les services requis par l'infra actuelle et la CI WIF.
@@ -88,34 +101,33 @@ Pourquoi : ces emails alimentent `TF_VAR_ingestion_service_account_email`, `TF_V
 ### 7. Donner les rles au compte de dploiement Terraform
 
 ```bash
-TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
-PROJECT="cartographie-data-engineer"
-INGESTION_SA="ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com"
+TF_SA="terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+INGESTION_SA="ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
 
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/storage.admin"
 
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/bigquery.admin"
 
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/run.admin"
 
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/cloudscheduler.admin"
 
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/secretmanager.admin"
 
 gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/iam.serviceAccountUser" \
-  --project=${PROJECT}
+  --project=${GCP_PROJECT_ID}
 ```
 
 Pourquoi : ce compte est utilis par Terraform en local et en CI pour crer et mettre  jour les ressources du primtre infra actuel.
@@ -125,16 +137,16 @@ La matrice complte des rles est documente dans [docs/infra/iam_roles.md](../infr
 ### 8. Vrifier que le projet est prt
 
 ```bash
-gcloud services list --enabled --project cartographie-data-engineer \
+gcloud services list --enabled --project ${GCP_PROJECT_ID} \
   --filter="name:(storage.googleapis.com OR bigquery.googleapis.com OR run.googleapis.com OR cloudscheduler.googleapis.com OR secretmanager.googleapis.com)"
 
-gcloud projects get-iam-policy cartographie-data-engineer \
+gcloud projects get-iam-policy ${GCP_PROJECT_ID} \
   --flatten="bindings[].members" \
-  --filter="bindings.members:serviceAccount:terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com" \
+  --filter="bindings.members:serviceAccount:terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
   --format="table(bindings.role)"
 
-gcloud iam service-accounts get-iam-policy ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com \
-  --project=cartographie-data-engineer
+gcloud iam service-accounts get-iam-policy ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com \
+  --project=${GCP_PROJECT_ID}
 ```
 
 Pourquoi : confirme les APIs actives, les rles projet du deployer et le binding `iam.serviceAccountUser`.
@@ -153,12 +165,12 @@ Placeholders utiliss dans cette section :
 - `ORG_ID` = identifiant numrique de l'organisation GCP parente.
 - `TAG_KEY_ID` = identifiant numrique de la cl de tag GCP.
 - `TAG_VALUE_ID` = identifiant numrique de la valeur de tag  binder au projet.
-- `YOUR_EMAIL` = adresse email de l'utilisateur  autoriser temporairement pour manipuler les tags.
+- `${USER_EMAIL}` = adresse email de l'utilisateur  autoriser temporairement pour manipuler les tags.
 
 ### Vrifier les tags disponibles
 
 ```bash
-gcloud projects describe cartographie-data-engineer --format="value(parent.id)"
+gcloud projects describe ${GCP_PROJECT_ID} --format="value(parent.id)"
 gcloud resource-manager tags keys list --parent=organizations/ORG_ID --format="table(name,shortName)"
 gcloud resource-manager tags values list --parent=tagKeys/TAG_KEY_ID --format="table(name,shortName)"
 ```
@@ -167,7 +179,7 @@ gcloud resource-manager tags values list --parent=tagKeys/TAG_KEY_ID --format="t
 
 ```bash
 gcloud resource-manager tags bindings create \
-  --parent=//cloudresourcemanager.googleapis.com/projects/cartographie-data-engineer \
+  --parent=//cloudresourcemanager.googleapis.com/projects/${GCP_PROJECT_ID} \
   --tag-value=tagValues/TAG_VALUE_ID
 ```
 
@@ -187,12 +199,12 @@ gcloud resource-manager tags values create Production --parent=tagKeys/TAG_KEY_I
 ### Dpannage `PERMISSION_DENIED` sur les tags
 
 ```bash
-gcloud projects add-iam-policy-binding cartographie-data-engineer \
-  --member="user:YOUR_EMAIL" \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+  --member="user:${USER_EMAIL}" \
   --role="roles/resourcemanager.tagUser"
 
 gcloud resource-manager tags values add-iam-policy-binding tagValues/TAG_VALUE_ID \
-  --member="user:YOUR_EMAIL" \
+  --member="user:${USER_EMAIL}" \
   --role="roles/resourcemanager.tagUser"
 ```
 

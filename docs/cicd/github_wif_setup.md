@@ -2,12 +2,27 @@
 
 Ce guide explique comment configurer **Workload Identity Federation (WIF)** pour permettre  GitHub Actions de dployer linfrastructure GCP **sans cl JSON**.
 
-Le but est de permettre au workflow GitHub Actions dutiliser le service account `terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com` pour excuter Terraform via le conteneur `infra-iac`.
+Le but est de permettre au workflow GitHub Actions dutiliser le service account `terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com` pour excuter Terraform via le conteneur `infra-iac`.
 
 > Ce guide dcrit le **chemin principal de release et de dploiement de l'infrastructure Terraform** dans le primtre actuel.
 > Les guides Docker et terminal local servent surtout au dveloppement,  la validation manuelle et au debug avant PR.
 
 ---
+
+## Variables a definir
+
+Definir ces variables en debut de session Cloud Shell avant d'executer les commandes de ce guide :
+
+```bash
+GCP_PROJECT_ID="your-gcp-project-id"   # identifiant de votre projet GCP  <- a renseigner
+GITHUB_ORG="your-github-org"            # organisation ou utilisateur GitHub <- a renseigner
+GITHUB_REPO="your-github-repo"          # nom du repo GitHub                 <- a renseigner
+
+# Service accounts (construits a partir de GCP_PROJECT_ID)
+TF_SA="terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+INGESTION_SA="ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+DBT_SA="dbt-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+```
 
 ## 1) Pourquoi utiliser WIF
 
@@ -28,8 +43,8 @@ Note de primtre : le workflow actuel couvre principalement `terraform plan` sur 
 
 ## 2) Pr-requis
 
-- Projet GCP existant : `cartographie-data-engineer`
-- Service account existant : `terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com`
+- Projet GCP existant : `${GCP_PROJECT_ID}`
+- Service account existant : `terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com`
 - Rles du SA dj en place pour le scope actuel :
   - `roles/storage.admin`
   - `roles/bigquery.admin`
@@ -53,7 +68,7 @@ Si l'tape 1 n'est pas faite, le workflow peut chouer avant `terraform apply` ave
 Commandes one-shot recommandes :
 
 ```bash
-PROJECT="cartographie-data-engineer"
+PROJECT="${GCP_PROJECT_ID}"
 
 gcloud services enable \
   storage.googleapis.com \
@@ -63,7 +78,7 @@ gcloud services enable \
   secretmanager.googleapis.com \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
-  --project=${PROJECT}
+  --project=${GCP_PROJECT_ID}
 ```
 
 Rfrence principale pour le socle projet : [docs/platform/gcp_terminal_setup.md](../platform/gcp_terminal_setup.md).
@@ -75,36 +90,35 @@ Le service account rfrenc dans `GCP_WIF_SERVICE_ACCOUNT` doit avoir les droits p
 Commandes ( excuter une fois) :
 
 ```bash
-TF_SA="terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com"
-PROJECT="cartographie-data-engineer"
-INGESTION_SA="ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com"
-DBT_SA="dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com"
+TF_SA="terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+INGESTION_SA="ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+DBT_SA="dbt-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
 
 # Ressources infra de base
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/storage.admin"
 
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/bigquery.admin"
 
 # ❌ REQUIS — sans ce rôle, terraform apply échoue avec 403 sur le repo AR
 # (update de la description du repo Artifact Registry)
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/artifactregistry.admin"
 
 # À accorder avant d'activer create_compute_job=true (INFRA-04/05)
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/run.admin"
 
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/cloudscheduler.admin"
 
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/secretmanager.admin"
 
@@ -112,18 +126,18 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
 gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/iam.serviceAccountUser" \
-  --project=${PROJECT}
+  --project=${GCP_PROJECT_ID}
 
 gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/iam.serviceAccountUser" \
-  --project=${PROJECT}
+  --project=${GCP_PROJECT_ID}
 ```
 
 Optionnel (uniquement si Terraform doit grer des bindings IAM au niveau projet, ex: `roles/bigquery.jobUser`) :
 
 ```bash
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/resourcemanager.projectIamAdmin"
 ```
@@ -131,7 +145,7 @@ gcloud projects add-iam-policy-binding ${PROJECT} \
 Optionnel (si vous voulez que la CI puisse activer automatiquement des APIs GCP manquantes) :
 
 ```bash
-gcloud projects add-iam-policy-binding ${PROJECT} \
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/serviceusage.serviceUsageAdmin"
 ```
@@ -140,7 +154,7 @@ Sinon, activer manuellement une fois les APIs requises :
 
 ```bash
 gcloud services enable storage.googleapis.com bigquery.googleapis.com run.googleapis.com cloudscheduler.googleapis.com secretmanager.googleapis.com \
-  --project=${PROJECT}
+  --project=${GCP_PROJECT_ID}
 ```
 
 Le workflow `infra-deploy.yml` vrifie explicitement ces 5 APIs avant l'`apply` sur `main`.
@@ -159,7 +173,7 @@ Placeholders utiliss dans ce guide :
 ## 3) Rcuprer le project number
 
 ```bash
-gcloud projects describe cartographie-data-engineer --format="value(projectNumber)"
+gcloud projects describe ${GCP_PROJECT_ID} --format="value(projectNumber)"
 ```
 
 Noter la valeur retourne  elle sera utilise dans toutes les commandes suivantes.
@@ -169,7 +183,7 @@ Noter la valeur retourne  elle sera utilise dans toutes les commandes suivantes.
 ## 4) Activer les APIs ncessaires
 
 ```bash
-gcloud services enable iamcredentials.googleapis.com iam.googleapis.com cloudresourcemanager.googleapis.com --project cartographie-data-engineer
+gcloud services enable iamcredentials.googleapis.com iam.googleapis.com cloudresourcemanager.googleapis.com --project ${GCP_PROJECT_ID}
 ```
 
 Pourquoi :
@@ -185,13 +199,13 @@ gcloud iam workload-identity-pools create github-pool \
   --location="global" \
   --display-name="GitHub Actions Pool" \
   --description="Pool OIDC pour GitHub Actions" \
-  --project="cartographie-data-engineer"
+  --project="${GCP_PROJECT_ID}"
 ```
 
 Vrification :
 
 ```bash
-gcloud iam workload-identity-pools list --location="global" --project="cartographie-data-engineer"
+gcloud iam workload-identity-pools list --location="global" --project="${GCP_PROJECT_ID}"
 ```
 
 ---
@@ -207,8 +221,8 @@ gcloud iam workload-identity-pools providers create-oidc github-provider \
   --display-name="GitHub Provider" \
   --issuer-uri="https://token.actions.githubusercontent.com" \
   --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner,attribute.ref=assertion.ref" \
-  --attribute-condition="attribute.repository_owner == 'GITHUB_ORG'" \
-  --project="cartographie-data-engineer"
+  --attribute-condition="attribute.repository_owner == '${GITHUB_ORG}'" \
+  --project="${GCP_PROJECT_ID}"
 ```
 
 Vrification :
@@ -217,7 +231,7 @@ Vrification :
 gcloud iam workload-identity-pools providers list \
   --location="global" \
   --workload-identity-pool="github-pool" \
-  --project="cartographie-data-engineer"
+  --project="${GCP_PROJECT_ID}"
 ```
 
 ---
@@ -225,10 +239,10 @@ gcloud iam workload-identity-pools providers list \
 ## 7) Autoriser le repo GitHub  utiliser `terraform-deployer-sa`
 
 ```bash
-gcloud iam service-accounts add-iam-policy-binding terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com \
-  --project="cartographie-data-engineer" \
+gcloud iam service-accounts add-iam-policy-binding terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com \
+  --project="${GCP_PROJECT_ID}" \
   --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/$(gcloud projects describe cartographie-data-engineer --format='value(projectNumber)')/locations/global/workloadIdentityPools/github-pool/attribute.repository/GITHUB_ORG/GITHUB_REPO"
+  --member="principalSet://iam.googleapis.com/projects/$(gcloud projects describe ${GCP_PROJECT_ID} --format='value(projectNumber)')/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_ORG}/${GITHUB_REPO}"
 ```
 
 > La sous-commande `$(gcloud projects describe ...)` rcupre le project number automatiquement  pas besoin de le connatre par cur.
@@ -245,7 +259,7 @@ Exemple de logique :
 gcloud iam workload-identity-pools providers describe github-provider \
   --location="global" \
   --workload-identity-pool="github-pool" \
-  --project="cartographie-data-engineer" \
+  --project="${GCP_PROJECT_ID}" \
   --format="value(name)"
 ```
 
@@ -265,9 +279,9 @@ Dans le repository GitHub, ajouter :
 
 ### Variables / secrets GitHub
 
-- `GCP_PROJECT_ID` = `cartographie-data-engineer`
+- `GCP_PROJECT_ID` = `${GCP_PROJECT_ID}`
 - `GCP_WIF_PROVIDER` = valeur retourne  l'tape 8 (forme : `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/providers/github-provider`)
-- `GCP_WIF_SERVICE_ACCOUNT` = `terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com`
+- `GCP_WIF_SERVICE_ACCOUNT` = `terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com`
 
 > Ces 3 valeurs vont dans **GitHub ? Settings ? Secrets and variables ? Actions**, pas dans `.env` ni `docker-compose.yml`.
 > WIF est uniquement utilis par le workflow CI, pas par le container Docker local.
@@ -312,7 +326,7 @@ Sur PR : seuls `ingestion-verify` + `dbt-verify` + `terraform plan` s'exécutent
 ### Vrifier le pool
 
 ```bash
-gcloud iam workload-identity-pools describe github-pool --location=global --project=cartographie-data-engineer
+gcloud iam workload-identity-pools describe github-pool --location=global --project=${GCP_PROJECT_ID}
 ```
 
 ### Vrifier le provider
@@ -321,17 +335,17 @@ gcloud iam workload-identity-pools describe github-pool --location=global --proj
 gcloud iam workload-identity-pools providers describe github-provider \
   --location=global \
   --workload-identity-pool=github-pool \
-  --project=cartographie-data-engineer
+  --project=${GCP_PROJECT_ID}
 ```
 
 ### Vrifier le binding sur le service account
 
 ```bash
-gcloud iam service-accounts get-iam-policy terraform-deployer-sa@cartographie-data-engineer.iam.gserviceaccount.com \
-  --project=cartographie-data-engineer
+gcloud iam service-accounts get-iam-policy terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com \
+  --project=${GCP_PROJECT_ID}
 ```
 
-Attendu : une entre `roles/iam.workloadIdentityUser` pointant vers `principalSet://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/attribute.repository/GITHUB_ORG/GITHUB_REPO`.
+Attendu : une entre `roles/iam.workloadIdentityUser` pointant vers `principalSet://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_ORG}/${GITHUB_REPO}`.
 
 ---
 

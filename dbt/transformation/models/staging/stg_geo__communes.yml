@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: stg_geo__communes
+    description: >
+      Referentiel communes françaises explose par code postal.
+      Dedoublonnage sur (NOM, CODE_POSTAL) — une ligne par commune x code postal.
+      Materialisee en TABLE (~35 000 communes, plusieurs codes postaux par commune).
+    config:
+      materialized: table
+    columns:
+      - name: CODE_INSEE
+        data_type: STRING
+        description: "Code INSEE de la commune (5 chars)"
+        tests:
+          - not_null
+
+      - name: NOM
+        data_type: STRING
+        description: "Nom officiel de la commune normalise UPPER sans accents"
+        tests:
+          - not_null
+
+      - name: CODE_REGION
+        data_type: STRING
+        description: "Code de la region (2 chiffres)"
+
+      - name: DEPARTEMENT
+        data_type: STRING
+        description: "Code du departement (2-3 chars, ex: 75, 2A, 971)"
+
+      - name: CODE_POSTAL
+        data_type: STRING
+        description: "Code postal issu de l explosion du CSV codesPostaux source"
+        tests:
+          - not_null
+
+      - name: POPULATION
+        data_type: INT64
+        description: "Population municipale arrondie (source INSEE via API Geo)"
+
+      - name: LATITUDE
+        data_type: FLOAT64
+        description: "Latitude WGS84 du centroide de la commune"
+
+      - name: LONGITUDE
+        data_type: FLOAT64
+        description: "Longitude WGS84 du centroide de la commune"

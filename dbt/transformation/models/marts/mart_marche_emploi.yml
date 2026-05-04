@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: mart_marche_emploi
+    description: >
+      Vue analytique du marche de l emploi Data Engineer.
+      Passthrough depuis int_offres_enrichies (couche gold incremental).
+      Materialisee en VIEW : zero re-computation, toujours a jour.
+      Exposee dans le dataset marts pour lecture par dashboard-sa (Looker Studio).
+    config:
+      materialized: view
+    columns:
+      - name: offre_id
+        data_type: STRING
+        description: "Identifiant unique de l offre France Travail"
+        tests:
+          - not_null
+          - unique
+
+      - name: intitule
+        data_type: STRING
+        description: "Titre du poste normalise UPPER sans accents"
+
+      - name: code_contrat
+        data_type: STRING
+        description: "Code type de contrat brut (CDI, CDD, MIS, SAI, etc.)"
+
+      - name: type_contrat
+        data_type: STRING
+        description: "Type de contrat parse"
+
+      - name: duree_contrat_mois
+        data_type: NUMERIC
+        description: "Duree du contrat en mois (NULL si non precise ou contrat indefini)"
+
+      - name: date_creation
+        data_type: TIMESTAMP
+        description: "Date de creation de l offre"
+
+      - name: departement
+        data_type: STRING
+        description: "Code departement (2-3 chars)"
+
+      - name: commune
+        data_type: STRING
+        description: "Nom de la commune normalise"
+
+      - name: code_region
+        data_type: STRING
+        description: "Code region"
+
+      - name: siret
+        data_type: STRING
+        description: "SIRET de l entreprise recruteur (14 chiffres) ou NULL"
+
+      - name: siren
+        data_type: STRING
+        description: "SIREN de l entreprise (9 chiffres) ou NULL"
+
+      - name: code_naf
+        data_type: STRING
+        description: "Code APE/NAF de l activite principale SIRENE (ex: 6201Z)"
+
+      - name: salaire
+        data_type: "STRUCT<type STRING, min_amount NUMERIC, max_amount NUMERIC, nb_mois INT64, min_mensuel NUMERIC, max_mensuel NUMERIC, min_annuel NUMERIC, max_annuel NUMERIC>"
+        description: >
+          Salaire parse. type MENSUEL ou ANNUEL.
+          min/max_mensuel et min/max_annuel projections calculees.
+          nb_mois nombre de mois de salaire.
+
+      - name: code_rome
+        data_type: STRING
+        description: "Code ROME du metier (5 chars, ex: M1811)"
+
+      - name: appellation
+        data_type: STRING
+        description: "Libelle ROME de l appellation du poste"
+
+      - name: experience
+        data_type: STRING
+        description: "Niveau experience (D debutant, S confirme, E expert)"
+
+      - name: date_insertion
+        data_type: DATE
+        description: "Date d insertion derivee de la partition Hive dt"
