@@ -12,15 +12,13 @@
   - **Cloud Run Job ingestion** (`datatalent-ingestion-job`) : **ACTIF** en CI (`TF_VAR_create_compute_job=true`)
   - **Cloud Run Job dbt** (`datatalent-dbt-job`) : **ACTIF** en CI (`TF_VAR_create_dbt_job=true`)
   - `time_sleep` 90s avant création des jobs (propagation IAM)
-  - Artifact Registry repo `datatalent` avec cleanup policy : **garder 2 versions** (latest + précédente), suppression des versions excédentaires avec délai minimal puis purge asynchrone côté GCP
+  - Artifact Registry repo `datatalent` avec cleanup policy : **garder 1 version** (latest uniquement), suppression des versions excédentaires avec délai minimal puis purge asynchrone côté GCP
   - **Rétention logs Cloud Logging** : bucket `_Default` configuré à 60j (`TF_VAR_manage_log_retention=true`)
   - CI SA reçoit `roles/artifactregistry.writer` et `roles/iam.serviceAccountUser` via Terraform
-- ✅ **INFRA-05** : Module scheduler (`infra/modules/scheduler`) avec 5 jobs cron actifs :
-  - France Travail hebdomadaire lundi `0 6 * * 1`
-  - APEC hebdomadaire lundi `0 7 * * 1`
-  - Jooble hebdomadaire lundi `0 8 * * 1`
-  - Sirene mensuel `0 3 1 * *`
-  - Géo mensuel `0 4 1 * *`
+- ✅ **INFRA-05** : Module scheduler (`infra/modules/scheduler`) avec 3 jobs cron actifs (free tier GCP) :
+  - `datatalent-ingestion-weekly` — lundi 6h `0 6 * * 1` — source `weekly` (france_travail + apec + jooble)
+  - `datatalent-ingestion-monthly` — 1er du mois 3h `0 3 1 * *` — source `monthly` (sirene + geo)
+  - `datatalent-dbt` — lundi 9h `0 9 * * 1` — déclenche Cloud Run Job dbt
   - Scheduler conditionné par `var.create_compute_job` (actif)
 - ✅ **INFRA-06** : Module secrets (`infra/modules/secrets`) + bindings `secretAccessor` pour `ingestion-sa`.
 - ✅ **INFRA-07** : IAM complet — IAM datasets BQ + bucket raw + BQ jobUser + Artifact Registry pour tous les SA. `roles/storage.objectViewer` pour `dbt-sa` (requis pour External Tables). Voir [docs/infra/iam_roles.md](iam_roles.md).
@@ -34,7 +32,7 @@
 
 Le workflow orchestre en **4 jobs** sur push `main` :
 
-```
+```text
 push main
     ├──► ingestion-verify  ──────────────┐
     │    (docker build ingestion)        ├──► terraform (apply) ──► push-images
@@ -64,7 +62,7 @@ Sur **push develop** : verify + init + validate (pas de plan, pas d'apply).
 | `TF_VAR_manage_log_retention` | `"true"` | Rétention logs 60j gérée par Terraform |
 | `TF_VAR_bucket_*_prefix_delete_age_days` | `"60"` | Purge auto par préfixe à 60j |
 | `TF_VAR_bucket_nearline_age_days` | `"30"` | Transition NEARLINE à 30j |
-| `TF_VAR_artifact_registry_keep_recent_versions` | `2` | Garder latest + 1 version précédente |
+| `TF_VAR_artifact_registry_keep_recent_versions` | `1` | Garder latest uniquement |
 
 ---
 
@@ -176,7 +174,7 @@ Cible : < 5€/mois hors free tier GCP avec les optimisations en place.
   - Bucket raw : `${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw`
   - Datasets : `raw`, `staging`, `marts`
   - Cloud Run Jobs : `datatalent-ingestion-job`, `datatalent-dbt-job`
-  - Schedulers : `datatalent-ingestion-france_travail`, `datatalent-ingestion-apec`, `datatalent-ingestion-jooble`, `datatalent-ingestion-sirene`, `datatalent-ingestion-geo`
+  - Schedulers : `datatalent-ingestion-weekly`, `datatalent-ingestion-monthly`, `datatalent-dbt`
   - Artifact Registry : repo `datatalent` (region `${TF_VAR_region}`)
 
 ---

@@ -171,7 +171,7 @@ Pour un push manuel (test ou urgence) :
 
 ```bash
 # Variables à adapter depuis .env
-AR_REGION="${GCP_REGION:-europe-west1}"
+AR_REGION="${GCP_REGION:-us-central1}"
 AR_REPO="datatalent"
 GCP_PROJECT_ID="${GCP_PROJECT_ID}"
 

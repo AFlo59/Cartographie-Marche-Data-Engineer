@@ -143,25 +143,27 @@ terraform import 'module.secrets.google_secret_manager_secret.secrets["DATAGOUV_
 
 # Artifact Registry
 terraform import module.compute.google_artifact_registry_repository.datatalent \
-  projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-europe-west1}/repositories/datatalent
+  projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-us-central1}/repositories/datatalent
 
 # Cloud Run Jobs
 terraform import 'module.compute.google_cloud_run_v2_job.ingestion[0]' \
-  projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-europe-west1}/jobs/${TF_VAR_compute_job_name:-datatalent-ingestion-job}
+  projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-us-central1}/jobs/${TF_VAR_compute_job_name:-datatalent-ingestion-job}
 
 terraform import 'module.compute.google_cloud_run_v2_job.dbt[0]' \
-  projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-europe-west1}/jobs/${TF_VAR_dbt_job_name:-datatalent-dbt-job}
+  projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-us-central1}/jobs/${TF_VAR_dbt_job_name:-datatalent-dbt-job}
 
 # Cloud Logging retention
 terraform import 'module.compute.google_logging_project_bucket_config.default_retention[0]' \
   projects/${GCP_PROJECT_ID}/locations/global/buckets/_Default
 
-# Cloud Schedulers
+# Cloud Schedulers (3 jobs groupés)
 SCHEDULER_PREFIX="${TF_VAR_scheduler_job_name_prefix:-datatalent-ingestion}"
-for SOURCE in france_travail apec jooble sirene geo; do
-  terraform import "module.scheduler[0].google_cloud_scheduler_job.ingestion[\"${SOURCE}\"]" \
-    projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-europe-west1}/jobs/${SCHEDULER_PREFIX}-${SOURCE}
+for GROUP in weekly monthly; do
+  terraform import "module.scheduler[0].google_cloud_scheduler_job.ingestion[\"${GROUP}\"]" \
+    projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-us-central1}/jobs/${SCHEDULER_PREFIX}-${GROUP}
 done
+terraform import 'module.scheduler[0].google_cloud_scheduler_job.dbt[0]' \
+  projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-us-central1}/jobs/datatalent-dbt
 ```
 
 Puis revalider :
@@ -175,7 +177,7 @@ terraform apply
 
 ```bash
 GCP_PROJECT_ID="$(gcloud config get project)"
-GCP_REGION="${GCP_REGION:-europe-west1}"
+GCP_REGION="${GCP_REGION:-us-central1}"
 
 gcloud storage buckets list --project=${GCP_PROJECT_ID}
 bq ls --project_id=${GCP_PROJECT_ID}
@@ -213,7 +215,7 @@ Si le repo n'existe pas encore, le créer une fois manuellement :
 
 ```bash
 GCP_PROJECT_ID="$(gcloud config get project)"
-GCP_REGION="${GCP_REGION:-europe-west1}"
+GCP_REGION="${GCP_REGION:-us-central1}"
 AR_REPO="datatalent"
 
 # Créer le repo Docker dans Artifact Registry
@@ -237,7 +239,7 @@ Terraform importera le repo existant via le step `import_if_needed` au prochain 
 
 ```bash
 GCP_PROJECT_ID="$(gcloud config get project)"
-GCP_REGION="${GCP_REGION:-europe-west1}"
+GCP_REGION="${GCP_REGION:-us-central1}"
 JOB_NAME="${TF_VAR_compute_job_name:-datatalent-ingestion-job}"
 
 # France Travail
