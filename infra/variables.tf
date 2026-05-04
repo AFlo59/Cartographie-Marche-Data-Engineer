@@ -261,6 +261,12 @@ variable "scheduler_jooble_schedule" {
   default     = "0 8 * * 1"
 }
 
+variable "scheduler_dbt_schedule" {
+  description = "Cron schedule for dbt run (after all ingestions)"
+  type        = string
+  default     = "0 9 * * 1"
+}
+
 variable "secret_ft_client_id_name" {
   description = "Secret Manager secret id for France Travail client id"
   type        = string
