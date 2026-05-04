@@ -2,7 +2,7 @@
 """
 Ingestion — API France Travail (offres d'emploi)
 Source    : https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search
-Schedule  : quotidien — 0 6 * * *
+Schedule  : hebdomadaire — 0 6 * * 1 (lundi 6h)
 Output    : raw/france_travail/dt=YYYY-MM-DD/offres.parquet
 Idempotent : écrasement du fichier du jour (même chemin GCS)
 

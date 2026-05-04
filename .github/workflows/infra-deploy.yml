@@ -144,8 +144,14 @@ jobs:
       TF_VAR_secret_ft_client_secret_name: FT_CLIENT_SECRET
       TF_VAR_secret_datagouv_api_key_name: DATAGOUV_API_KEY
       TF_VAR_secret_jooble_api_key_name: JOOBLE_API_KEY
-      # Scheduler Jooble (hebdomadaire, lundi 8h)
+      # Schedulers — toutes les fréquences explicites
+      TF_VAR_scheduler_france_travail_schedule: "0 6 * * 1"
+      TF_VAR_scheduler_apec_schedule: "0 7 * * 1"
       TF_VAR_scheduler_jooble_schedule: "0 8 * * 1"
+      TF_VAR_scheduler_sirene_schedule: "0 3 1 * *"
+      TF_VAR_scheduler_geo_schedule: "0 4 1 * *"
+      # Cloud Logging retention
+      TF_VAR_log_retention_days: "60"
       # CI SA pour push Artifact Registry (même SA que WIF)
       TF_VAR_ci_service_account_email: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
       # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)

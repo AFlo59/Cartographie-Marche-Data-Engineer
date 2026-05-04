@@ -17,7 +17,7 @@ Ce document décrit l'enchaînement global des composants du projet sans répét
 ### Choix retenu
 
 - **Un seul Cloud Run Job** d'ingestion (`datatalent-ingestion-job`),
-- **3 jobs Cloud Scheduler** (france_travail, sirene, geo),
+- **5 jobs Cloud Scheduler** (france_travail, apec, jooble, sirene, geo),
 - chaque scheduler envoie un override de variable d'environnement `INGESTION_SOURCE`.
 
 Ce choix est le plus optimisé actuellement pour votre projet (coût + simplicité opérationnelle).
@@ -39,15 +39,15 @@ Recommandation:
 
 Avec cette stratégie, un seul job reste propre et traçable sans collision entre sources.
 
-### Quand passer à 3 Cloud Run Jobs distincts
+### Quand passer à plusieurs Cloud Run Jobs distincts
 
-Basculer vers 3 jobs uniquement si:
+Basculer vers des jobs séparés uniquement si :
 
 - CPU/RAM/timeout très différents par source,
 - cadence très différente (ex: une source quotidienne lourde),
 - besoin d'isolation forte des incidents/SLA.
 
-Sinon, garder **1 job paramétré** est la meilleure option.
+Sinon, garder **1 job paramétré** (actuel) est la meilleure option.
 
 ## Note coût (ordre de grandeur)
 
@@ -61,7 +61,7 @@ Sinon, garder **1 job paramétré** est la meilleure option.
 ### Optimisations coût appliquées
 
 | Levier | Économie estimée | Implémenté |
-|--------|-----------------|------------|
+| --- | --- | --- |
 | 1 Cloud Run Job mutualisé (vs 3 séparés) | ~60% Artifact Registry + ops | ✅ |
 | BigQuery External Tables pour raw (Sirene 10M+ lignes) | ~2-5€/mois stockage BQ | ✅ |
 | GCS Nearline après 30j pour les données raw | ~40% stockage Sirene | ✅ |
@@ -70,14 +70,14 @@ Sinon, garder **1 job paramétré** est la meilleure option.
 | Looker Studio (vs Metabase Cloud Run) | ~10-20€/mois | ✅ (recommandé DASH-01) |
 | `require_partition_filter: true` sur les tables Sirene dbt | Évite scans > 1To accidentels | ✅ (backlog DBT-07) |
 
-**Cible** : < 5€/mois hors free tier GCP (1 To/mois queries BQ, 5 Go storage BQ, 3 Scheduler jobs, 2M Cloud Run invocations).
+**Cible** : < 5€/mois hors free tier GCP (1 To/mois queries BQ, 5 Go storage BQ, 5 Scheduler jobs, 2M Cloud Run invocations).
 
 ## Pipeline CI/CD — workflow `infra-deploy.yml` (push main)
 
 Le workflow unique `infra-deploy.yml` orchestre tout sur push `main` en 4 jobs :
 
 | Job | Rôle | Déclencheur |
-|-----|------|-------------|
+| --- | --- | --- |
 | `ingestion-verify` | Build Dockerfile ingestion (vérification validité) | Toujours |
 | `dbt-verify` | Build image dbt + `dbt parse` + `dbt compile` | Toujours |
 | `terraform` | `terraform plan` sur PR, puis `terraform import` + `terraform apply` après merge sur `main` | needs: [ingestion-verify, dbt-verify] |
@@ -124,7 +124,7 @@ Les étapes dbt run/test et dashboard sont rappelées ici pour la vision cible, 
 - Pipeline CI : verify ingestion + verify dbt → terraform apply → push images (sur merge main)
 
 **Défini mais désactivé (activer après prérequis) :**
-- `create_compute_job = false` : Cloud Run Job ingestion + 3 Schedulers — activer après premier push image réussi
+- `create_compute_job = false` : Cloud Run Job ingestion + 5 Schedulers — activer après premier push image réussi
 - `create_dbt_job = false` : Cloud Run Job dbt — activer après premier push image dbt réussi
 - `create_external_tables = false` : External Tables `raw.sirene_etablissements`, `raw.sirene_unites_legales`, `raw.france_travail_offres` — activer après la première ingestion (BQ autodetect requiert des fichiers Parquet)
 

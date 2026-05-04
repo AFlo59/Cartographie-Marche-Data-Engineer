@@ -33,7 +33,7 @@ variable "time_zone" {
 variable "france_travail_schedule" {
   description = "Cron schedule for France Travail ingestion"
   type        = string
-  default     = "0 6 * * *"
+  default     = "0 6 * * 1"
 }
 
 variable "sirene_schedule" {
