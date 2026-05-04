@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: stg_jooble__offres
+    description: >
+      Offres Jooble nettoyees et normalisees.
+      Dedoublonnage sur offre_id (derniere date_publication / date_insertion).
+      Le salaire est conserve en texte (format Jooble incompatible avec parse_salaire_auto).
+      Materialisee en TABLE pour eviter le re-scan des external tables BQ.
+    config:
+      materialized: table
+    columns:
+      - name: offre_id
+        data_type: STRING
+        description: "Identifiant unique de l offre cote Jooble (champ jooble_id source)"
+        tests:
+          - not_null
+          - unique
+
+      - name: intitule
+        data_type: STRING
+        description: "Titre du poste normalise UPPER sans accents, indicateurs H/F supprimes"
+
+      - name: description
+        data_type: STRING
+        description: "Description courte de l offre, HTML et balises supprimes, texte normalise"
+
+      - name: nom
+        data_type: STRING
+        description: "Nom de l entreprise normalise (peut etre NULL)"
+
+      - name: salaire_texte
+        data_type: STRING
+        description: "Libelle salaire conserve en texte normalise (format variable Jooble)"
+
+      - name: code_contrat
+        data_type: STRING
+        description: "Type de contrat au format texte libre Jooble normalise"
+
+      - name: lieu
+        data_type: STRING
+        description: "Localisation textuelle de l offre normalisee"
+
+      - name: url
+        data_type: STRING
+        description: "URL directe vers l offre originale (conservee brute)"
+
+      - name: date_publication
+        data_type: TIMESTAMP
+        description: "Date de mise a jour de l offre (updated_dt parse par l ingestion, UTC)"
+
+      - name: scraped_at
+        data_type: TIMESTAMP
+        description: "Timestamp de collecte de l offre (UTC)"
+
+      - name: date_insertion
+        data_type: DATE
+        description: "Date d insertion derivee de la partition Hive dt"

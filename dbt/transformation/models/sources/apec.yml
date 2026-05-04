@@ -1,0 +1,102 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: raw
+    description: "Tables externes BigQuery — fichiers Parquet dans GCS (module Terraform warehouse)"
+
+    tables:
+      - name: apec_offres
+        description: >
+          Offres emploi APEC (cadres) via API JSON interne (rechercheOffre).
+          Hive-partitioned dt=YYYY-MM-DD, BigQuery ajoute la colonne dt automatiquement.
+          Frequence : hebdomadaire lundi 7h. Filtre : secteur informatique, 7 derniers jours.
+        columns:
+          - name: apec_id
+            data_type: STRING
+            description: "Identifiant unique de l offre cote APEC (numeroOffre)"
+          - name: job_title
+            data_type: STRING
+            description: "Titre du poste"
+          - name: company_name
+            data_type: STRING
+            description: "Nom commercial de l entreprise"
+          - name: salary_text
+            data_type: STRING
+            description: "Libelle salaire APEC, ex: '35/55 k annuel sur 13 mois'"
+          - name: contract_type
+            data_type: STRING
+            description: "Libelle type contrat decode par l ingestion (CDI, CDD, Stage, Interim, Alternance...)"
+          - name: commune
+            data_type: STRING
+            description: "Nom de la commune extraite du champ lieuTexte par l ingestion"
+          - name: departement
+            data_type: STRING
+            description: "Code departement extrait du champ lieuTexte (2-3 chars)"
+          - name: location_text
+            data_type: STRING
+            description: "Texte brut du lieu, ex: 'Paris - 75'"
+          - name: latitude
+            data_type: FLOAT64
+            description: "Latitude WGS84 fournie par l API APEC"
+          - name: longitude
+            data_type: FLOAT64
+            description: "Longitude WGS84 fournie par l API APEC"
+          - name: published_at
+            data_type: TIMESTAMP
+            description: "Date et heure de publication de l offre (UTC)"
+          - name: validated_at
+            data_type: TIMESTAMP
+            description: "Date et heure de validation de l offre (UTC)"
+          - name: job_description_preview
+            data_type: STRING
+            description: "Apercu du descriptif de poste, peut contenir du HTML partiel"
+          - name: detail_url
+            data_type: STRING
+            description: "URL vers la page detail de l offre sur apec.fr"
+          - name: logo_url
+            data_type: STRING
+            description: "URL du logo entreprise sur apec.fr (nullable)"
+          - name: secteur_activite_id
+            data_type: INT64
+            description: "Identifiant interne APEC du secteur d activite"
+          - name: secteur_activite_parent_id
+            data_type: INT64
+            description: "Identifiant du secteur parent (nullable)"
+          - name: oqa
+            data_type: BOOL
+            description: "Indicateur offre qualifiee APEC (nullable)"
+          - name: confidentielle
+            data_type: BOOL
+            description: "Offre confidentielle : nom entreprise masque (nullable)"
+          - name: faible_candidature
+            data_type: BOOL
+            description: "Indicateur peu de candidatures recues (nullable)"
+          - name: source_name
+            data_type: STRING
+            description: "Toujours 'apec'"
+          - name: search_url
+            data_type: STRING
+            description: "URL endpoint API ayant genere l offre"
+          - name: filters_types_convention
+            data_type: STRING
+            description: "CSV des IDs types de convention utilises comme filtre de recherche"
+          - name: filters_secteur_activite
+            data_type: INT64
+            description: "ID secteur utilise comme filtre (101753 = informatique)"
+          - name: filters_anciennete_publication
+            data_type: INT64
+            description: "Filtre anciennete en jours (101851 = 7 jours)"
+          - name: filters_salaire_min
+            data_type: INT64
+            description: "Salaire minimum du filtre de recherche (en k)"
+          - name: filters_salaire_max
+            data_type: INT64
+            description: "Salaire maximum du filtre de recherche (en k)"
+          - name: scraped_at
+            data_type: TIMESTAMP
+            description: "Timestamp de collecte (UTC)"
+          - name: dt
+            data_type: DATE
+            description: "Colonne de partition Hive injectee par BigQuery depuis le chemin GCS dt=YYYY-MM-DD"
