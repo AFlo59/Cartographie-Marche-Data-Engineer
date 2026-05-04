@@ -34,8 +34,8 @@ Variables clés (valeurs non sensibles codées en dur dans le workflow, valeurs 
 
 ```yaml
 TF_VAR_project_id:    <depuis GCP_PROJECT_ID>
-TF_VAR_region:        europe-west1
-TF_VAR_location:      EU
+TF_VAR_region:        us-central1
+TF_VAR_location:      US
 TF_VAR_environment:   dev
 TF_VAR_project_prefix: datatalent
 
@@ -323,7 +323,7 @@ Le bucket tfstate n'existe pas. Créer une fois depuis Cloud Shell :
 
 ```bash
 TF_BACKEND_BUCKET="datatalent-tfstate-${GCP_PROJECT_ID}"
-GCP_REGION="${GCP_REGION:-europe-west1}"
+GCP_REGION="${GCP_REGION:-us-central1}"
 GCP_PROJECT_ID="$(gcloud config get project)"
 
 gcloud storage buckets create gs://${TF_BACKEND_BUCKET} \

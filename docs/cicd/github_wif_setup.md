@@ -18,7 +18,7 @@ Définir ces variables **une seule fois** dans votre terminal Cloud Shell avant 
 # Variables — adapter à votre projet avant d'exécuter ce guide
 # ═══════════════════════════════════════════════════════════════
 PROJECT_ID="votre-projet-gcp"              # ← ID de votre projet GCP
-REGION="europe-west1"                       # ← région GCP
+REGION="us-central1"                        # ← région GCP
 GITHUB_ORG="votre-org-ou-username"         # ← organisation ou username GitHub
 GITHUB_REPO="votre-repo"                   # ← nom du repository GitHub
 
