@@ -34,10 +34,11 @@
         WITH prep AS (
             SELECT
                 UPPER(TRIM(COALESCE(input, ''))) AS s,
+                -- nb_mois : NULLIF(0) évite la division par zéro sur "X Annuel sur 0 mois"
                 CAST(COALESCE(
-                    SAFE_CAST(
+                    NULLIF(SAFE_CAST(
                         REGEXP_EXTRACT(UPPER(TRIM(COALESCE(input, ''))), r'(\d+(?:[.,]\d+)?)\s*MOIS')
-                    AS NUMERIC),
+                    AS NUMERIC), 0),
                     12
                 ) AS INT64) AS nb_mois_val,
                 REGEXP_EXTRACT_ALL(
@@ -47,7 +48,9 @@
                         ''
                     ),
                     r'\d+(?:[.,]\d+)?'
-                ) AS nums
+                ) AS nums,
+                -- multiplicateur k€ : format APEC "35/55 k€ annuel" → ×1000
+                IF(REGEXP_CONTAINS(UPPER(TRIM(COALESCE(input, ''))), r'K\s*[€E]|KEUR'), 1000, 1) AS multiplier
         )
         SELECT STRUCT<
             type        STRING,
@@ -64,27 +67,27 @@
                 WHEN s LIKE '%ANNUEL%'  THEN 'ANNUEL'
                 ELSE NULL
             END,
-            IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC), NULL),
-            IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC), NULL),
+            IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC) * multiplier, NULL),
+            IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC) * multiplier, NULL),
             nb_mois_val,
             CASE
-                WHEN s LIKE '%MENSUEL%' THEN IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC), NULL)
-                WHEN s LIKE '%ANNUEL%'  THEN IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC) / nb_mois_val, NULL)
+                WHEN s LIKE '%MENSUEL%' THEN IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC) * multiplier, NULL)
+                WHEN s LIKE '%ANNUEL%'  THEN IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC) * multiplier / nb_mois_val, NULL)
                 ELSE NULL
             END,
             CASE
-                WHEN s LIKE '%MENSUEL%' THEN IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC), NULL)
-                WHEN s LIKE '%ANNUEL%'  THEN IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC) / nb_mois_val, NULL)
+                WHEN s LIKE '%MENSUEL%' THEN IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC) * multiplier, NULL)
+                WHEN s LIKE '%ANNUEL%'  THEN IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC) * multiplier / nb_mois_val, NULL)
                 ELSE NULL
             END,
             CASE
-                WHEN s LIKE '%ANNUEL%'  THEN IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC), NULL)
-                WHEN s LIKE '%MENSUEL%' THEN IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC) * nb_mois_val, NULL)
+                WHEN s LIKE '%ANNUEL%'  THEN IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC) * multiplier, NULL)
+                WHEN s LIKE '%MENSUEL%' THEN IF(ARRAY_LENGTH(nums) >= 1, SAFE_CAST(REPLACE(nums[OFFSET(0)], ',', '.') AS NUMERIC) * multiplier * nb_mois_val, NULL)
                 ELSE NULL
             END,
             CASE
-                WHEN s LIKE '%ANNUEL%'  THEN IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC), NULL)
-                WHEN s LIKE '%MENSUEL%' THEN IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC) * nb_mois_val, NULL)
+                WHEN s LIKE '%ANNUEL%'  THEN IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC) * multiplier, NULL)
+                WHEN s LIKE '%MENSUEL%' THEN IF(ARRAY_LENGTH(nums) >= 2, SAFE_CAST(REPLACE(nums[OFFSET(1)], ',', '.') AS NUMERIC) * multiplier * nb_mois_val, NULL)
                 ELSE NULL
             END
         )

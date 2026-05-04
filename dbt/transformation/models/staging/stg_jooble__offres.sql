@@ -26,8 +26,8 @@ WITH cleanup AS (
         -- link : URL directe vers l offre (conservee brute)
         CAST(link AS STRING) AS url,
 
-        -- updated_dt = datetime parsé par l'ingestion Python
-        CAST(updated_dt AS TIMESTAMP) AS date_publication,
+        -- updated_dt = INT64 epoch-microseconds dans Parquet, BigQuery ne cast pas directement
+        SAFE.TIMESTAMP_MICROS(updated_dt) AS date_publication,
 
         scraped_at,
 
