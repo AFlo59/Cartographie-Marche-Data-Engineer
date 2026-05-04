@@ -39,7 +39,7 @@ compute_job_name        = "datatalent-ingestion-job"
 compute_image           = "us-central1-docker.pkg.dev/my-gcp-project-id/datatalent/ingestion:latest"
 compute_memory          = "512Mi"
 compute_cpu             = "1"
-compute_timeout_seconds = 1800
+compute_timeout_seconds = 3600
 compute_max_retries     = 1
 
 scheduler_service_account_email  = ""
@@ -86,7 +86,7 @@ dbt_job_name        = "datatalent-dbt-job"
 dbt_compute_image   = "us-central1-docker.pkg.dev/my-gcp-project-id/datatalent/dbt:latest"
 dbt_memory          = "1Gi"
 dbt_cpu             = "1"
-dbt_timeout_seconds = 1800
+dbt_timeout_seconds = 4500
 dbt_max_retries     = 0
 
 # Mettre à false si le compte Terraform n'a pas le droit de modifier l'IAM projet
