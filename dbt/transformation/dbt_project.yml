@@ -41,7 +41,7 @@ models:
 
     intermediate:
       +materialized: incremental    # couche gold, merge sur unique_key
-      +schema: staging              # non expose au dashboard-sa (acces marts uniquement)
+      +schema: intermediate
 
     marts:
       +materialized: view           # passthrough depuis intermediate gold
