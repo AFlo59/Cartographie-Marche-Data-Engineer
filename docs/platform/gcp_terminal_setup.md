@@ -22,7 +22,7 @@ Définir ces variables **une seule fois** au début de votre session Cloud Shell
 # Variables — adapter à votre projet avant d'exécuter ce guide
 # ═══════════════════════════════════════════════════════════════
 PROJECT_ID="votre-projet-gcp"              # ← ID de votre projet GCP
-REGION="europe-west1"                       # ← région GCP (Cloud Run, Scheduler, AR)
+REGION="us-central1"                        # ← région GCP (Cloud Run, Scheduler, AR)
 
 # Comptes de service (construits automatiquement à partir de PROJECT_ID)
 TF_SA="terraform-deployer-sa@${PROJECT_ID}.iam.gserviceaccount.com"

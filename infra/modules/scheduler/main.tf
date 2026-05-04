@@ -1,10 +1,7 @@
 locals {
   scheduler_jobs = {
-    france_travail = var.france_travail_schedule
-    sirene         = var.sirene_schedule
-    geo            = var.geo_schedule
-    apec           = var.apec_schedule
-    jooble         = var.jooble_schedule
+    weekly  = var.ingestion_weekly_schedule
+    monthly = var.ingestion_monthly_schedule
   }
 }
 
@@ -52,7 +49,7 @@ resource "google_cloud_scheduler_job" "ingestion" {
   attempt_deadline = "320s"
 
   retry_config {
-    retry_count = 3
+    retry_count = 1
   }
 
   http_target {

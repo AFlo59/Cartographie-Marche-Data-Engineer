@@ -24,7 +24,7 @@ Depuis la racine du repo :
 ```bash
 # Variables — adapter à votre projet
 PROJECT_ID="votre-projet-gcp"
-REGION="europe-west1"
+REGION="us-central1"
 DBT_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/datatalent/dbt:latest"
 
 # Auth Docker vers Artifact Registry

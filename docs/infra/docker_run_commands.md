@@ -125,10 +125,10 @@ docker compose run --rm infra-iac terraform apply
 ```bash
 docker compose run --rm infra-iac gcloud storage buckets list --project=${GCP_PROJECT_ID}
 docker compose run --rm infra-iac bq ls --project_id=${GCP_PROJECT_ID}
-docker compose run --rm infra-iac gcloud run jobs list --region=${GCP_REGION:-europe-west1} --project=${GCP_PROJECT_ID}
-docker compose run --rm infra-iac gcloud scheduler jobs list --location=${GCP_REGION:-europe-west1} --project=${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud run jobs list --region=${GCP_REGION:-us-central1} --project=${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud scheduler jobs list --location=${GCP_REGION:-us-central1} --project=${GCP_PROJECT_ID}
 docker compose run --rm infra-iac gcloud secrets list --project=${GCP_PROJECT_ID}
-docker compose run --rm infra-iac gcloud artifacts repositories list --location=${GCP_REGION:-europe-west1} --project=${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud artifacts repositories list --location=${GCP_REGION:-us-central1} --project=${GCP_PROJECT_ID}
 ```
 
 Pourquoi : confirme bucket, datasets, Cloud Run Jobs, Schedulers, secrets et Artifact Registry.
@@ -192,7 +192,7 @@ Guide dédié : [docs/platform/secret_manager_setup.md](../platform/secret_manag
 
 ```bash
 GCP_PROJECT_ID="$(docker compose run --rm infra-iac gcloud config get project 2>/dev/null)"
-GCP_REGION="${GCP_REGION:-europe-west1}"
+GCP_REGION="${GCP_REGION:-us-central1}"
 JOB_NAME="${TF_VAR_compute_job_name:-datatalent-ingestion-job}"
 
 # France Travail

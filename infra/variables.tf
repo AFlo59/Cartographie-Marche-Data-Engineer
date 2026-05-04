@@ -6,13 +6,13 @@ variable "project_id" {
 variable "region" {
   description = "GCP region for regional services"
   type        = string
-  default     = "europe-west1"
+  default     = "us-central1"
 }
 
 variable "location" {
   description = "Location for BigQuery datasets"
   type        = string
-  default     = "EU"
+  default     = "US"
 }
 
 variable "environment" {
@@ -204,7 +204,7 @@ variable "compute_cpu" {
 variable "compute_timeout_seconds" {
   description = "Cloud Run Job timeout in seconds"
   type        = number
-  default     = 1800
+  default     = 3600
 }
 
 variable "compute_max_retries" {
@@ -231,34 +231,16 @@ variable "scheduler_time_zone" {
   default     = "Europe/Paris"
 }
 
-variable "scheduler_france_travail_schedule" {
-  description = "Cron schedule for France Travail ingestion"
+variable "scheduler_ingestion_weekly_schedule" {
+  description = "Cron schedule for weekly ingestion (france_travail + apec + jooble)"
   type        = string
   default     = "0 6 * * 1"
 }
 
-variable "scheduler_sirene_schedule" {
-  description = "Cron schedule for Sirene ingestion"
+variable "scheduler_ingestion_monthly_schedule" {
+  description = "Cron schedule for monthly ingestion (sirene + geo)"
   type        = string
   default     = "0 3 1 * *"
-}
-
-variable "scheduler_geo_schedule" {
-  description = "Cron schedule for Geo ingestion"
-  type        = string
-  default     = "0 4 1 * *"
-}
-
-variable "scheduler_apec_schedule" {
-  description = "Cron schedule for APEC ingestion (weekly, offres 7 derniers jours)"
-  type        = string
-  default     = "0 7 * * 1"
-}
-
-variable "scheduler_jooble_schedule" {
-  description = "Cron schedule for Jooble ingestion (weekly)"
-  type        = string
-  default     = "0 8 * * 1"
 }
 
 variable "scheduler_dbt_schedule" {
@@ -300,7 +282,7 @@ variable "ci_service_account_email" {
 variable "artifact_registry_keep_recent_versions" {
   description = "Number of most recent Artifact Registry versions to keep per package (latest + N-1 previous)"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "artifact_registry_cleanup_dry_run" {

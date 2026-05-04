@@ -1,13 +1,13 @@
 project_id = "my-gcp-project-id"
-region     = "europe-west1"
-location   = "EU"
+region     = "us-central1"
+location   = "US"
 
 # Pour initialiser Terraform en local avec le backend GCS:
 #   docker compose run --rm infra-iac terraform init \
 #     -backend-config=bucket=datatalent-tfstate-my-gcp-project-id
 # Note: Le bucket doit exister au préalable. Créer via:
 #   gcloud storage buckets create gs://datatalent-tfstate-my-gcp-project-id \
-#     --location=europe-west1 --project=my-gcp-project-id
+#     --location=us-central1 --project=my-gcp-project-id
 
 environment    = "dev"
 project_prefix = "datatalent"
@@ -36,7 +36,7 @@ ingestion_apec_prefix           = "raw/apec/"
 ingestion_jooble_prefix         = "raw/jooble/"
 
 compute_job_name        = "datatalent-ingestion-job"
-compute_image           = "europe-west1-docker.pkg.dev/my-gcp-project-id/datatalent/ingestion:latest"
+compute_image           = "us-central1-docker.pkg.dev/my-gcp-project-id/datatalent/ingestion:latest"
 compute_memory          = "512Mi"
 compute_cpu             = "1"
 compute_timeout_seconds = 1800
@@ -45,12 +45,9 @@ compute_max_retries     = 1
 scheduler_service_account_email  = ""
 scheduler_job_name_prefix        = "datatalent-ingestion"
 scheduler_time_zone              = "Europe/Paris"
-scheduler_france_travail_schedule = "0 6 * * 1"  # Weekly Monday 6 AM
-scheduler_apec_schedule           = "0 7 * * 1"  # Weekly Monday 7 AM
-scheduler_jooble_schedule         = "0 8 * * 1"  # Weekly Monday 8 AM
-scheduler_dbt_schedule            = "0 9 * * 1"  # Weekly Monday 9 AM (apres ingestions)
-scheduler_sirene_schedule         = "0 3 1 * *"  # Monthly 1st, 3 AM
-scheduler_geo_schedule            = "0 4 1 * *"  # Monthly 1st, 4 AM
+scheduler_ingestion_weekly_schedule  = "0 6 * * 1"  # Lundi 6h — france_travail + apec + jooble
+scheduler_ingestion_monthly_schedule = "0 3 1 * *"  # 1er du mois 3h — sirene + geo
+scheduler_dbt_schedule               = "0 9 * * 1"  # Lundi 9h — apres ingestion hebdo
 
 secret_ft_client_id_name     = "FT_CLIENT_ID"
 secret_ft_client_secret_name = "FT_CLIENT_SECRET"
@@ -86,7 +83,7 @@ create_external_tables = false
 # Cloud Run Job dbt — passer create_dbt_job=true après push de l'image dbt dans AR
 create_dbt_job      = false
 dbt_job_name        = "datatalent-dbt-job"
-dbt_compute_image   = "europe-west1-docker.pkg.dev/my-gcp-project-id/datatalent/dbt:latest"
+dbt_compute_image   = "us-central1-docker.pkg.dev/my-gcp-project-id/datatalent/dbt:latest"
 dbt_memory          = "1Gi"
 dbt_cpu             = "1"
 dbt_timeout_seconds = 1800

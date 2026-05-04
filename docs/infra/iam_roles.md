@@ -220,7 +220,7 @@ GCP_PROJECT_ID="$(gcloud config get project)"
 # SA Scheduler — par défaut ingestion-sa si TF_VAR_scheduler_service_account_email est vide
 SCHEDULER_SA="ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
 JOB_NAME="${TF_VAR_compute_job_name:-datatalent-ingestion-job}"
-REGION="${GCP_REGION:-europe-west1}"
+REGION="${GCP_REGION:-us-central1}"
 
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${SCHEDULER_SA}" \

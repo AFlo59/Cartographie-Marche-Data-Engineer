@@ -30,34 +30,16 @@ variable "time_zone" {
   default     = "Europe/Paris"
 }
 
-variable "france_travail_schedule" {
-  description = "Cron schedule for France Travail ingestion"
+variable "ingestion_weekly_schedule" {
+  description = "Cron schedule for weekly ingestion (france_travail + apec + jooble)"
   type        = string
   default     = "0 6 * * 1"
 }
 
-variable "sirene_schedule" {
-  description = "Cron schedule for Sirene ingestion"
+variable "ingestion_monthly_schedule" {
+  description = "Cron schedule for monthly ingestion (sirene + geo)"
   type        = string
   default     = "0 3 1 * *"
-}
-
-variable "geo_schedule" {
-  description = "Cron schedule for Geo API ingestion"
-  type        = string
-  default     = "0 4 1 * *"
-}
-
-variable "apec_schedule" {
-  description = "Cron schedule for APEC ingestion (weekly, offres 7 derniers jours)"
-  type        = string
-  default     = "0 7 * * 1"
-}
-
-variable "jooble_schedule" {
-  description = "Cron schedule for Jooble ingestion (weekly)"
-  type        = string
-  default     = "0 8 * * 1"
 }
 
 variable "create_dbt_scheduler" {

@@ -41,11 +41,8 @@ services:
       TF_VAR_scheduler_service_account_email: ${TF_VAR_scheduler_service_account_email:-}
       TF_VAR_scheduler_job_name_prefix: ${TF_VAR_scheduler_job_name_prefix:-datatalent-ingestion}
       TF_VAR_scheduler_time_zone: ${TF_VAR_scheduler_time_zone:-Europe/Paris}
-      TF_VAR_scheduler_france_travail_schedule: ${TF_VAR_scheduler_france_travail_schedule:-0 6 * * 1}
-      TF_VAR_scheduler_sirene_schedule: ${TF_VAR_scheduler_sirene_schedule:-0 3 1 * *}
-      TF_VAR_scheduler_geo_schedule: ${TF_VAR_scheduler_geo_schedule:-0 4 1 * *}
-      TF_VAR_scheduler_apec_schedule: ${TF_VAR_scheduler_apec_schedule:-0 7 * * 1}
-      TF_VAR_scheduler_jooble_schedule: ${TF_VAR_scheduler_jooble_schedule:-0 8 * * 1}
+      TF_VAR_scheduler_ingestion_weekly_schedule: ${TF_VAR_scheduler_ingestion_weekly_schedule:-0 6 * * 1}
+      TF_VAR_scheduler_ingestion_monthly_schedule: ${TF_VAR_scheduler_ingestion_monthly_schedule:-0 3 1 * *}
       TF_VAR_scheduler_dbt_schedule: ${TF_VAR_scheduler_dbt_schedule:-0 9 * * 1}
       TF_VAR_secret_ft_client_id_name: ${TF_VAR_secret_ft_client_id_name:-FT_CLIENT_ID}
       TF_VAR_secret_ft_client_secret_name: ${TF_VAR_secret_ft_client_secret_name:-FT_CLIENT_SECRET}
@@ -89,8 +86,8 @@ services:
       - .env
     environment:
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
-      GCP_REGION: ${GCP_REGION:-europe-west1}
-      GCP_LOCATION: ${GCP_LOCATION:-EU}
+      GCP_REGION: ${GCP_REGION:-us-central1}
+      GCP_LOCATION: ${GCP_LOCATION:-US}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
 
@@ -151,7 +148,7 @@ services:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/root/.config/gcloud/application_default_credentials.json}
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
-      GCP_LOCATION: ${GCP_LOCATION:-EU}
+      GCP_LOCATION: ${GCP_LOCATION:-US}
       DBT_TARGET: ${DBT_TARGET:-dev}
       DBT_THREADS: ${DBT_THREADS:-4}
       # DBT_BIGQUERY_PROJECT non défini ici : profiles.yml fait le fallback sur GCP_PROJECT_ID

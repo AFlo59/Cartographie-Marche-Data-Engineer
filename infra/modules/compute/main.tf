@@ -93,7 +93,7 @@ resource "google_cloud_run_v2_job" "ingestion" {
   lifecycle {
     precondition {
       condition     = trimspace(var.image) != ""
-      error_message = "compute_image must be set before enabling create_compute_job (example: europe-west1-docker.pkg.dev/<project>/datatalent/ingestion:latest)."
+      error_message = "compute_image must be set before enabling create_compute_job (example: us-central1-docker.pkg.dev/<project>/datatalent/ingestion:latest)."
     }
   }
 
@@ -211,7 +211,7 @@ resource "google_cloud_run_v2_job" "dbt" {
   lifecycle {
     precondition {
       condition     = trimspace(var.dbt_image) != ""
-      error_message = "dbt_image must be set before enabling create_dbt_job (example: europe-west1-docker.pkg.dev/<project>/datatalent/dbt:latest)."
+      error_message = "dbt_image must be set before enabling create_dbt_job (example: us-central1-docker.pkg.dev/<project>/datatalent/dbt:latest)."
     }
   }
 

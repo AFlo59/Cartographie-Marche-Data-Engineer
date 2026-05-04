@@ -120,9 +120,9 @@ docker compose run --rm -e INGESTION_SOURCE=france_travail ingestion-jobs
 - **GCS** — bucket raw (`datatalent-<env>-<project_id>-raw`) avec lifecycle par source
 - **BigQuery** — 4 datasets : `raw`, `staging`, `intermediate`, `marts` + external tables Parquet
 - **Cloud Run Jobs** — `datatalent-ingestion-job` + `datatalent-dbt-job`
-- **Cloud Scheduler** — 6 jobs (5 ingestion + 1 dbt)
+- **Cloud Scheduler** — 3 jobs (`weekly` + `monthly` + `dbt`)
 - **Secret Manager** — `FT_CLIENT_ID`, `FT_CLIENT_SECRET`, `JOOBLE_API_KEY`, `DATAGOUV_API_KEY`
-- **Artifact Registry** — repo `datatalent` (`europe-west1`) — images ingestion + dbt
+- **Artifact Registry** — repo `datatalent` (`us-central1`) — images ingestion + dbt
 - **Comptes de service** — `ingestion-sa`, `dbt-sa`, `dashboard-sa`, `terraform-deployer-sa`
 
 ## Documentation

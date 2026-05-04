@@ -1,14 +1,18 @@
-import logging
 import os
+import sys
 from datetime import datetime
 
 import requests
-from google.cloud import storage
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
+sys.path.insert(0, os.path.dirname(__file__))
 
-URLS = {
+from utils.config import Config  # noqa: E402
+from utils.gcs import stream_upload_to_gcs  # noqa: E402
+from utils.logging_config import get_logger  # noqa: E402
+
+logger = get_logger("ingest_sirene")
+
+_URLS = {
     "StockUniteLegale": (
         "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/"
         "StockUniteLegale_utf8.parquet"
@@ -19,53 +23,22 @@ URLS = {
     ),
 }
 
-# BUCKET_NAME = os.environ["INGESTION_RAW_BUCKET"]
-# SIRENE_PREFIX = os.environ.get("INGESTION_SIRENE_PREFIX", "raw/sirene/")
-BUCKET_NAME = os.environ.get("INGESTION_RAW_BUCKET")
-SIRENE_PREFIX = os.environ.get("INGESTION_SIRENE_PREFIX", "raw/sirene/")
-
-
-def stream_to_gcs(url: str, gcs_path: str) -> None:
-    if not BUCKET_NAME:
-        raise ValueError(
-            "Le nom du bucket GCS doit être défini dans la variable d'environnement INGESTION_RAW_BUCKET"
-        )
-    client = storage.Client()
-    bucket = client.bucket(BUCKET_NAME)
-    blob = bucket.blob(gcs_path)
-
-    print(f"⬇️ Téléchargement depuis {url}")
-
-    with requests.get(url, stream=True, timeout=60) as response:
-        response.raise_for_status()
-        total = int(response.headers.get("content-length", 0))
-        downloaded = 0
-
-        with blob.open("wb") as file_obj:
-            for chunk in response.iter_content(chunk_size=8 * 1024 * 1024):
-                if not chunk:
-                    continue
-
-                file_obj.write(chunk)
-                downloaded += len(chunk)
-
-                if total:
-                    print(
-                        f"\r  {downloaded // 1024 // 1024} Mo / {total // 1024 // 1024} Mo",
-                        end="",
-                        flush=True,
-                    )
-
-    print(f"\n✅ Déposé dans gs://{BUCKET_NAME}/{gcs_path}")
-
 
 def ingest_sirene() -> None:
-    """fonction principale d'ingestion de la source Sirene"""
-    log.info("🚀 Démarrage de l'ingestion de la source Sirene")
+    """Ingestion des fichiers Sirene (StockUniteLegale + StockEtablissement)."""
+    if not Config.RAW_BUCKET:
+        raise ValueError("INGESTION_RAW_BUCKET est requis pour l'ingestion Sirene.")
+
+    logger.info("Démarrage de l'ingestion de la source Sirene")
     now = datetime.now()
 
-    for name, url in URLS.items():
-        gcs_path = f"{SIRENE_PREFIX}{now.strftime('%Y-%m')}/{name}.parquet"
-        stream_to_gcs(url, gcs_path)
+    for name, url in _URLS.items():
+        gcs_path = (
+            f"{Config.SIRENE_PREFIX.rstrip('/')}/{now.strftime('%Y-%m')}/{name}.parquet"
+        )
+        logger.info(f"Téléchargement {name} depuis {url}")
+        with requests.get(url, stream=True, timeout=120) as response:
+            response.raise_for_status()
+            stream_upload_to_gcs(response, Config.RAW_BUCKET, gcs_path)
 
-    log.info("✅ Ingestion de la source Sirene terminée")
+    logger.info("Ingestion de la source Sirene terminée")
