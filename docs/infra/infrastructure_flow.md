@@ -7,10 +7,10 @@ Ce document explique comment les données circulent dans notre pipeline d'infras
 ### Architecture ingestion retenue
 
 - 1 Cloud Run Job : `datatalent-ingestion-job`
-- 3 Cloud Scheduler jobs : `france_travail`, `sirene`, `geo`
+- 5 Cloud Scheduler jobs : `france_travail`, `sirene`, `geo`, `apec`, `jooble`
 - Chaque Scheduler déclenche le même job avec `INGESTION_SOURCE=<source>` (override env via `jobsExecutorWithOverrides`)
 
-Ce modèle est le plus simple et le moins coûteux en exploitation pour ce type de fréquence (quotidien/mensuel).
+Ce modèle est le plus simple et le moins coûteux en exploitation pour ce type de fréquence (hebdomadaire/mensuel).
 
 ---
 
@@ -68,7 +68,7 @@ TF_BACKEND_BUCKET:  datatalent-tfstate-<project_id>
 
 ### Phase 1 : Authentification
 
-```
+```text
 GitHub Actions Secret (GCP_WIF_PROVIDER + GCP_WIF_SERVICE_ACCOUNT)
     ↓
 google-github-actions/auth@v3 (WIF)
@@ -78,7 +78,7 @@ Token GCP temporaire (validité : 1h) — pas de clé JSON
 
 ### Phase 2 : Terraform Init
 
-```
+```text
 terraform init -backend-config="bucket=${TF_BACKEND_BUCKET}"
   ├─ Authentifie via WIF token
   └─ Télécharge terraform.tfstate depuis le bucket GCS
@@ -88,7 +88,7 @@ Le bucket tfstate est créé automatiquement par le workflow s'il est absent (st
 
 ### Phase 3 : Terraform Plan / Apply
 
-```
+```text
 terraform plan/apply
   ├─ Lit TF_VAR_* depuis env du workflow
   ├─ Compare avec le state GCS
@@ -113,7 +113,7 @@ Un step d'import automatique (`import_if_needed`) adopte les ressources existant
 
 ### Cas 1 : Pull Request sur `develop` ou `main`
 
-```
+```text
 PR créée
     ↓
 ingestion-verify (build Dockerfile ingestion — vérification validité)  ──┐
@@ -133,7 +133,7 @@ push-images : SKIPPED sur PR
 
 ### Cas 2 : Push sur `develop`
 
-```
+```text
 Push develop
     ↓
 ingestion-verify + dbt-verify (parallèles)
@@ -150,7 +150,7 @@ push-images : SKIPPED sur develop
 
 ### Cas 3 : Push sur `main`
 
-```
+```text
 Push main
     ↓
 ┌───────────────────────────┐    ┌────────────────────────────────────┐
@@ -187,7 +187,7 @@ Push main
 
 ## 4. Architecture GCP — ressources créées par Terraform
 
-```
+```text
                       GITHUB ACTIONS
                            │
                     WIF → SA WIF token
@@ -201,6 +201,8 @@ Push main
     │  └─ Bucket raw (lifecycle)                    │
     │     ├─ Nearline après 30j                     │
     │     ├─ Purge france_travail/ à 60j            │
+    │     ├─ Purge apec/ à 60j                      │
+    │     ├─ Purge jooble/ à 60j                    │
     │     ├─ Purge sirene/ à 60j                    │
     │     ├─ Purge geo/ à 60j                       │
     │     └─ Suppression globale à 365j             │
@@ -225,7 +227,11 @@ Push main
     │                                               │
     │  Cloud Scheduler (déclenche ingestion-job)    │
     │  ├─ datatalent-ingestion-france_travail       │
-    │  │  (0 6 * * * — quotidien, Europe/Paris)     │
+    │  │  (0 6 * * 1 — hebdomadaire lundi)          │
+    │  ├─ datatalent-ingestion-apec                 │
+    │  │  (0 7 * * 1 — hebdomadaire lundi)          │
+    │  ├─ datatalent-ingestion-jooble               │
+    │  │  (0 8 * * 1 — hebdomadaire lundi)          │
     │  ├─ datatalent-ingestion-sirene               │
     │  │  (0 3 1 * * — mensuel)                     │
     │  └─ datatalent-ingestion-geo                  │
@@ -247,7 +253,7 @@ Push main
 ## 5. Fichiers clés
 
 | Fichier | Rôle |
-|---------|------|
+| --- | --- |
 | `.github/workflows/infra-deploy.yml` | Orchestration CI/CD : 4 jobs (verify × 2, terraform, push-images) |
 | `infra/variables.tf` | Structure des inputs Terraform + valeurs par défaut |
 | `infra/main.tf` | Logique principale, wiring des modules |
@@ -255,7 +261,7 @@ Push main
 | `infra/modules/compute/main.tf` | AR repo + Cloud Run Jobs + time_sleep 90s IAM propagation + log retention |
 | `infra/modules/storage/main.tf` | Bucket raw + lifecycle (Nearline, purge par préfixe) |
 | `infra/modules/warehouse/main.tf` | Datasets BQ + External Tables |
-| `infra/modules/scheduler/main.tf` | Cloud Scheduler (3 jobs) |
+| `infra/modules/scheduler/main.tf` | Cloud Scheduler (5 jobs) |
 | `infra/modules/secrets/main.tf` | Secret Manager containers + IAM accessor |
 | `infra/terraform.tfvars.example` | Template vars locales (ne pas commiter `terraform.tfvars`) |
 | `.env.example` | Template variables d'environnement (copier vers `.env`) |
@@ -264,7 +270,7 @@ Push main
 
 ## 6. Flux des secrets
 
-```
+```text
 GitHub Secrets (chiffrés)
   GCP_PROJECT_ID / GCP_WIF_PROVIDER / GCP_WIF_SERVICE_ACCOUNT
          ↓
@@ -352,7 +358,7 @@ Le SA WIF n'a pas `roles/logging.configWriter`. Voir [docs/infra/iam_roles.md](i
 ## 10. Résumé rapide
 
 | Composant | Localisation | Contenu |
-|-----------|--------------|---------|
+| --- | --- | --- |
 | Secrets CI | GitHub Secrets | GCP_PROJECT_ID, WIF config |
 | Env vars CI | `infra-deploy.yml` | TF_VAR_*, TF_BACKEND_BUCKET |
 | Code Terraform | `infra/` | variables.tf, main.tf, modules/ |
@@ -362,5 +368,5 @@ Le SA WIF n'a pas `roles/logging.configWriter`. Voir [docs/infra/iam_roles.md](i
 
 ---
 
-**Dernière mise à jour** : Avril 2026
+**Dernière mise à jour** : Mai 2026
 **Voir aussi** : [docs/cicd/deployment_orchestration.md](../cicd/deployment_orchestration.md)

@@ -108,7 +108,7 @@ gcloud iam service-accounts create terraform-deployer-sa \
 | `roles/artifactregistry.reader` | Projet | — | Autoriser Cloud Run à tirer l'image d'ingestion depuis Artifact Registry | ✅ Terraform | `modules/compute` → `google_project_iam_member.ingestion_artifact_registry_reader` |
 | `roles/bigquery.dataEditor` | Dataset | `raw` | Insérer / écraser des tables dans le dataset raw | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.ingestion_raw_editor` |
 | `roles/bigquery.jobUser` | Projet | — | Lancer des jobs BigQuery (INSERT, LOAD, etc.) | ✅ Terraform | `modules/warehouse` → `google_project_iam_member.ingestion_job_user` |
-| `roles/secretmanager.secretAccessor` | Secret | `FT_CLIENT_ID`, `FT_CLIENT_SECRET`, `DATAGOUV_API_KEY` | Lire les valeurs des secrets au runtime Cloud Run | ✅ Terraform | `modules/secrets` → `google_secret_manager_secret_iam_member.ingestion_accessor` |
+| `roles/secretmanager.secretAccessor` | Secret | `FT_CLIENT_ID`, `FT_CLIENT_SECRET`, `DATAGOUV_API_KEY`, `JOOBLE_API_KEY` | Lire les valeurs des secrets au runtime Cloud Run | ✅ Terraform | `modules/secrets` → `google_secret_manager_secret_iam_member.ingestion_accessor` |
 
 **Commandes gcloud équivalentes** (pour référence ou audit manuel) :
 
@@ -132,7 +132,7 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --role="roles/bigquery.jobUser"
 
 # Secret Manager — FT_CLIENT_ID et FT_CLIENT_SECRET
-for SECRET in FT_CLIENT_ID FT_CLIENT_SECRET DATAGOUV_API_KEY; do
+for SECRET in FT_CLIENT_ID FT_CLIENT_SECRET DATAGOUV_API_KEY JOOBLE_API_KEY; do
   gcloud secrets add-iam-policy-binding ${SECRET} \
     --project=${GCP_PROJECT_ID} \
     --member="serviceAccount:${SA}" \
@@ -261,7 +261,7 @@ Ce SA est utilisé par Terraform (CI GitHub Actions via WIF, ou ADC en local). I
 | `roles/bigquery.admin` | Projet | Créer / configurer les datasets BigQuery | ✅ Accordé |
 | `roles/artifactregistry.admin` | Projet | Créer ET modifier le repo Artifact Registry (cleanup policy, description) | ✅ Accordé |
 | `roles/run.admin` | Projet | Déployer les Cloud Run Jobs ingestion + dbt | ✅ Accordé |
-| `roles/cloudscheduler.admin` | Projet | Créer / modifier les 3 jobs Cloud Scheduler | ✅ Accordé |
+| `roles/cloudscheduler.admin` | Projet | Créer / modifier les 5 jobs Cloud Scheduler | ✅ Accordé |
 | `roles/secretmanager.admin` | Projet | Créer les secret containers Secret Manager | ✅ Accordé |
 | `roles/serviceusage.serviceUsageAdmin` | Projet | Activer les APIs GCP manquantes depuis la CI | ✅ Accordé |
 | `roles/iam.serviceAccountUser` | SA Resource | Assigner les SA aux Cloud Run Jobs | ✅ Accordé (via Terraform compute module) |
@@ -331,7 +331,7 @@ gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
 
 | SA | Création | Permissions core | Statut global |
 |----|----------|------------------|---------------|
-| `ingestion-sa` | ✅ Créé | Storage objectAdmin ✅ + BQ dataEditor(raw) ✅ + BQ jobUser ✅ + Secret Accessor (FT + DATAGOUV) ✅ + AR reader ✅ | ✅ Complet |
+| `ingestion-sa` | ✅ Créé | Storage objectAdmin ✅ + BQ dataEditor(raw) ✅ + BQ jobUser ✅ + Secret Accessor (FT + DATAGOUV + JOOBLE) ✅ + AR reader ✅ | ✅ Complet |
 | `dbt-sa` | ✅ Créé | BQ dataViewer(raw) ✅ + BQ dataEditor(staging,marts) ✅ + BQ jobUser ✅ + Storage objectViewer ✅ + AR reader ✅ | ✅ Complet |
 | `dashboard-sa` | ✅ Créé | BQ dataViewer(marts) ✅ + BQ jobUser ✅ | ✅ Complet |
 | `scheduler-sa` (ou ingestion-sa) | ✅ Créé | run.jobsExecutorWithOverrides (job + projet) ✅ | ✅ Géré Terraform |

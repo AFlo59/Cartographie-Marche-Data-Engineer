@@ -201,11 +201,29 @@ docker compose run --rm infra-iac gcloud run jobs execute ${JOB_NAME} \
   --project=${GCP_PROJECT_ID} \
   --update-env-vars INGESTION_SOURCE=france_travail
 
+# APEC
+docker compose run --rm infra-iac gcloud run jobs execute ${JOB_NAME} \
+  --region=${GCP_REGION} \
+  --project=${GCP_PROJECT_ID} \
+  --update-env-vars INGESTION_SOURCE=apec
+
+# Jooble
+docker compose run --rm infra-iac gcloud run jobs execute ${JOB_NAME} \
+  --region=${GCP_REGION} \
+  --project=${GCP_PROJECT_ID} \
+  --update-env-vars INGESTION_SOURCE=jooble
+
 # Sirene
 docker compose run --rm infra-iac gcloud run jobs execute ${JOB_NAME} \
   --region=${GCP_REGION} \
   --project=${GCP_PROJECT_ID} \
   --update-env-vars INGESTION_SOURCE=sirene
+
+# Géo
+docker compose run --rm infra-iac gcloud run jobs execute ${JOB_NAME} \
+  --region=${GCP_REGION} \
+  --project=${GCP_PROJECT_ID} \
+  --update-env-vars INGESTION_SOURCE=geo
 ```
 
 ---

@@ -10,14 +10,16 @@ Pour l'exécution en production (Cloud Run Job déclenché par Cloud Scheduler),
 
 ## Architecture ingestion
 
-Le module d'ingestion supporte trois sources de données :
+Le module d'ingestion supporte cinq sources de données :
 
 | Source | Script | Fréquence Cloud Scheduler |
-|--------|--------|--------------------------|
-| `france_travail` | `ingest_france_travail.py` | Quotidienne (`0 6 * * *`) |
+| --- | --- | --- |
+| `france_travail` | `ingest_france_travail.py` | Hebdomadaire lundi (`0 6 * * 1`) |
+| `apec` | `ingest_apec.py` | Hebdomadaire lundi (`0 7 * * 1`) |
+| `jooble` | `ingest_jooble.py` | Hebdomadaire lundi (`0 8 * * 1`) |
 | `sirene` | `ingest_sirene.py` | Mensuelle (`0 3 1 * *`) |
 | `geo` | `ingest_geo.py` | Mensuelle (`0 4 1 * *`) |
-| `all` | (enchaîne les 3) | — |
+| `all` | (enchaîne les 5) | — |
 
 Le point d'entrée est `main.py` qui accepte `--source <source>`.
 
@@ -76,13 +78,19 @@ docker compose build --no-cache ingestion-jobs
 # France Travail
 docker compose run --rm -e INGESTION_SOURCE=france_travail ingestion-jobs
 
+# APEC
+docker compose run --rm -e INGESTION_SOURCE=apec ingestion-jobs
+
+# Jooble
+docker compose run --rm -e INGESTION_SOURCE=jooble ingestion-jobs
+
 # Sirène
 docker compose run --rm -e INGESTION_SOURCE=sirene ingestion-jobs
 
 # API Géo
 docker compose run --rm -e INGESTION_SOURCE=geo ingestion-jobs
 
-# Toutes les sources (enchaîne sirene → geo → france_travail)
+# Toutes les sources (enchaîne les 5)
 docker compose run --rm -e INGESTION_SOURCE=all ingestion-jobs
 ```
 
@@ -105,9 +113,11 @@ Remplacer `INGESTION_SOURCE=france_travail` par `sirene`, `geo` ou `all` selon l
 Le `main.py` accepte aussi `--source` directement, ce qui permet de surcharger la variable d'environnement :
 
 ```bash
+docker compose run --rm ingestion-jobs python main.py --source france_travail
+docker compose run --rm ingestion-jobs python main.py --source apec
+docker compose run --rm ingestion-jobs python main.py --source jooble
 docker compose run --rm ingestion-jobs python main.py --source sirene
 docker compose run --rm ingestion-jobs python main.py --source geo
-docker compose run --rm ingestion-jobs python main.py --source france_travail
 docker compose run --rm ingestion-jobs python main.py --source all
 ```
 
@@ -118,18 +128,21 @@ docker compose run --rm ingestion-jobs python main.py --source all
 Ces variables sont lues par les scripts depuis l'environnement (`.env` ou env CI/Cloud Run) :
 
 | Variable | Obligatoire | Description |
-|----------|------------|-------------|
+| --- | --- | --- |
 | `GCP_PROJECT_ID` | ✅ | Projet GCP cible |
 | `INGESTION_RAW_BUCKET` | ✅ | Bucket GCS de destination (format : `datatalent-<env>-<project_id>-raw`) |
-| `INGESTION_SOURCE` | ✅ (ou `--source`) | Source à ingérer : `france_travail`, `sirene`, `geo`, `all` |
+| `INGESTION_SOURCE` | ✅ (ou `--source`) | Source à ingérer : `france_travail`, `apec`, `jooble`, `sirene`, `geo`, `all` |
 | `GOOGLE_APPLICATION_CREDENTIALS` | ✅ | Chemin vers ADC ou clé JSON SA |
 | `FT_CLIENT_ID` | ✅ (france_travail) | Client ID OAuth France Travail |
 | `FT_CLIENT_SECRET` | ✅ (france_travail) | Client Secret OAuth France Travail |
+| `JOOBLE_API_KEY` | ✅ (jooble) | Clé API Jooble |
 | `INGESTION_FRANCE_TRAVAIL_PREFIX` | optionnel | Préfixe GCS (défaut : `raw/france_travail/`) |
+| `INGESTION_APEC_PREFIX` | optionnel | Préfixe GCS (défaut : `raw/apec/`) |
+| `INGESTION_JOOBLE_PREFIX` | optionnel | Préfixe GCS (défaut : `raw/jooble/`) |
 | `INGESTION_SIRENE_PREFIX` | optionnel | Préfixe GCS (défaut : `raw/sirene/`) |
 | `INGESTION_GEO_PREFIX` | optionnel | Préfixe GCS (défaut : `raw/geo/`) |
 
-En production (Cloud Run Job), `FT_CLIENT_ID` et `FT_CLIENT_SECRET` sont lus depuis Secret Manager.
+En production (Cloud Run Job), `FT_CLIENT_ID`, `FT_CLIENT_SECRET` et `JOOBLE_API_KEY` sont lus depuis Secret Manager.
 En local, ils peuvent être définis directement dans `.env`.
 
 ---
@@ -196,7 +209,7 @@ Vérifier que `INGESTION_RAW_BUCKET` est renseigné dans `.env` et que `ingestio
 
 ### La variable INGESTION_SOURCE n'est pas reconnue
 
-Vérifier que la valeur est bien parmi : `france_travail`, `sirene`, `geo`, `all` (case-insensitive).
+Vérifier que la valeur est bien parmi : `france_travail`, `apec`, `jooble`, `sirene`, `geo`, `all` (case-insensitive).
 
 ### Accès refusé aux secrets Secret Manager
 

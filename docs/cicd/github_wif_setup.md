@@ -1,11 +1,34 @@
-# Guide pas  pas  Workload Identity Federation GitHub ? GCP
+# Guide pas à pas — Workload Identity Federation GitHub → GCP
 
-Ce guide explique comment configurer **Workload Identity Federation (WIF)** pour permettre  GitHub Actions de dployer linfrastructure GCP **sans cl JSON**.
+Ce guide explique comment configurer **Workload Identity Federation (WIF)** pour permettre à GitHub Actions de déployer l'infrastructure GCP **sans clé JSON**.
 
-Le but est de permettre au workflow GitHub Actions dutiliser le service account `terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com` pour excuter Terraform via le conteneur `infra-iac`.
+Le but est de permettre au workflow GitHub Actions d'utiliser le service account `terraform-deployer-sa@${PROJECT_ID}.iam.gserviceaccount.com` pour exécuter Terraform via le conteneur `infra-iac`.
 
-> Ce guide dcrit le **chemin principal de release et de dploiement de l'infrastructure Terraform** dans le primtre actuel.
-> Les guides Docker et terminal local servent surtout au dveloppement,  la validation manuelle et au debug avant PR.
+> Ce guide décrit le **chemin principal de release et de déploiement de l'infrastructure Terraform** dans le périmètre actuel.
+> Les guides Docker et terminal local servent surtout au développement, à la validation manuelle et au debug avant PR.
+
+---
+
+## Variables de configuration
+
+Définir ces variables **une seule fois** dans votre terminal Cloud Shell avant d'exécuter les commandes de ce guide :
+
+```bash
+# ═══════════════════════════════════════════════════════════════
+# Variables — adapter à votre projet avant d'exécuter ce guide
+# ═══════════════════════════════════════════════════════════════
+PROJECT_ID="votre-projet-gcp"              # ← ID de votre projet GCP
+REGION="europe-west1"                       # ← région GCP
+GITHUB_ORG="votre-org-ou-username"         # ← organisation ou username GitHub
+GITHUB_REPO="votre-repo"                   # ← nom du repository GitHub
+
+# Comptes de service (construits automatiquement)
+TF_SA="terraform-deployer-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+INGESTION_SA="ingestion-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+DBT_SA="dbt-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+```
+
+Toutes les commandes de ce guide utilisent ces variables — il suffit de les changer ici pour adapter le guide à un autre projet.
 
 ---
 
@@ -26,50 +49,47 @@ DBT_SA="dbt-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
 
 ## 1) Pourquoi utiliser WIF
 
-WIF remplace le fichier `sa.json` par un mcanisme dauthentification courte dure :
+WIF remplace le fichier `sa.json` par un mécanisme d'authentification courte durée :
 
-- GitHub Actions met un jeton OIDC temporaire
-- GCP vrifie ce jeton via un provider OIDC GitHub
-- GCP autorise ce jeton  **impersonate** le service account Terraform
+- GitHub Actions émet un jeton OIDC temporaire
+- GCP vérifie ce jeton via un provider OIDC GitHub
+- GCP autorise ce jeton à **impersonate** le service account Terraform
 
 Avantages :
-- pas de cl JSON longue dure dans GitHub
-- compatible avec les policies qui bloquent `iam.disableServiceAccountKeyCreation`
-- meilleure scurit pour INFRA-09
 
-Note de primtre : le workflow actuel couvre principalement `terraform plan` sur PR et `terraform apply` sur merge `main`. Les checks Python/dbt du backlog INFRA-09 restent  complter sparment.
+- pas de clé JSON longue durée dans GitHub
+- compatible avec les policies qui bloquent `iam.disableServiceAccountKeyCreation`
+- meilleure sécurité pour INFRA-09
+
+Note de périmètre : le workflow actuel couvre principalement `terraform plan` sur PR et `terraform apply` sur merge `main`. Les checks Python/dbt du backlog INFRA-09 restent à compléter séparément.
 
 ---
 
-## 2) Pr-requis
+## 2) Pré-requis
 
-- Projet GCP existant : `${GCP_PROJECT_ID}`
-- Service account existant : `terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com`
-- Rles du SA dj en place pour le scope actuel :
+- Projet GCP existant (valeur de `PROJECT_ID` ci-dessus)
+- Service account `terraform-deployer-sa` déjà créé
+- Rôles du SA déjà en place pour le scope actuel :
   - `roles/storage.admin`
   - `roles/bigquery.admin`
   - `roles/artifactregistry.admin` (requis pour créer ET modifier le repo AR — manquant = erreur 403)
-- Accs admin suffisant sur le projet pour crer pool/provider IAM
-- Repo GitHub cible :
-  - Org : `GITHUB_ORG`
-  - Repo : `GITHUB_REPO`
+- Accès admin suffisant sur le projet pour créer pool/provider IAM
+- Repo GitHub cible : `${GITHUB_ORG}/${GITHUB_REPO}`
 
-### 2.0) Ordre recommand avant le premier `terraform apply` depuis GitHub Actions
+### 2.0) Ordre recommandé avant le premier `terraform apply` depuis GitHub Actions
 
 Avant de configurer ou tester le workflow CI, suivre cet ordre :
 
 1. Activer une fois les APIs GCP requises sur le projet.
-2. Donner au service account WIF les rles Terraform du primtre infra.
-3. Configurer WIF GitHub ? GCP.
+2. Donner au service account WIF les rôles Terraform du périmètre infra.
+3. Configurer WIF GitHub → GCP.
 4. Lancer un `plan` en PR puis un `apply` sur `main`.
 
-Si l'tape 1 n'est pas faite, le workflow peut chouer avant `terraform apply` avec `Required API is disabled`.
+Si l'étape 1 n'est pas faite, le workflow peut échouer avant `terraform apply` avec `Required API is disabled`.
 
-Commandes one-shot recommandes :
+Commandes one-shot recommandées :
 
 ```bash
-PROJECT="${GCP_PROJECT_ID}"
-
 gcloud services enable \
   storage.googleapis.com \
   bigquery.googleapis.com \
@@ -78,47 +98,43 @@ gcloud services enable \
   secretmanager.googleapis.com \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
-  --project=${GCP_PROJECT_ID}
+  --project=${PROJECT_ID}
 ```
 
-Rfrence principale pour le socle projet : [docs/platform/gcp_terminal_setup.md](../platform/gcp_terminal_setup.md).
+Référence principale pour le socle projet : [docs/platform/gcp_terminal_setup.md](../platform/gcp_terminal_setup.md).
 
-### 2.1) Donner les droits au service account utilis par WIF
+### 2.1) Donner les droits au service account utilisé par WIF
 
-Le service account rfrenc dans `GCP_WIF_SERVICE_ACCOUNT` doit avoir les droits pour grer les ressources Terraform.
+Le service account référencé dans `GCP_WIF_SERVICE_ACCOUNT` doit avoir les droits pour gérer les ressources Terraform.
 
-Commandes ( excuter une fois) :
+Commandes (à exécuter une fois) :
 
 ```bash
-TF_SA="terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
-INGESTION_SA="ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
-DBT_SA="dbt-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
-
 # Ressources infra de base
-gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/storage.admin"
 
-gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/bigquery.admin"
 
 # ❌ REQUIS — sans ce rôle, terraform apply échoue avec 403 sur le repo AR
 # (update de la description du repo Artifact Registry)
-gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/artifactregistry.admin"
 
 # À accorder avant d'activer create_compute_job=true (INFRA-04/05)
-gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/run.admin"
 
-gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/cloudscheduler.admin"
 
-gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/secretmanager.admin"
 
@@ -126,18 +142,18 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
 gcloud iam service-accounts add-iam-policy-binding ${INGESTION_SA} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/iam.serviceAccountUser" \
-  --project=${GCP_PROJECT_ID}
+  --project=${PROJECT_ID}
 
 gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/iam.serviceAccountUser" \
-  --project=${GCP_PROJECT_ID}
+  --project=${PROJECT_ID}
 ```
 
-Optionnel (uniquement si Terraform doit grer des bindings IAM au niveau projet, ex: `roles/bigquery.jobUser`) :
+Optionnel (uniquement si Terraform doit gérer des bindings IAM au niveau projet, ex: `roles/bigquery.jobUser`) :
 
 ```bash
-gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/resourcemanager.projectIamAdmin"
 ```
@@ -145,7 +161,7 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
 Optionnel (si vous voulez que la CI puisse activer automatiquement des APIs GCP manquantes) :
 
 ```bash
-gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/serviceusage.serviceUsageAdmin"
 ```
@@ -153,66 +169,71 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
 Sinon, activer manuellement une fois les APIs requises :
 
 ```bash
-gcloud services enable storage.googleapis.com bigquery.googleapis.com run.googleapis.com cloudscheduler.googleapis.com secretmanager.googleapis.com \
-  --project=${GCP_PROJECT_ID}
+gcloud services enable \
+  storage.googleapis.com \
+  bigquery.googleapis.com \
+  run.googleapis.com \
+  cloudscheduler.googleapis.com \
+  secretmanager.googleapis.com \
+  --project=${PROJECT_ID}
 ```
 
-Le workflow `infra-deploy.yml` vrifie explicitement ces 5 APIs avant l'`apply` sur `main`.
+Le workflow `infra-deploy.yml` vérifie explicitement ces 5 APIs avant l'`apply` sur `main`.
 
-Note : dans le workflow actuel, `TF_VAR_manage_project_job_user_bindings` est positionn  `false`, donc ce rle optionnel n'est pas requis pour le flux CI standard.
-
-Placeholders utiliss dans ce guide :
-
-- `PROJECT_NUMBER` = identifiant numrique du projet GCP.
-- `GITHUB_ORG` = organisation ou utilisateur propritaire du repo GitHub.
-- `GITHUB_REPO` = nom du repository GitHub.
-- `terraform-deployer-sa@...` = service account rellement utilis par la CI pour excuter Terraform.
+Note : dans le workflow actuel, `TF_VAR_manage_project_job_user_bindings` est positionné à `false`, donc le rôle `projectIamAdmin` n'est pas requis pour le flux CI standard.
 
 ---
 
-## 3) Rcuprer le project number
+## 3) Récupérer le project number
 
 ```bash
-gcloud projects describe ${GCP_PROJECT_ID} --format="value(projectNumber)"
+gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)"
 ```
 
-Noter la valeur retourne  elle sera utilise dans toutes les commandes suivantes.
+Noter la valeur retournée — elle sera utilisée dans la commande de la section 7.
 
 ---
 
-## 4) Activer les APIs ncessaires
+## 4) Activer les APIs nécessaires
 
 ```bash
-gcloud services enable iamcredentials.googleapis.com iam.googleapis.com cloudresourcemanager.googleapis.com --project ${GCP_PROJECT_ID}
+gcloud services enable \
+  iamcredentials.googleapis.com \
+  iam.googleapis.com \
+  cloudresourcemanager.googleapis.com \
+  --project ${PROJECT_ID}
 ```
 
 Pourquoi :
-- `iamcredentials.googleapis.com` permet limpersonation du service account
+
+- `iamcredentials.googleapis.com` permet l'impersonation du service account
 - `iam.googleapis.com` couvre la partie IAM/WIF
 
 ---
 
-## 5) Crer le Workload Identity Pool
+## 5) Créer le Workload Identity Pool
 
 ```bash
 gcloud iam workload-identity-pools create github-pool \
   --location="global" \
   --display-name="GitHub Actions Pool" \
   --description="Pool OIDC pour GitHub Actions" \
-  --project="${GCP_PROJECT_ID}"
+  --project="${PROJECT_ID}"
 ```
 
-Vrification :
+Vérification :
 
 ```bash
-gcloud iam workload-identity-pools list --location="global" --project="${GCP_PROJECT_ID}"
+gcloud iam workload-identity-pools list \
+  --location="global" \
+  --project="${PROJECT_ID}"
 ```
 
 ---
 
-## 6) Crer le Provider OIDC GitHub
+## 6) Créer le Provider OIDC GitHub
 
-> GCP exige un `--attribute-condition` pour restreindre qui peut s'authentifier via ce provider. Sans lui, la commande choue avec `INVALID_ARGUMENT`.
+> GCP exige un `--attribute-condition` pour restreindre qui peut s'authentifier via ce provider. Sans lui, la commande échoue avec `INVALID_ARGUMENT`.
 
 ```bash
 gcloud iam workload-identity-pools providers create-oidc github-provider \
@@ -222,69 +243,72 @@ gcloud iam workload-identity-pools providers create-oidc github-provider \
   --issuer-uri="https://token.actions.githubusercontent.com" \
   --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner,attribute.ref=assertion.ref" \
   --attribute-condition="attribute.repository_owner == '${GITHUB_ORG}'" \
-  --project="${GCP_PROJECT_ID}"
+  --project="${PROJECT_ID}"
 ```
 
-Vrification :
+Vérification :
 
 ```bash
 gcloud iam workload-identity-pools providers list \
   --location="global" \
   --workload-identity-pool="github-pool" \
-  --project="${GCP_PROJECT_ID}"
+  --project="${PROJECT_ID}"
 ```
 
 ---
 
-## 7) Autoriser le repo GitHub  utiliser `terraform-deployer-sa`
+## 7) Autoriser le repo GitHub à utiliser `terraform-deployer-sa`
 
 ```bash
-gcloud iam service-accounts add-iam-policy-binding terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com \
-  --project="${GCP_PROJECT_ID}" \
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format='value(projectNumber)')
+
+gcloud iam service-accounts add-iam-policy-binding ${TF_SA} \
+  --project="${PROJECT_ID}" \
   --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/$(gcloud projects describe ${GCP_PROJECT_ID} --format='value(projectNumber)')/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_ORG}/${GITHUB_REPO}"
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_ORG}/${GITHUB_REPO}"
 ```
 
-> La sous-commande `$(gcloud projects describe ...)` rcupre le project number automatiquement  pas besoin de le connatre par cur.
+> `PROJECT_NUMBER` est récupéré automatiquement — pas besoin de le connaître par cœur.
 
-Exemple de logique :
+Logique :
+
 - seul ce repo GitHub pourra utiliser le SA Terraform
-- pas besoin de stocker de cl JSON dans GitHub
+- pas besoin de stocker de clé JSON dans GitHub
 
 ---
 
-## 8) Rcuprer le nom complet du provider
+## 8) Récupérer le nom complet du provider
 
 ```bash
 gcloud iam workload-identity-pools providers describe github-provider \
   --location="global" \
   --workload-identity-pool="github-pool" \
-  --project="${GCP_PROJECT_ID}" \
+  --project="${PROJECT_ID}" \
   --format="value(name)"
 ```
 
-Rsultat attendu (forme) :
+Résultat attendu (forme) :
 
 ```text
 projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/providers/github-provider
 ```
 
-Conserver cette valeur pour GitHub.
+Conserver cette valeur pour la configuration GitHub (section 9).
 
 ---
 
 ## 9) Configurer GitHub
 
-Dans le repository GitHub, ajouter :
+Dans le repository GitHub, ajouter dans **GitHub → Settings → Secrets and variables → Actions** :
 
-### Variables / secrets GitHub
+| Nom | Valeur |
+| --- | ------ |
+| `GCP_PROJECT_ID` | valeur de `PROJECT_ID` |
+| `GCP_WIF_PROVIDER` | valeur retournée à l'étape 8 |
+| `GCP_WIF_SERVICE_ACCOUNT` | valeur de `TF_SA` |
 
-- `GCP_PROJECT_ID` = `${GCP_PROJECT_ID}`
-- `GCP_WIF_PROVIDER` = valeur retourne  l'tape 8 (forme : `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/providers/github-provider`)
-- `GCP_WIF_SERVICE_ACCOUNT` = `terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com`
-
-> Ces 3 valeurs vont dans **GitHub ? Settings ? Secrets and variables ? Actions**, pas dans `.env` ni `docker-compose.yml`.
-> WIF est uniquement utilis par le workflow CI, pas par le container Docker local.
+> Ces 3 valeurs vont dans les **Secrets ou Variables GitHub Actions**, pas dans `.env` ni `docker-compose.yml`.
+> WIF est uniquement utilisé par le workflow CI, pas par le container Docker local.
 
 Avec WIF, **pas besoin** de `GCP_SA_KEY`.
 
@@ -301,12 +325,13 @@ permissions:
 ```
 
 Pourquoi :
-- `id-token: write` permet  GitHub dmettre le jeton OIDC
+
+- `id-token: write` permet à GitHub d'émettre le jeton OIDC
 - `contents: read` permet le checkout du repo
 
 ---
 
-## 11) Comment le workflow sauthentifie ensuite
+## 11) Comment le workflow s'authentifie ensuite
 
 Le workflow `infra-deploy.yml` orchestre 4 jobs sur push `main` :
 
@@ -315,71 +340,75 @@ Le workflow `infra-deploy.yml` orchestre 4 jobs sur push `main` :
 3. **`terraform`** (bloqué jusqu'au succès des 2 verify) — Auth WIF + `terraform init/validate/apply`
 4. **`push-images`** (bloqué jusqu'au succès de terraform) — Auth WIF + `docker build` + `docker push` ingestion et dbt vers Artifact Registry
 
-Le conteneur Terraform ne porte pas de cl JSON persistante.
+Le conteneur Terraform ne porte pas de clé JSON persistante.
 
 Sur PR : seuls `ingestion-verify` + `dbt-verify` + `terraform plan` s'exécutent. Pas de push images, pas d'apply.
 
 ---
 
-## 12) Vrifications de fin
+## 12) Vérifications de fin
 
-### Vrifier le pool
+### Vérifier le pool
 
 ```bash
-gcloud iam workload-identity-pools describe github-pool --location=global --project=${GCP_PROJECT_ID}
+gcloud iam workload-identity-pools describe github-pool \
+  --location=global \
+  --project=${PROJECT_ID}
 ```
 
-### Vrifier le provider
+### Vérifier le provider
 
 ```bash
 gcloud iam workload-identity-pools providers describe github-provider \
   --location=global \
   --workload-identity-pool=github-pool \
-  --project=${GCP_PROJECT_ID}
+  --project=${PROJECT_ID}
 ```
 
-### Vrifier le binding sur le service account
+### Vérifier le binding sur le service account
 
 ```bash
-gcloud iam service-accounts get-iam-policy terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com \
-  --project=${GCP_PROJECT_ID}
+gcloud iam service-accounts get-iam-policy ${TF_SA} \
+  --project=${PROJECT_ID}
 ```
 
-Attendu : une entre `roles/iam.workloadIdentityUser` pointant vers `principalSet://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_ORG}/${GITHUB_REPO}`.
+Attendu : une entrée `roles/iam.workloadIdentityUser` pointant vers `principalSet://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_ORG}/${GITHUB_REPO}`.
 
 ---
 
-## 13) Dpannage rapide
+## 13) Dépannage rapide
 
-### Erreur `PERMISSION_DENIED` lors de la cration du pool/provider
-Il manque des droits IAM projet/org pour grer WIF.
+### Erreur `PERMISSION_DENIED` lors de la création du pool/provider
 
-### Le workflow GitHub narrive pas  sauthentifier
-Vrifier :
+Il manque des droits IAM projet/org pour gérer WIF.
+
+### Le workflow GitHub n'arrive pas à s'authentifier
+
+Vérifier :
+
 - `id-token: write` dans le workflow
-- `GCP_WIF_PROVIDER` correct
-- `GCP_WIF_SERVICE_ACCOUNT` correct
-- binding `roles/iam.workloadIdentityUser` avec `GITHUB_ORG/GITHUB_REPO`
+- `GCP_WIF_PROVIDER` correct (valeur de l'étape 8)
+- `GCP_WIF_SERVICE_ACCOUNT` correct (valeur de `TF_SA`)
+- binding `roles/iam.workloadIdentityUser` avec `${GITHUB_ORG}/${GITHUB_REPO}`
 
-### Le repo GitHub doit tre restreint  une branche
-Vous pouvez raffiner ensuite avec un provider conditionn sur `attribute.ref` (ex: `refs/heads/main`).
-Pour linstant, garder simple pour le projet.
+### Le repo GitHub doit être restreint à une branche
+
+Vous pouvez raffiner ensuite avec un provider conditionné sur `attribute.ref` (ex: `refs/heads/main`).
+Pour l'instant, garder simple pour le projet.
 
 ---
 
 ## 14) Recommandation pour ce projet
 
-Vu votre contexte actuel :
+- **local** → continuer avec `terraform-oauth`
+- **CI GitHub** → utiliser **WIF** pour la release infra Terraform
+- **runtime ingestion/dbt/dashboard** → IAM + Secret Manager
 
-- **local** ? continuer avec `terraform-oauth`
-- **CI GitHub** ? utiliser **WIF** pour la release infra Terraform
-- **runtime ingestion/dbt/dashboard** ? IAM + Secret Manager
-
-Cest la combinaison la plus simple et la plus saine pour le primtre actuel.
+C'est la combinaison la plus simple et la plus saine pour le périmètre actuel.
 
 ---
 
-## 15) Rfrences
+## 15) Références
 
 - Orchestration globale : [docs/cicd/deployment_orchestration.md](../cicd/deployment_orchestration.md)
 - Setup GCP manuel : [docs/platform/gcp_terminal_setup.md](../platform/gcp_terminal_setup.md)

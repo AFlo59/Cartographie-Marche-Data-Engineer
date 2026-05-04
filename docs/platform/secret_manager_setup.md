@@ -1,209 +1,229 @@
-# Guide pas  pas  Secret Manager runtime (INFRA-06)
+# Guide pas à pas — Secret Manager runtime (INFRA-06)
 
-Ce guide traite uniquement la partie Secret Manager runtime : cration des conteneurs, ajout des versions relles, bindings IAM et vrifications.
+Ce guide traite uniquement la partie Secret Manager runtime : création des conteneurs, ajout des versions réelles, bindings IAM et vérifications.
 
-Prrequis dj documents ailleurs :
+Prérequis déjà documentés ailleurs :
+
 - setup manuel GCP : [docs/platform/gcp_terminal_setup.md](../platform/gcp_terminal_setup.md)
-- excution Docker et authentification locale : [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md)
-- matrice complte des rles : [docs/infra/iam_roles.md](../infra/iam_roles.md)
+- exécution Docker et authentification locale : [docs/infra/docker_run_commands.md](../infra/docker_run_commands.md)
+- matrice complète des rôles : [docs/infra/iam_roles.md](../infra/iam_roles.md)
 
-> Ce guide sert  prparer les secrets runtime pour le dveloppement et pour la plateforme.
-> Le dploiement principal de l'infrastructure reste pilot par GitHub Actions.
+> Ce guide sert à préparer les secrets runtime pour le développement et pour la plateforme.
+> Le déploiement principal de l'infrastructure reste piloté par GitHub Actions.
 
 ---
 
-## Variables a definir
+## Variables de configuration
 
-Definir ces variables dans le shell avant d'executer les commandes de ce guide (y compris celles via `docker compose run`) :
+Définir ces variables **une seule fois** avant d'exécuter les commandes de ce guide :
 
 ```bash
-GCP_PROJECT_ID="your-gcp-project-id"   # identifiant de votre projet GCP  <- a renseigner
-USER_EMAIL="your-email@domain.com"      # email de votre compte utilisateur <- a renseigner
+# ═══════════════════════════════════════════════════════════════
+# Variables — adapter à votre projet avant d'exécuter ce guide
+# ═══════════════════════════════════════════════════════════════
+PROJECT_ID="votre-projet-gcp"              # ← ID de votre projet GCP
 
-# Service accounts (construits a partir de GCP_PROJECT_ID)
-INGESTION_SA="ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+# Compte de service applicatif qui lit les secrets au runtime
+INGESTION_SA="ingestion-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 ```
 
-## 0) Prrequis
+---
 
-- Le projet GCP est dj prpar.
-- L'authentification `gcloud` fonctionne dj dans le contexte utilis.
-- Les rles IAM ncessaires sont dj attribus.
+## 0) Prérequis
 
-Ce guide part du principe que vous avez dj suivi les guides prcdents.
+- Le projet GCP est déjà préparé.
+- L'authentification `gcloud` fonctionne déjà dans le contexte utilisé.
+- Les rôles IAM nécessaires sont déjà attribués.
+
+Ce guide part du principe que vous avez déjà suivi les guides précédents.
 
 ---
 
-## 1) Vrifier le contexte et l'API
+## 1) Vérifier le contexte et l'API
 
 ```bash
-docker compose run --rm infra-iac gcloud config set project ${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud config set project ${PROJECT_ID}
 docker compose run --rm infra-iac gcloud config get-value project
-docker compose run --rm infra-iac gcloud services list --enabled --filter="name:secretmanager.googleapis.com"
+docker compose run --rm infra-iac gcloud services list --enabled \
+  --filter="name:secretmanager.googleapis.com"
 ```
 
-Rsultat attendu : projet actif `${GCP_PROJECT_ID}` et API Secret Manager active.
+Résultat attendu : projet actif et API Secret Manager active.
 
 Si l'API n'est pas active :
 
 ```bash
-docker compose run --rm infra-iac gcloud services enable secretmanager.googleapis.com --project ${GCP_PROJECT_ID}
+docker compose run --rm infra-iac gcloud services enable \
+  secretmanager.googleapis.com --project ${PROJECT_ID}
 ```
 
 ---
 
-## 2) Vrifier les permissions IAM (cause la plus frquente)
+## 2) Vérifier les permissions IAM
 
-Pour crer des secrets, il faut au minimum un rle contenant :
+Pour créer des secrets, il faut au minimum :
+
 - `secretmanager.secrets.create`
 - `secretmanager.versions.add`
-
-Rles pratiques :
-- `roles/secretmanager.admin` (admin complet)
-- ou combinaison custom plus restrictive.
 
 Diagnostic rapide :
 
 ```bash
-docker compose run --rm infra-iac gcloud projects get-iam-policy ${GCP_PROJECT_ID} --flatten="bindings[].members" --filter="bindings.members:user:${USER_EMAIL}" --format="table(bindings.role)"
+docker compose run --rm infra-iac \
+  gcloud projects get-iam-policy ${PROJECT_ID} \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:user:YOUR_USER_EMAIL" \
+  --format="table(bindings.role)"
 ```
 
-Si vous navez pas les rles requis, demandez  un admin projet dexcuter :
+Si vous n'avez pas les rôles requis, demandez à un admin d'exécuter :
 
 ```bash
-docker compose run --rm infra-iac gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} --member="user:${USER_EMAIL}" --role="roles/secretmanager.admin"
+docker compose run --rm infra-iac \
+  gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="user:YOUR_USER_EMAIL" \
+  --role="roles/secretmanager.admin"
 ```
 
-Note PowerShell : utilisez la commande sur **une seule ligne** (pas de `\` de continuation shell).
+> **Placeholder** : `YOUR_USER_EMAIL` = email de l'utilisateur humain à autoriser.
 
-Placeholders utiliss dans cette section :
-- `${USER_EMAIL}` = email de l'utilisateur humain auquel on veut donner un rle projet.
+Note PowerShell : utiliser la commande sur **une seule ligne** (pas de `\` de continuation shell).
 
-Note : si la commande de diagnostic affiche dj `roles/owner` ou `roles/secretmanager.admin`, vous avez dj les droits ncessaires et vous pouvez passer  ltape 3.
+Note : si le diagnostic affiche déjà `roles/owner` ou `roles/secretmanager.admin`, vous avez les droits nécessaires — passer à l'étape 3.
 
 ---
 
-## 3) Crer les secrets (sans exposer les valeurs dans lhistorique shell)
+## 3) Créer les secrets (sans exposer les valeurs dans l'historique shell)
 
-Secrets backlog INFRA-06 :
+Secrets obligatoires pour l'ingestion France Travail :
+
 - `FT_CLIENT_ID`
 - `FT_CLIENT_SECRET`
 
-Secrets projet recommands (scope actuel infra/ingestion) :
-- `FT_CLIENT_ID` (obligatoire)
-- `FT_CLIENT_SECRET` (obligatoire)
-- `DATAGOUV_API_KEY` (optionnel, seulement si activation d'auth ct data.gouv.fr)
+Secrets supplémentaires :
 
-Note importante (bucket raw INFRA-02) : laccs au bucket se fait par IAM/service account, **pas** par secret `bucket_id/secret`.
-Le compte `ingestion-sa` doit avoir les rles GCS ncessaires (INFRA-07).
+- `DATAGOUV_API_KEY` (optionnel — seulement si auth côté data.gouv.fr)
+- `JOOBLE_API_KEY` (requis pour Jooble)
 
-### 3.1 Crer les conteneurs de secrets
+### 3.1 Créer les conteneurs de secrets
 
-Si vous avez dj excut `terraform apply` avec le module secrets, cette tape peut dj tre faite. Sinon, crez les conteneurs manuellement.
+Si `terraform apply` a déjà été exécuté avec le module secrets, cette étape est déjà faite. Sinon, créer manuellement :
 
 ```bash
-docker compose run --rm infra-iac gcloud secrets create FT_CLIENT_ID --replication-policy="automatic" --project ${GCP_PROJECT_ID}
-docker compose run --rm infra-iac gcloud secrets create FT_CLIENT_SECRET --replication-policy="automatic" --project ${GCP_PROJECT_ID}
-docker compose run --rm infra-iac gcloud secrets create DATAGOUV_API_KEY --replication-policy="automatic" --project ${GCP_PROJECT_ID}
+docker compose run --rm infra-iac \
+  gcloud secrets create FT_CLIENT_ID \
+  --replication-policy="automatic" --project ${PROJECT_ID}
+
+docker compose run --rm infra-iac \
+  gcloud secrets create FT_CLIENT_SECRET \
+  --replication-policy="automatic" --project ${PROJECT_ID}
+
+docker compose run --rm infra-iac \
+  gcloud secrets create DATAGOUV_API_KEY \
+  --replication-policy="automatic" --project ${PROJECT_ID}
+
+docker compose run --rm infra-iac \
+  gcloud secrets create JOOBLE_API_KEY \
+  --replication-policy="automatic" --project ${PROJECT_ID}
 ```
 
-Si un secret existe dj, ignorer lerreur `ALREADY_EXISTS`.
+Si un secret existe déjà, ignorer l'erreur `ALREADY_EXISTS`.
 
-### 3.2 Ajouter une version (valeur)
+### 3.2 Ajouter les valeurs (interactif — sécurisé)
 
-Option sre (interactif, sans mettre la valeur en clair dans la commande) :
+Option recommandée : saisie interactive sans afficher la valeur en clair.
 
 ```bash
-docker compose run --rm -it infra-iac bash -lc 'read -rsp "FT_CLIENT_ID: " FTID; echo; printf "%s" "$FTID" | gcloud secrets versions add FT_CLIENT_ID --data-file=- --project ${GCP_PROJECT_ID}'
+docker compose run --rm -it infra-iac bash -lc \
+  'read -rsp "FT_CLIENT_ID: " V; echo; printf "%s" "$V" | \
+  gcloud secrets versions add FT_CLIENT_ID --data-file=- --project '"${PROJECT_ID}"
 
-docker compose run --rm -it infra-iac bash -lc 'read -rsp "FT_CLIENT_SECRET: " FTSEC; echo; printf "%s" "$FTSEC" | gcloud secrets versions add FT_CLIENT_SECRET --data-file=- --project ${GCP_PROJECT_ID}'
+docker compose run --rm -it infra-iac bash -lc \
+  'read -rsp "FT_CLIENT_SECRET: " V; echo; printf "%s" "$V" | \
+  gcloud secrets versions add FT_CLIENT_SECRET --data-file=- --project '"${PROJECT_ID}"
 
-docker compose run --rm -it infra-iac bash -lc 'read -rsp "DATAGOUV_API_KEY (optionnel): " DGKEY; echo; printf "%s" "$DGKEY" | gcloud secrets versions add DATAGOUV_API_KEY --data-file=- --project ${GCP_PROJECT_ID}'
+docker compose run --rm -it infra-iac bash -lc \
+  'read -rsp "DATAGOUV_API_KEY: " V; echo; printf "%s" "$V" | \
+  gcloud secrets versions add DATAGOUV_API_KEY --data-file=- --project '"${PROJECT_ID}"
+
+docker compose run --rm -it infra-iac bash -lc \
+  'read -rsp "JOOBLE_API_KEY: " V; echo; printf "%s" "$V" | \
+  gcloud secrets versions add JOOBLE_API_KEY --data-file=- --project '"${PROJECT_ID}"
 ```
 
-Pourquoi : `sh` (dash) ne supporte pas `read -s`, d'o l'erreur `Illegal option -s`. Utiliser `bash` corrige ce point.
+Pourquoi `bash -lc` : `sh` (dash) ne supporte pas `read -s`, d'où l'erreur `Illegal option -s`. Utiliser `bash` corrige ce point.
 
-Alternative non interactive (fichier local temporaire, puis suppression) :
+### 3.3 Alternative non interactive (fichier temporaire)
 
 ```bash
-docker compose run --rm infra-iac sh -lc 'printf "%s" "VOTRE_FT_CLIENT_ID" > /tmp/ft_client_id.txt; gcloud secrets versions add FT_CLIENT_ID --data-file=/tmp/ft_client_id.txt --project ${GCP_PROJECT_ID}; rm -f /tmp/ft_client_id.txt'
-docker compose run --rm infra-iac sh -lc 'printf "%s" "VOTRE_FT_CLIENT_SECRET" > /tmp/ft_client_secret.txt; gcloud secrets versions add FT_CLIENT_SECRET --data-file=/tmp/ft_client_secret.txt --project ${GCP_PROJECT_ID}; rm -f /tmp/ft_client_secret.txt'
-docker compose run --rm infra-iac sh -lc 'printf "%s" "VOTRE_DATAGOUV_API_KEY" > /tmp/datagouv_api_key.txt; gcloud secrets versions add DATAGOUV_API_KEY --data-file=/tmp/datagouv_api_key.txt --project ${GCP_PROJECT_ID}; rm -f /tmp/datagouv_api_key.txt'
+docker compose run --rm infra-iac sh -lc \
+  'printf "%s" "VALEUR_FT_CLIENT_ID" > /tmp/s.txt; \
+  gcloud secrets versions add FT_CLIENT_ID --data-file=/tmp/s.txt --project '"${PROJECT_ID}"'; \
+  rm -f /tmp/s.txt'
 ```
 
-Placeholders utiliss dans cette section :
-- `VOTRE_FT_CLIENT_ID` = identifiant OAuth2 de l'application France Travail.
-- `VOTRE_FT_CLIENT_SECRET` = secret OAuth2 de l'application France Travail.
-- `VOTRE_DATAGOUV_API_KEY` = cl API Data Gouv si vous utilisez cette source avec authentification.
+> **Placeholders** : remplacer `VALEUR_FT_CLIENT_ID` etc. par les vraies valeurs — ne pas commiter ces commandes avec les valeurs réelles.
 
 ---
 
-## 4) Donner laccs aux Service Accounts applicatifs
-
-Daprs votre `.env` actuel, principaux comptes :
-- `ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com`
-- `dbt-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com`
-- `dashboard-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com`
-
-Accs minimal lecture secret pour lingestion :
+## 4) Donner l'accès au compte de service ingestion
 
 ```bash
-docker compose run --rm infra-iac gcloud secrets add-iam-policy-binding FT_CLIENT_ID \
-  --member="serviceAccount:ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project ${GCP_PROJECT_ID}
-
-docker compose run --rm infra-iac gcloud secrets add-iam-policy-binding FT_CLIENT_SECRET \
-  --member="serviceAccount:ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project ${GCP_PROJECT_ID}
-
-docker compose run --rm infra-iac gcloud secrets add-iam-policy-binding DATAGOUV_API_KEY \
-  --member="serviceAccount:ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project ${GCP_PROJECT_ID}
-```
-
----
-
-## 5) Vrifier que tout est OK
-
-Lister les secrets :
-
-```bash
-docker compose run --rm infra-iac gcloud secrets list --project ${GCP_PROJECT_ID}
-docker compose run --rm infra-iac gcloud secrets versions list FT_CLIENT_ID --project ${GCP_PROJECT_ID}
-docker compose run --rm infra-iac gcloud secrets versions list FT_CLIENT_SECRET --project ${GCP_PROJECT_ID}
-docker compose run --rm infra-iac gcloud secrets versions list DATAGOUV_API_KEY --project ${GCP_PROJECT_ID}
-```
-
-Lire la dernire version (test) :
-
-```bash
-docker compose run --rm infra-iac gcloud secrets versions access latest --secret=FT_CLIENT_ID --project ${GCP_PROJECT_ID}
+for SECRET in FT_CLIENT_ID FT_CLIENT_SECRET DATAGOUV_API_KEY JOOBLE_API_KEY; do
+  docker compose run --rm infra-iac \
+    gcloud secrets add-iam-policy-binding ${SECRET} \
+    --member="serviceAccount:${INGESTION_SA}" \
+    --role="roles/secretmanager.secretAccessor" \
+    --project ${PROJECT_ID}
+done
 ```
 
 ---
 
-## 6) Erreurs frquentes
+## 5) Vérifier que tout est OK
 
-### `PERMISSION_DENIED`  la cration des secrets
-Vous navez pas les rles IAM ncessaires. Voir tape 2.
+```bash
+# Lister les secrets
+docker compose run --rm infra-iac \
+  gcloud secrets list --project ${PROJECT_ID}
+
+# Vérifier les versions
+for SECRET in FT_CLIENT_ID FT_CLIENT_SECRET DATAGOUV_API_KEY JOOBLE_API_KEY; do
+  docker compose run --rm infra-iac \
+    gcloud secrets versions list ${SECRET} --project ${PROJECT_ID}
+done
+
+# Lire la dernière version (test)
+docker compose run --rm infra-iac \
+  gcloud secrets versions access latest \
+  --secret=FT_CLIENT_ID --project ${PROJECT_ID}
+```
+
+---
+
+## 6) Erreurs fréquentes
+
+### `PERMISSION_DENIED` à la création des secrets
+
+Vous n'avez pas les rôles IAM nécessaires. Voir étape 2.
 
 ### `API [secretmanager.googleapis.com] not enabled`
-Refaire tape 1.
 
-### Impossible dutiliser les secrets depuis le runtime
-Le service account runtime na pas `roles/secretmanager.secretAccessor` sur le secret. Voir tape 4.
+Refaire étape 1.
+
+### Impossible d'utiliser les secrets depuis le runtime
+
+Le compte de service runtime n'a pas `roles/secretmanager.secretAccessor` sur le secret. Voir étape 4.
 
 ### `INVALID_ARGUMENT: Secret Payload cannot be empty`
-La version a t ajoute avec une valeur vide. Refaire ltape 3.2 avec `bash -lc` (ou lalternative fichier) puis vrifier avec `gcloud secrets versions list`.
+
+La version a été ajoutée avec une valeur vide. Refaire l'étape 3.2 avec `bash -lc` puis vérifier avec `gcloud secrets versions list`.
 
 ---
 
-## 7) Bonnes pratiques scurit
+## 7) Bonnes pratiques sécurité
 
 - Ne jamais commiter de secrets dans `.env`, `terraform.tfvars` ou le code.
-- Garder `.env` local uniquement (dj ignor par `.gitignore`).
-- Utiliser Secret Manager + IAM (principe du moindre privilge).
-- Tourner les secrets rgulirement (nouvelle version).
+- Garder `.env` local uniquement (déjà ignoré par `.gitignore`).
+- Utiliser Secret Manager + IAM (principe du moindre privilège).
+- Tourner les secrets régulièrement (nouvelle version dans Secret Manager).
