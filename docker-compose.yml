@@ -17,11 +17,11 @@ services:
       TF_VAR_bucket_versioning_enabled: ${TF_VAR_bucket_versioning_enabled:-true}
       TF_VAR_bucket_force_destroy: ${TF_VAR_bucket_force_destroy:-false}
       TF_VAR_bucket_lifecycle_delete_age_days: ${TF_VAR_bucket_lifecycle_delete_age_days:-365}
-      TF_VAR_bucket_nearline_age_days: ${TF_VAR_bucket_nearline_age_days:-30}
-      TF_VAR_bucket_geo_prefix_delete_age_days: ${TF_VAR_bucket_geo_prefix_delete_age_days:-60}
-      TF_VAR_bucket_sirene_prefix_delete_age_days: ${TF_VAR_bucket_sirene_prefix_delete_age_days:-60}
-      TF_VAR_bucket_france_travail_prefix_delete_age_days: ${TF_VAR_bucket_france_travail_prefix_delete_age_days:-60}
-      TF_VAR_bucket_jooble_prefix_delete_age_days: ${TF_VAR_bucket_jooble_prefix_delete_age_days:-60}
+      # TF_VAR_bucket_nearline_age_days non défini → Terraform utilise son défaut (null = désactivé)
+      TF_VAR_bucket_geo_prefix_delete_age_days: ${TF_VAR_bucket_geo_prefix_delete_age_days:-31}
+      TF_VAR_bucket_sirene_prefix_delete_age_days: ${TF_VAR_bucket_sirene_prefix_delete_age_days:-31}
+      TF_VAR_bucket_france_travail_prefix_delete_age_days: ${TF_VAR_bucket_france_travail_prefix_delete_age_days:-30}
+      TF_VAR_bucket_jooble_prefix_delete_age_days: ${TF_VAR_bucket_jooble_prefix_delete_age_days:-30}
       TF_VAR_raw_dataset_id: ${TF_VAR_raw_dataset_id:-raw}
       TF_VAR_staging_dataset_id: ${TF_VAR_staging_dataset_id:-staging}
       TF_VAR_intermediate_dataset_id: ${TF_VAR_intermediate_dataset_id:-intermediate}
@@ -31,12 +31,12 @@ services:
       TF_VAR_ingestion_geo_prefix: ${TF_VAR_ingestion_geo_prefix:-raw/geo/}
       TF_VAR_ingestion_apec_prefix: ${TF_VAR_ingestion_apec_prefix:-raw/apec/}
       TF_VAR_ingestion_jooble_prefix: ${TF_VAR_ingestion_jooble_prefix:-raw/jooble/}
-      TF_VAR_bucket_apec_prefix_delete_age_days: ${TF_VAR_bucket_apec_prefix_delete_age_days:-60}
+      TF_VAR_bucket_apec_prefix_delete_age_days: ${TF_VAR_bucket_apec_prefix_delete_age_days:-30}
       TF_VAR_compute_job_name: ${TF_VAR_compute_job_name:-datatalent-ingestion-job}
       TF_VAR_compute_image: ${TF_VAR_compute_image:-}
       TF_VAR_compute_memory: ${TF_VAR_compute_memory:-512Mi}
       TF_VAR_compute_cpu: ${TF_VAR_compute_cpu:-1}
-      TF_VAR_compute_timeout_seconds: ${TF_VAR_compute_timeout_seconds:-1800}
+      TF_VAR_compute_timeout_seconds: ${TF_VAR_compute_timeout_seconds:-3600}
       TF_VAR_compute_max_retries: ${TF_VAR_compute_max_retries:-1}
       TF_VAR_scheduler_service_account_email: ${TF_VAR_scheduler_service_account_email:-}
       TF_VAR_scheduler_job_name_prefix: ${TF_VAR_scheduler_job_name_prefix:-datatalent-ingestion}
@@ -51,11 +51,11 @@ services:
       TF_VAR_ingestion_service_account_email: ${TF_VAR_ingestion_service_account_email:-}
       TF_VAR_dbt_service_account_email: ${TF_VAR_dbt_service_account_email:-}
       TF_VAR_dashboard_service_account_email: ${TF_VAR_dashboard_service_account_email:-}
-      TF_VAR_create_compute_job: ${TF_VAR_create_compute_job:-true}
+      TF_VAR_create_compute_job: ${TF_VAR_create_compute_job:-false}
       TF_VAR_create_external_tables: ${TF_VAR_create_external_tables:-false}
       # CI SA pour Artifact Registry writer (même email que le WIF SA)
       TF_VAR_ci_service_account_email: ${TF_VAR_ci_service_account_email:-}
-      TF_VAR_artifact_registry_keep_recent_versions: ${TF_VAR_artifact_registry_keep_recent_versions:-2}
+      TF_VAR_artifact_registry_keep_recent_versions: ${TF_VAR_artifact_registry_keep_recent_versions:-1}
       TF_VAR_artifact_registry_cleanup_dry_run: ${TF_VAR_artifact_registry_cleanup_dry_run:-false}
       TF_VAR_artifact_registry_cleanup_delete_older_than_seconds: ${TF_VAR_artifact_registry_cleanup_delete_older_than_seconds:-1}
       # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)
@@ -64,7 +64,7 @@ services:
       TF_VAR_dbt_compute_image: ${TF_VAR_dbt_compute_image:-}
       TF_VAR_dbt_memory: ${TF_VAR_dbt_memory:-1Gi}
       TF_VAR_dbt_cpu: ${TF_VAR_dbt_cpu:-1}
-      TF_VAR_dbt_timeout_seconds: ${TF_VAR_dbt_timeout_seconds:-1800}
+      TF_VAR_dbt_timeout_seconds: ${TF_VAR_dbt_timeout_seconds:-4500}
       TF_VAR_dbt_max_retries: ${TF_VAR_dbt_max_retries:-0}
       TF_VAR_raw_bucket_name: ${TF_VAR_raw_bucket_name:-}
       TF_VAR_manage_project_job_user_bindings: ${TF_VAR_manage_project_job_user_bindings:-true}
@@ -156,7 +156,7 @@ services:
 
       DBT_BIGQUERY_DATASET: ${DBT_BIGQUERY_DATASET:-staging}
       DBT_BIGQUERY_PRIORITY: ${DBT_BIGQUERY_PRIORITY:-interactive}
-      DBT_BIGQUERY_TIMEOUT_SECONDS: ${DBT_BIGQUERY_TIMEOUT_SECONDS:-300}
+      DBT_BIGQUERY_TIMEOUT_SECONDS: ${DBT_BIGQUERY_TIMEOUT_SECONDS:-3600}
       DBT_BIGQUERY_JOB_RETRIES: ${DBT_BIGQUERY_JOB_RETRIES:-1}
     volumes:
       - ./.gcloud:/root/.config/gcloud

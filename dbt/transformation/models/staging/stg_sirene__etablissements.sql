@@ -1,4 +1,4 @@
-{{ config(materialized='table') }}
+{{ config(materialized='table', job_execution_timeout_seconds=3600) }}
 
 WITH cleanup AS (
     SELECT

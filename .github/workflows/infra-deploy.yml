@@ -156,7 +156,7 @@ jobs:
       TF_VAR_dbt_compute_image: us-central1-docker.pkg.dev/cartographie-data-engineer/datatalent/dbt:latest
       TF_VAR_dbt_memory: 1Gi
       TF_VAR_dbt_cpu: "1"
-      TF_VAR_dbt_timeout_seconds: "1800"
+      TF_VAR_dbt_timeout_seconds: "4500"
       TF_VAR_dbt_max_retries: "0"
       # Cloud Logging retention: disabled in CI by default unless CI identity has logging bucket config permissions
       TF_VAR_manage_log_retention: "true"

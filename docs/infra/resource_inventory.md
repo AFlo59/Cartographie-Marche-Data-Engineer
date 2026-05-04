@@ -222,7 +222,7 @@ Zéro stockage BigQuery facturé : BQ lit directement GCS à la query.
 | Image | `us-central1-docker.pkg.dev/<project_id>/datatalent/dbt:latest` |
 | CPU | `1` |
 | Mémoire | `1Gi` |
-| Timeout | `1800s` (30 min) |
+| Timeout | `4500s` (75 min) |
 | Max retries | `0` (pas de retry — idempotence non garantie) |
 | Service account | `dbt-sa@<project_id>.iam.gserviceaccount.com` |
 
