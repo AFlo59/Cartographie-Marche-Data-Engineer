@@ -1,129 +1,146 @@
-﻿# Cartographie-Marche-Data-Engineer
+# Cartographie-Marche-Data-Engineer
 
 Pipeline de données end-to-end : cartographie du marché Data Engineer en France.
 
-## Epic 4 — État infra actuel (INFRA-01 à INFRA-07 + INFRA-09 partiel)
-
-### Choix du cloud : GCP
-
-Le projet démarre sur **Google Cloud Platform (GCP)** pour les raisons suivantes :
-
-- Intégration native **Cloud Storage + BigQuery + Cloud Run + Cloud Scheduler**
-- Très bon fit analytique pour ce cas d'usage (requêtes SQL, partitionnement, clustering)
-- Démarrage rapide via free tier / crédits de compte
-- Bonne compatibilité Terraform/OpenTofu pour l'IaC
-
-### Ressources couvertes dans ce repo
-
-Cette itération IaC provisionne :
-
-- Un bucket raw GCS (module `infra/modules/storage`)
-- Trois datasets BigQuery (`raw`, `staging`, `marts`) via module `infra/modules/warehouse`
-- Un Cloud Run Job d'ingestion (module `infra/modules/compute`)
-- Trois jobs Cloud Scheduler (module `infra/modules/scheduler`)
-- Les secrets API dans Secret Manager + binding `secretAccessor` ingestion (module `infra/modules/secrets`)
-- Les IAM dataset-level et `roles/bigquery.jobUser` pour ingestion/dbt/dashboard
-- Un workflow CI infra WIF (`.github/workflows/infra-deploy.yml`) avec vérification dbt (`parse`/`compile`) avant Terraform
-- Un workflow CI dbt dédié (`.github/workflows/dbt-ci.yml`) sur `main`/`develop` pour `parse`/`compile`
-
-### Arborescence infra
+## Architecture
 
 ```text
-infra/
-  main.tf
-  providers.tf
-  variables.tf
-  outputs.tf
-  versions.tf
-  terraform.tfvars.example
-  modules/
-    storage/
-    warehouse/
-    compute/
-    scheduler/
-    secrets/
+APIs sources                GCS (raw)            BigQuery
+─────────────               ─────────────────    ────────────────────────────────────
+France Travail  ──┐                              raw          (external tables Parquet)
+APEC            ──┼──> ingestion Python ──>  bucket  ──>  staging      (tables dbt — 1 par source)
+Jooble          ──┤         Cloud Run Job        raw          intermediate (incremental, gold layer)
+INSEE Sirene    ──┤                                           marts        (views dashboard)
+API Geo         ──┘
 ```
 
-### Structure applicative visée
+### Flux d'exécution hebdomadaire (lundi)
 
-Le repo suit maintenant une séparation par domaine technique :
+| Heure  | Job                      | Description                                        |
+| ------ | ------------------------ | -------------------------------------------------- |
+| 06h00  | Ingestion France Travail | Cloud Run Job — offres 7 derniers jours            |
+| 07h00  | Ingestion APEC           | Cloud Run Job — offres 7 derniers jours            |
+| 08h00  | Ingestion Jooble         | Cloud Run Job — offres 7 derniers jours            |
+| 09h00  | dbt run + test           | Cloud Run Job — staging → intermediate → marts     |
+
+Ingestions mensuelles (1er du mois) : Sirene 03h00, Geo 04h00.
+
+## Stack technique
+
+| Couche         | Technologie                                                                      |
+| -------------- | -------------------------------------------------------------------------------- |
+| Ingestion      | Python, Cloud Run Job, Cloud Scheduler                                           |
+| Stockage raw   | GCS (Parquet, partitions Hive `dt=YYYY-MM-DD`)                                   |
+| Entrepôt       | BigQuery — datasets `raw`, `staging`, `intermediate`, `marts`                    |
+| Transformation | dbt (BigQuery adapter) — Cloud Run Job                                           |
+| IaC            | Terraform — modules `storage`, `warehouse`, `compute`, `scheduler`, `secrets`    |
+| CI/CD          | GitHub Actions + Workload Identity Federation                                    |
+| Dashboard      | Looker Studio — lecture sur dataset `marts`                                      |
+
+## Modèles dbt
 
 ```text
-src/
-  ingestion/
-dbt/
-  transformation/
-    Dockerfile
-    models/
-    macros/
-    tests/
-    seeds/
-    analyses/
-infra/
-docs/
+staging/          tables (1 par source, déduplication, nettoyage)
+  stg_france_travail__offres
+  stg_apec__offres
+  stg_jooble__offres
+  stg_sirene__etablissements
+  stg_geo__communes / departements / regions
+
+intermediate/     incremental merge (unique_key=offre_id, fenêtre -7j)
+  int_offres_enrichies   — jointure offres × sirene × geo
+
+marts/            views (exposition dashboard)
+  mart_marche_emploi
 ```
 
-Notes :
-- `src/ingestion/` porte les scripts Python d'ingestion,
-- `dbt/transformation/` est le futur emplacement du projet dbt de l'EPIC 2,
-- le dossier racine `models/` n'est plus retenu pour éviter l'ambiguïté entre modèles dbt et autres artefacts du projet.
+## Structure du repo
 
-### Documentation d'entrée
+```text
+src/ingestion/          scripts Python ingestion (France Travail, APEC, Jooble, Sirene, Geo)
+dbt/transformation/     projet dbt (models/, macros/, tests/, profiles.yml, Dockerfile)
+infra/                  Terraform (main.tf, variables.tf, modules/)
+docs/                   documentation plateforme, infra, CI/CD
+.github/workflows/      CI GitHub Actions (infra-deploy, dbt-ci, ingestion-ci, python-lint)
+docker-compose.yml      services locaux : infra-iac, ingestion-jobs
+```
 
-Le point d'entrée principal de la documentation infra est : [docs/setup_guide.md](docs/setup_guide.md)
+## Démarrage rapide
 
-Cette structure évite les doublons et sépare les parcours :
+### Prérequis
 
-- [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md) pour le setup manuel GCP,
-- [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md) pour l'exécution via Docker,
-- [docs/infra/manual_commands.md](docs/infra/manual_commands.md) pour l'exécution avec outils installés localement,
-- [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md) pour les secrets runtime,
-- [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md) pour la CI GitHub ↔ GCP,
-- [docs/infra/iam_roles.md](docs/infra/iam_roles.md) pour les rôles et permissions.
+- Docker + Docker Compose
+- Compte GCP avec projet créé
+- Accès GitHub Actions configuré (WIF) — voir [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md)
 
-### Dépendances Python
-
-Le fichier `requirements.txt` est prêt pour les scripts d'ingestion (API + GCS + BigQuery).
-
-Exemple d'installation :
+### Configuration locale
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+cp .env.example .env
+# Renseigner les valeurs marquées "← À renseigner" dans .env
 ```
 
-### Exécuter l'IaC
+Variables obligatoires dans `.env` :
 
-Le projet inclut un conteneur `infra-iac` pour éviter d'installer Terraform/OpenTofu/gcloud localement.
+```ini
+GCP_PROJECT_ID=
+GOOGLE_CLOUD_PROJECT=
+FT_CLIENT_ID=
+FT_CLIENT_SECRET=
+JOOBLE_API_KEY=
+INGESTION_RAW_BUCKET=
+TF_VAR_project_id=
+TF_VAR_ingestion_service_account_email=
+TF_VAR_dbt_service_account_email=
+TF_VAR_dashboard_service_account_email=
+```
 
-Le chemin principal de déploiement visé dans le périmètre infra actuel est le workflow GitHub Actions après merge sur `main` pour l'infrastructure Terraform.
-Les exécutions Docker et terminal local servent surtout au développement, à la validation manuelle et au debug.
+### Déploiement infrastructure
 
-Deux parcours sont documentés séparément :
-
-- via Docker : [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md)
-- via outils installés localement : [docs/infra/manual_commands.md](docs/infra/manual_commands.md)
-
-Le futur projet dbt est désormais scaffoldé dans `dbt/transformation/`, avec son propre `Dockerfile` dédié pour préparer l'EPIC 2.
-
-Le statut détaillé des tickets Epic 4 reste suivi dans [docs/infra/infra_epic4_status.md](docs/infra/infra_epic4_status.md).
-
-### Déploiement (exemple)
+Le déploiement principal passe par GitHub Actions après merge sur `main`.
+Pour une exécution locale :
 
 ```bash
-cd infra
-terraform init
-terraform plan -var-file="terraform.tfvars"
-terraform apply -var-file="terraform.tfvars"
+# Via Docker (recommandé)
+docker compose run --rm infra-iac terraform init -backend-config="bucket=<TF_BACKEND_BUCKET>"
+docker compose run --rm infra-iac terraform plan
+docker compose run --rm infra-iac terraform apply
 ```
 
-Copier `infra/terraform.tfvars.example` vers `infra/terraform.tfvars` puis renseigner les variables.
+Voir [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md) pour le détail complet.
 
-## Prochaines étapes
+### Lancer une ingestion localement
 
-- INFRA-07 : finaliser le durcissement IAM (moindre privilège)
-- INFRA-08 : document de coûts `docs/cost_estimation.md`
-- INFRA-09 : compléter CI avec lint Python + dbt `run/test` sur `main` (parse/compile déjà en place)
-- Intégration applicative ingestion/dbt sur les ressources désormais provisionnées
+```bash
+docker compose run --rm -e INGESTION_SOURCE=france_travail ingestion-jobs
+```
 
+## Ressources GCP provisionnées
+
+- **GCS** — bucket raw (`datatalent-<env>-<project_id>-raw`) avec lifecycle par source
+- **BigQuery** — 4 datasets : `raw`, `staging`, `intermediate`, `marts` + external tables Parquet
+- **Cloud Run Jobs** — `datatalent-ingestion-job` + `datatalent-dbt-job`
+- **Cloud Scheduler** — 6 jobs (5 ingestion + 1 dbt)
+- **Secret Manager** — `FT_CLIENT_ID`, `FT_CLIENT_SECRET`, `JOOBLE_API_KEY`, `DATAGOUV_API_KEY`
+- **Artifact Registry** — repo `datatalent` (`europe-west1`) — images ingestion + dbt
+- **Comptes de service** — `ingestion-sa`, `dbt-sa`, `dashboard-sa`, `terraform-deployer-sa`
+
+## Documentation
+
+| Document | Contenu |
+| --- | --- |
+| [docs/setup_guide.md](docs/setup_guide.md) | Point d'entrée — ordre de setup complet |
+| [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md) | Setup GCP initial (projets, SA, IAM) |
+| [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md) | Création des secrets runtime |
+| [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md) | Configuration WIF GitHub ↔ GCP |
+| [docs/infra/iam_roles.md](docs/infra/iam_roles.md) | Référence complète des rôles IAM |
+| [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md) | Commandes Docker locales |
+| [docs/infra/manual_commands.md](docs/infra/manual_commands.md) | Commandes sans Docker |
+| [docs/infra/infra_epic4_status.md](docs/infra/infra_epic4_status.md) | Statut tickets INFRA + incidents |
+
+## Statut
+
+- INFRA-01 à 07 : complets
+- INFRA-08 (`docs/cost_estimation.md`) : à créer
+- INFRA-09 (CI/CD) : partiel — lint Python + dbt parse/compile actifs ; dbt run/test sur main à ajouter
+- INFRA-10 (branch protection) : à configurer sur GitHub UI
