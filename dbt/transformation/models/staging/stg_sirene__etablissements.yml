@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: stg_sirene__etablissements
+    description: >
+      Table de lookup SIRENE etablissements associant chaque combinaison
+      (NOM, NOM_COMMUNE) a un SIRET avec coordonnees WGS84 et code NAF.
+      8 variantes par etablissement (4 noms x 2 communes). DISTINCT final.
+      Coordonnees converties Lambert-93 vers WGS84 via UDF JS.
+      Materialisee en TABLE (35M lignes source, full refresh mensuel).
+    config:
+      materialized: table
+    columns:
+      - name: SIRET
+        data_type: STRING
+        description: "SIRET de l etablissement (14 chiffres valides) ou NULL si invalide"
+
+      - name: NOM
+        data_type: STRING
+        description: "Variante de nom normalise (enseigne 1/2/3 ou denomination usuelle)"
+        tests:
+          - not_null
+
+      - name: NOM_COMMUNE
+        data_type: STRING
+        description: "Variante de nom de commune normalise (France ou etranger)"
+        tests:
+          - not_null
+
+      - name: CODE_INSEE
+        data_type: STRING
+        description: "Code INSEE de la commune (5 chars)"
+
+      - name: CODE_POSTAL
+        data_type: STRING
+        description: "Code postal de l etablissement (5 chars)"
+
+      - name: DEPARTEMENT
+        data_type: STRING
+        description: "Code departement deduit du code postal (prioritaire) puis du code INSEE"
+
+      - name: CODE_NAF
+        data_type: STRING
+        description: "Code APE/NAF de l activite principale (ex: 6201Z) normalise UPPER sans accents"
+
+      - name: LATITUDE
+        data_type: FLOAT64
+        description: "Latitude WGS84 convertie depuis Lambert-93 (NULL si coordonnees source invalides)"
+
+      - name: LONGITUDE
+        data_type: FLOAT64
+        description: "Longitude WGS84 convertie depuis Lambert-93 (NULL si coordonnees source invalides)"

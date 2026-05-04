@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: stg_geo__departements
+    description: >
+      Referentiel departements français (101 departements metropole + DOM).
+      Source : API geo.api.gouv.fr, mise a jour mensuelle.
+      Materialisee en VIEW (101 lignes, trivial).
+    config:
+      materialized: view
+    columns:
+      - name: CODE_DEPARTEMENT
+        data_type: STRING
+        description: "Code departement (ex: 75, 2A, 2B, 971)"
+        tests:
+          - not_null
+          - unique
+
+      - name: NOM
+        data_type: STRING
+        description: "Nom du departement normalise UPPER sans accents"
+        tests:
+          - not_null
+
+      - name: CODE_REGION
+        data_type: STRING
+        description: "Code de la region parente"
+        tests:
+          - not_null

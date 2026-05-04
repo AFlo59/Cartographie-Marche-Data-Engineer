@@ -1,0 +1,68 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: raw
+    description: "Tables externes BigQuery — fichiers Parquet dans GCS (module Terraform warehouse)"
+
+    tables:
+      - name: geo_communes
+        description: >
+          Communes françaises depuis API geo.api.gouv.fr.
+          Wildcard mensuel sur YYYY-MM/, BigQuery lit toutes les versions disponibles.
+          Frequence : mensuel 1er du mois 4h. ~35 000 communes.
+          Les coordonnees sont le centroide de la commune en WGS84.
+          Le champ codesPostaux est serialise en CSV par l ingestion (liste Python vers STRING).
+        columns:
+          - name: code
+            data_type: STRING
+            description: "Code INSEE de la commune (5 chars)"
+          - name: nom
+            data_type: STRING
+            description: "Nom officiel de la commune avec accents"
+          - name: codeRegion
+            data_type: STRING
+            description: "Code de la region (2 chiffres)"
+          - name: codeDepartement
+            data_type: STRING
+            description: "Code du departement (2-3 chars, ex: 75, 2A, 971)"
+          - name: codesPostaux
+            data_type: STRING
+            description: "Codes postaux serialises en CSV par l ingestion (ex: '75001,75002')"
+          - name: population
+            data_type: FLOAT64
+            description: "Population municipale (source INSEE via API Geo)"
+          - name: latitude
+            data_type: FLOAT64
+            description: "Latitude WGS84 du centroide (extraite de centre.coordinates par l ingestion)"
+          - name: longitude
+            data_type: FLOAT64
+            description: "Longitude WGS84 du centroide (extraite de centre.coordinates par l ingestion)"
+
+      - name: geo_departements
+        description: >
+          Departements français depuis API geo.api.gouv.fr.
+          Wildcard mensuel sur YYYY-MM/. 101 departements (metropole + DOM).
+        columns:
+          - name: code
+            data_type: STRING
+            description: "Code departement (ex: 75, 2A, 2B, 971)"
+          - name: nom
+            data_type: STRING
+            description: "Nom du departement avec accents"
+          - name: codeRegion
+            data_type: STRING
+            description: "Code de la region parente"
+
+      - name: geo_regions
+        description: >
+          Regions françaises depuis API geo.api.gouv.fr.
+          Wildcard mensuel sur YYYY-MM/. 18 regions (13 metropole + 5 DOM).
+        columns:
+          - name: code
+            data_type: STRING
+            description: "Code region (ex: 11, 93, 01)"
+          - name: nom
+            data_type: STRING
+            description: "Nom de la region avec accents"

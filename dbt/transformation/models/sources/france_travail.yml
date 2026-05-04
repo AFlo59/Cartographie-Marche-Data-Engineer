@@ -1,0 +1,69 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: raw
+    description: "Tables externes BigQuery — fichiers Parquet dans GCS (module Terraform warehouse)"
+
+    tables:
+      - name: france_travail_offres
+        description: >
+          Offres emploi France Travail via API OAuth2 (api.francetravail.io).
+          Hive-partitioned dt=YYYY-MM-DD, BigQuery ajoute la colonne dt automatiquement.
+          Frequence : hebdomadaire lundi 6h. Sources ROME filtrees sur M1811, M1805, M1810.
+        columns:
+          - name: id
+            data_type: STRING
+            description: "Identifiant unique de l offre cote France Travail"
+          - name: intitule
+            data_type: STRING
+            description: "Titre du poste tel que saisi par le recruteur"
+          - name: description
+            data_type: STRING
+            description: "Description complete du poste, peut contenir du HTML"
+          - name: dateCreation
+            data_type: STRING
+            description: "Date de creation de l offre au format ISO 8601 (ex: 2024-01-15T10:00:00+02:00)"
+          - name: lieuTravail_codePostal
+            data_type: STRING
+            description: "Code postal du lieu de travail (5 chiffres, parfois 4 pour DOM-TOM)"
+          - name: lieuTravail_commune
+            data_type: STRING
+            description: "Code INSEE de la commune du lieu de travail (5 chars)"
+          - name: lieuTravail_libelle
+            data_type: STRING
+            description: "Libelle du lieu de travail, format: '75 - Paris'"
+          - name: entreprise_nom
+            data_type: STRING
+            description: "Nom de l entreprise recruteur"
+          - name: entreprise_numeroSiret
+            data_type: STRING
+            description: "Numero SIRET de l entreprise (14 chiffres, peut contenir des espaces)"
+          - name: salaire_libelle
+            data_type: STRING
+            description: "Libelle salaire brut, ex: 'Mensuel de 2500.00 Euros a 3500.00 Euros sur 12 mois'"
+          - name: salaire_complement1
+            data_type: STRING
+            description: "Complement salaire (primes, avantages)"
+          - name: typeContrat
+            data_type: STRING
+            description: "Code type de contrat : CDI, CDD, MIS, SAI, etc."
+          - name: typeContratLibelle
+            data_type: STRING
+            description: "Libelle type de contrat, ex: 'Contrat a duree indeterminee'"
+          - name: codeROME
+            data_type: STRING
+            description: "Code ROME du metier (5 chars, ex: M1811)"
+          - name: appellationlibelle
+            data_type: STRING
+            description: "Libelle ROME de l appellation du poste"
+          - name: experienceExige
+            data_type: STRING
+            description: "Niveau experience : D=debutant accepte, S=confirme, E=expert"
+          - name: qualificationCode
+            data_type: STRING
+            description: "Code qualification du poste"
+          - name: dt
+            data_type: DATE
+            description: "Colonne de partition Hive injectee par BigQuery depuis le chemin GCS dt=YYYY-MM-DD"

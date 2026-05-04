@@ -1,0 +1,120 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: raw
+    description: "Tables externes BigQuery — fichiers Parquet dans GCS (module Terraform warehouse)"
+
+    tables:
+      - name: sirene_etablissements
+        description: >
+          Stock SIRENE etablissements (StockEtablissement_utf8.parquet) depuis data.gouv.fr.
+          Wildcard mensuel sur YYYY-MM/, BigQuery lit toutes les versions disponibles.
+          Frequence : mensuel 1er du mois 3h. ~35 millions de lignes.
+          Schema complet : https://www.sirene.fr/static-resources/doc/description_fichier_StockEtablissement.pdf
+        columns:
+          - name: siret
+            data_type: STRING
+            description: "SIRET de l etablissement (14 chiffres)"
+          - name: siren
+            data_type: STRING
+            description: "SIREN de l unite legale (9 premiers chiffres du SIRET)"
+          - name: nic
+            data_type: STRING
+            description: "Numero interne de classement (5 derniers chiffres du SIRET)"
+          - name: etatAdministratifEtablissement
+            data_type: STRING
+            description: "A = actif, F = ferme"
+          - name: dateCreationEtablissement
+            data_type: STRING
+            description: "Date de creation au format YYYY-MM-DD"
+          - name: dateDernierTraitementEtablissement
+            data_type: STRING
+            description: "Date du dernier traitement INSEE"
+          - name: enseigne1Etablissement
+            data_type: STRING
+            description: "Enseigne principale de l etablissement (nullable)"
+          - name: enseigne2Etablissement
+            data_type: STRING
+            description: "Enseigne secondaire (nullable)"
+          - name: enseigne3Etablissement
+            data_type: STRING
+            description: "Enseigne tertiaire (nullable)"
+          - name: denominationUsuelleEtablissement
+            data_type: STRING
+            description: "Denomination usuelle de l etablissement (nullable)"
+          - name: activitePrincipaleEtablissement
+            data_type: STRING
+            description: "Code APE/NAF de l activite principale (ex: 6201Z)"
+          - name: nomenclatureActivitePrincipaleEtablissement
+            data_type: STRING
+            description: "Nomenclature utilisee pour le code APE (REV2)"
+          - name: trancheEffectifsEtablissement
+            data_type: STRING
+            description: "Tranche effectifs salaries (00=0, 01=1-2, ..., 53=10000+, nullable)"
+          - name: caractereEmployeurEtablissement
+            data_type: STRING
+            description: "O = employeur salarie, N = non employeur"
+          - name: codePostalEtablissement
+            data_type: STRING
+            description: "Code postal (nullable, absent pour les etablissements a l etranger)"
+          - name: libelleCommuneEtablissement
+            data_type: STRING
+            description: "Libelle commune France (nullable)"
+          - name: libelleCommuneEtrangerEtablissement
+            data_type: STRING
+            description: "Libelle commune etranger (nullable)"
+          - name: codeCommuneEtablissement
+            data_type: STRING
+            description: "Code INSEE commune (5 chars pour la France)"
+          - name: coordonneeLambertAbscisseEtablissement
+            data_type: STRING
+            description: "Coordonnee Lambert-93 X en metres (stockee en STRING dans SIRENE, peut valoir 'N/A')"
+          - name: coordonneeLambertOrdonneeEtablissement
+            data_type: STRING
+            description: "Coordonnee Lambert-93 Y en metres (stockee en STRING dans SIRENE, peut valoir 'N/A')"
+
+      - name: sirene_unites_legales
+        description: >
+          Stock SIRENE unites legales (StockUniteLegale_utf8.parquet) depuis data.gouv.fr.
+          Wildcard mensuel sur YYYY-MM/, BigQuery lit toutes les versions disponibles.
+          Frequence : mensuel 1er du mois 3h. ~12 millions de lignes.
+          Schema complet : https://www.sirene.fr/static-resources/doc/description_fichier_StockUniteLegale.pdf
+        columns:
+          - name: siren
+            data_type: STRING
+            description: "SIREN de l unite legale (9 chiffres)"
+          - name: etatAdministratifUniteLegale
+            data_type: STRING
+            description: "A = active, C = cessee"
+          - name: dateCreationUniteLegale
+            data_type: STRING
+            description: "Date de creation au format YYYY-MM-DD"
+          - name: denominationUniteLegale
+            data_type: STRING
+            description: "Denomination sociale (personnes morales, nullable)"
+          - name: nomUniteLegale
+            data_type: STRING
+            description: "Nom de famille (personnes physiques, nullable)"
+          - name: prenomUsuelUniteLegale
+            data_type: STRING
+            description: "Prenom usuel (personnes physiques, nullable)"
+          - name: categorieJuridiqueUniteLegale
+            data_type: STRING
+            description: "Code categorie juridique (ex: 5710 = SA a conseil d administration)"
+          - name: activitePrincipaleUniteLegale
+            data_type: STRING
+            description: "Code APE/NAF de l activite principale"
+          - name: nomenclatureActivitePrincipaleUniteLegale
+            data_type: STRING
+            description: "Nomenclature utilisee pour le code APE"
+          - name: categorieEntreprise
+            data_type: STRING
+            description: "PME, ETI ou GE (nullable, calculee par l INSEE)"
+          - name: trancheEffectifsUniteLegale
+            data_type: STRING
+            description: "Tranche effectifs salaries (nullable)"
+          - name: statutDiffusionUniteLegale
+            data_type: STRING
+            description: "O = diffusible, P = non-diffusible"

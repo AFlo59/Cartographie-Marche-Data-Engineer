@@ -133,8 +133,11 @@ module "compute" {
   dbt_max_retries                 = var.dbt_max_retries
 
   dbt_plain_env = {
-    GCP_PROJECT_ID = var.project_id
-    DBT_TARGET     = "dev"
+    GCP_PROJECT_ID               = var.project_id
+    GCP_LOCATION                 = var.location
+    DBT_TARGET                   = "ci"
+    DBT_BIGQUERY_DATASET         = var.staging_dataset_id
+    DBT_BIGQUERY_TIMEOUT_SECONDS = "900"
   }
 
   plain_env = {

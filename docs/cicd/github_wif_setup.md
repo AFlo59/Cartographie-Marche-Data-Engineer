@@ -32,6 +32,21 @@ Toutes les commandes de ce guide utilisent ces variables — il suffit de les ch
 
 ---
 
+## Variables a definir
+
+Definir ces variables en debut de session Cloud Shell avant d'executer les commandes de ce guide :
+
+```bash
+GCP_PROJECT_ID="your-gcp-project-id"   # identifiant de votre projet GCP  <- a renseigner
+GITHUB_ORG="your-github-org"            # organisation ou utilisateur GitHub <- a renseigner
+GITHUB_REPO="your-github-repo"          # nom du repo GitHub                 <- a renseigner
+
+# Service accounts (construits a partir de GCP_PROJECT_ID)
+TF_SA="terraform-deployer-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+INGESTION_SA="ingestion-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+DBT_SA="dbt-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+```
+
 ## 1) Pourquoi utiliser WIF
 
 WIF remplace le fichier `sa.json` par un mécanisme d'authentification courte durée :

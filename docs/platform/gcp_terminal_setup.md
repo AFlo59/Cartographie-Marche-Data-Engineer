@@ -259,7 +259,7 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --role="roles/resourcemanager.tagUser"
 
 gcloud resource-manager tags values add-iam-policy-binding tagValues/TAG_VALUE_ID \
-  --member="user:YOUR_EMAIL" \
+  --member="user:${USER_EMAIL}" \
   --role="roles/resourcemanager.tagUser"
 ```
 

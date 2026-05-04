@@ -1,0 +1,58 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: raw
+    description: "Tables externes BigQuery — fichiers Parquet dans GCS (module Terraform warehouse)"
+
+    tables:
+      - name: jooble_offres
+        description: >
+          Offres emploi Jooble via API REST (fr.jooble.org/api).
+          Hive-partitioned dt=YYYY-MM-DD, BigQuery ajoute la colonne dt automatiquement.
+          Frequence : hebdomadaire lundi 8h. Mots-cles : data engineer, localisation : France.
+          Filtre client sur les 8 derniers jours via le champ updated.
+        columns:
+          - name: jooble_id
+            data_type: STRING
+            description: "Identifiant unique de l offre cote Jooble (champ id renomme par l ingestion)"
+          - name: title
+            data_type: STRING
+            description: "Titre du poste"
+          - name: location
+            data_type: STRING
+            description: "Localisation textuelle de l offre"
+          - name: snippet
+            data_type: STRING
+            description: "Description courte de l offre, HTML pre-nettoye par l ingestion"
+          - name: salary
+            data_type: STRING
+            description: "Libelle salaire brut Jooble (nullable, format variable selon la source)"
+          - name: source
+            data_type: STRING
+            description: "Site web source de l offre agregee par Jooble"
+          - name: type
+            data_type: STRING
+            description: "Type de contrat au format texte libre"
+          - name: link
+            data_type: STRING
+            description: "URL directe vers l offre originale"
+          - name: company
+            data_type: STRING
+            description: "Nom de l entreprise (nullable)"
+          - name: updated
+            data_type: STRING
+            description: "Date de mise a jour au format ISO 8601 (ex: 2024-01-15T10:00:00)"
+          - name: updated_dt
+            data_type: TIMESTAMP
+            description: "Date de mise a jour parsee par l ingestion Python (UTC)"
+          - name: scraped_at
+            data_type: TIMESTAMP
+            description: "Timestamp de collecte (UTC)"
+          - name: source_name
+            data_type: STRING
+            description: "Toujours 'jooble'"
+          - name: dt
+            data_type: DATE
+            description: "Colonne de partition Hive injectee par BigQuery depuis le chemin GCS dt=YYYY-MM-DD"
