@@ -74,7 +74,9 @@ def _run_source(source: str) -> None:
         return
 
     print(f"Source inconnue : {source}")
-    print("Sources supportées : sirene, geo, france_travail, apec, jooble, all, weekly, monthly")
+    print(
+        "Sources supportées : sirene, geo, france_travail, apec, jooble, all, weekly, monthly"
+    )
     sys.exit(1)
 
 

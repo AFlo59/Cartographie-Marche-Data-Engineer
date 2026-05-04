@@ -33,7 +33,9 @@ def ingest_sirene() -> None:
     now = datetime.now()
 
     for name, url in _URLS.items():
-        gcs_path = f"{Config.SIRENE_PREFIX.rstrip('/')}/{now.strftime('%Y-%m')}/{name}.parquet"
+        gcs_path = (
+            f"{Config.SIRENE_PREFIX.rstrip('/')}/{now.strftime('%Y-%m')}/{name}.parquet"
+        )
         logger.info(f"Téléchargement {name} depuis {url}")
         with requests.get(url, stream=True, timeout=120) as response:
             response.raise_for_status()

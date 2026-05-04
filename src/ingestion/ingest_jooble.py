@@ -59,7 +59,9 @@ def _fetch_jobs_page(page: int) -> dict:
             response = connection.getresponse()
 
             if response.status != 200:
-                raise ValueError(f"Erreur API Jooble : {response.status} {response.reason}")
+                raise ValueError(
+                    f"Erreur API Jooble : {response.status} {response.reason}"
+                )
 
             return json.loads(response.read())
         except Exception as exc:
