@@ -137,7 +137,7 @@ module "compute" {
     GCP_LOCATION                 = var.location
     DBT_TARGET                   = "ci"
     DBT_BIGQUERY_DATASET         = var.staging_dataset_id
-    DBT_BIGQUERY_TIMEOUT_SECONDS = "900"
+    DBT_BIGQUERY_TIMEOUT_SECONDS = "3600"
   }
 
   plain_env = {
