@@ -7,8 +7,8 @@ Ce document explique comment les données circulent dans notre pipeline d'infras
 ### Architecture ingestion retenue
 
 - 1 Cloud Run Job : `datatalent-ingestion-job`
-- 5 Cloud Scheduler jobs : `france_travail`, `sirene`, `geo`, `apec`, `jooble`
-- Chaque Scheduler déclenche le même job avec `INGESTION_SOURCE=<source>` (override env via `jobsExecutorWithOverrides`)
+- 3 Cloud Scheduler jobs : `weekly` (france_travail + apec + jooble), `monthly` (sirene + geo), `dbt`
+- Chaque Scheduler déclenche le job avec `INGESTION_SOURCE=<source>` (override env via `jobsExecutorWithOverrides`)
 
 Ce modèle est le plus simple et le moins coûteux en exploitation pour ce type de fréquence (hebdomadaire/mensuel).
 
@@ -39,11 +39,12 @@ TF_VAR_location:      US
 TF_VAR_environment:   dev
 TF_VAR_project_prefix: datatalent
 
-# Lifecycle bucket raw
-TF_VAR_bucket_nearline_age_days:                  "30"   # Transition NEARLINE à 30j
-TF_VAR_bucket_geo_prefix_delete_age_days:         "60"   # Purge auto geo/ à 60j
-TF_VAR_bucket_sirene_prefix_delete_age_days:      "60"   # Purge auto sirene/ à 60j
-TF_VAR_bucket_france_travail_prefix_delete_age_days: "60" # Purge auto france_travail/ à 60j
+# Lifecycle bucket raw (nearline désactivé — conflit billing 30j)
+TF_VAR_bucket_france_travail_prefix_delete_age_days: "30" # Purge auto france_travail/ à 30j (~4 semaines)
+TF_VAR_bucket_apec_prefix_delete_age_days:           "30" # Purge auto apec/ à 30j
+TF_VAR_bucket_jooble_prefix_delete_age_days:         "30" # Purge auto jooble/ à 30j
+TF_VAR_bucket_sirene_prefix_delete_age_days:         "31" # Purge auto sirene/ à 31j (1 snapshot mensuel)
+TF_VAR_bucket_geo_prefix_delete_age_days:            "31" # Purge auto geo/ à 31j
 
 # Activation features (toutes actives en CI)
 TF_VAR_create_compute_job:    "true"   # Cloud Run Job ingestion actif
@@ -51,7 +52,7 @@ TF_VAR_create_dbt_job:        "true"   # Cloud Run Job dbt actif
 TF_VAR_create_external_tables: "true"  # External Tables BQ actives
 
 # Artifact Registry cleanup
-TF_VAR_artifact_registry_keep_recent_versions: "2"  # garder latest + 1 version précédente
+TF_VAR_artifact_registry_keep_recent_versions: "1"  # garder latest uniquement
 TF_VAR_artifact_registry_cleanup_delete_older_than_seconds: "1"  # versions excédentaires supprimées quasi immédiatement, purge asynchrone
 
 # Cloud Logging retention
@@ -160,7 +161,15 @@ Push main
 └───────────────────────────┘    │ • dbt parse                        │
                                   │ • dbt compile                      │
                                   └────────────────────────────────────┘
-             ↓ needs: [ingestion-verify, dbt-verify]
+             ↓ needs: [ingestion-verify, dbt-verify], main seulement
+┌────────────────────────────────────────────────────────────────────┐
+│ push-images                                                        │
+│  1. Auth GCP via WIF                                               │
+│  2. Configure Docker pour Artifact Registry                        │
+│  3. Build + push ingestion:latest et ingestion:<sha8>              │
+│  4. Build + push dbt:latest et dbt:<sha8>                          │
+└────────────────────────────────────────────────────────────────────┘
+             ↓ needs: [ingestion-verify, dbt-verify, push-images]
 ┌────────────────────────────────────────────────────────────────────┐
 │ terraform                                                          │
 │  1. Check secrets CI (fail-fast)                                   │
@@ -172,14 +181,6 @@ Push main
 │  7. Vérifier APIs GCP requises (bloquant)                          │
 │  8. terraform import existing resources (best effort)              │
 │  9. terraform apply -auto-approve                                  │
-└────────────────────────────────────────────────────────────────────┘
-             ↓ needs: [terraform], main seulement
-┌────────────────────────────────────────────────────────────────────┐
-│ push-images                                                        │
-│  1. Auth GCP via WIF                                               │
-│  2. Configure Docker pour Artifact Registry                        │
-│  3. Build + push ingestion:latest et ingestion:<sha8>              │
-│  4. Build + push dbt:latest et dbt:<sha8>                          │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -199,12 +200,11 @@ Push main
     │                                               │
     │  Cloud Storage                                │
     │  └─ Bucket raw (lifecycle)                    │
-    │     ├─ Nearline après 30j                     │
-    │     ├─ Purge france_travail/ à 60j            │
-    │     ├─ Purge apec/ à 60j                      │
-    │     ├─ Purge jooble/ à 60j                    │
-    │     ├─ Purge sirene/ à 60j                    │
-    │     ├─ Purge geo/ à 60j                       │
+    │     ├─ Purge france_travail/ à 30j            │
+    │     ├─ Purge apec/ à 30j                      │
+    │     ├─ Purge jooble/ à 30j                    │
+    │     ├─ Purge sirene/ à 31j                    │
+    │     ├─ Purge geo/ à 31j                       │
     │     └─ Suppression globale à 365j             │
     │                                               │
     │  BigQuery                                     │
@@ -219,23 +219,22 @@ Push main
     │  └─ repo datatalent (Docker)                  │
     │     ├─ ingestion:latest + ingestion:<sha8>    │
     │     ├─ dbt:latest + dbt:<sha8>                │
-    │     └─ cleanup: garder 2 versions / image     │
+    │     └─ cleanup: garder 1 version / image      │
     │                                               │
     │  Cloud Run Jobs                               │
     │  ├─ datatalent-ingestion-job (Python)         │
     │  └─ datatalent-dbt-job (dbt)                  │
     │                                               │
-    │  Cloud Scheduler (déclenche ingestion-job)    │
-    │  ├─ datatalent-ingestion-france_travail       │
-    │  │  (0 6 * * 1 — hebdomadaire lundi)          │
-    │  ├─ datatalent-ingestion-apec                 │
-    │  │  (0 7 * * 1 — hebdomadaire lundi)          │
-    │  ├─ datatalent-ingestion-jooble               │
-    │  │  (0 8 * * 1 — hebdomadaire lundi)          │
-    │  ├─ datatalent-ingestion-sirene               │
-    │  │  (0 3 1 * * — mensuel)                     │
-    │  └─ datatalent-ingestion-geo                  │
-    │     (0 4 1 * * — mensuel)                     │
+    │  Cloud Scheduler (3 jobs — free tier GCP)     │
+    │  ├─ datatalent-ingestion-weekly               │
+    │  │  (0 6 * * 1 — lundi 6h)                   │
+    │  │  source=weekly → france_travail+apec+jooble│
+    │  ├─ datatalent-ingestion-monthly              │
+    │  │  (0 3 1 * * — 1er du mois 3h)             │
+    │  │  source=monthly → sirene+geo               │
+    │  └─ datatalent-dbt                            │
+    │     (0 9 * * 1 — lundi 9h)                   │
+    │     déclenche datatalent-dbt-job              │
     │                                               │
     │  Secret Manager                               │
     │  ├─ FT_CLIENT_ID                              │
@@ -363,7 +362,7 @@ Le SA WIF n'a pas `roles/logging.configWriter`. Voir [docs/infra/iam_roles.md](i
 | Env vars CI | `infra-deploy.yml` | TF_VAR_*, TF_BACKEND_BUCKET |
 | Code Terraform | `infra/` | variables.tf, main.tf, modules/ |
 | State file | GCS bucket tfstate | terraform.tfstate (JSON) |
-| Images Docker | Artifact Registry `datatalent` | ingestion + dbt (2 versions max) |
+| Images Docker | Artifact Registry `datatalent` | ingestion + dbt (latest uniquement) |
 | Ressources GCP | GCP | Storage + BQ + Cloud Run + Scheduler + Secrets + Logging |
 
 ---

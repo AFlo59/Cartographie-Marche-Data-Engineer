@@ -4,8 +4,8 @@
 
 - ✅ **INFRA-01** : Choix du cloud (GCP) documenté dans le README.
 - ✅ **INFRA-02** : Module bucket raw (`infra/modules/storage`) et bucket créé dans GCP. Lifecycle enrichi :
-  - Transition NEARLINE à 30j (~40% d'économie Sirene)
-  - **Purge automatique par préfixe à 60j** (france_travail, apec, jooble, sirene, geo) — conserve latest + 1 snapshot mensuel précédent
+  - Transition NEARLINE **désactivée** (`null`) — conflit avec delete à 30j (NEARLINE facturation min 30j)
+  - **Purge automatique par préfixe** : france_travail/apec/jooble à **30j** (~4 semaines), sirene/geo à **31j** (1 snapshot mensuel)
   - Suppression globale à 365j (filet de sécurité)
 - ✅ **INFRA-03** : Module datasets raw/staging/marts (`infra/modules/warehouse`) et datasets créés dans GCP. 3 External Tables BigQuery définies : `sirene_etablissements`, `sirene_unites_legales`, `france_travail_offres` — pointent sur les Parquet GCS, aucun stockage BQ facturé pour les données raw. Activation conditionnée par `var.create_external_tables` (passé `true` en CI après première ingestion).
 - ✅ **INFRA-04** : Module compute Cloud Run Job (`infra/modules/compute`).
@@ -35,19 +35,19 @@ Le workflow orchestre en **4 jobs** sur push `main` :
 ```text
 push main
     ├──► ingestion-verify  ──────────────┐
-    │    (docker build ingestion)        ├──► terraform (apply) ──► push-images
-    └──► dbt-verify  ───────────────────-┘    (AR + jobs + IAM)     (ingestion:latest
-         (build dbt + parse + compile)                               + dbt:latest → AR)
+    │    (docker build ingestion)        ├──► push-images ──► terraform (apply)
+    └──► dbt-verify  ───────────────────-┘    (ingestion:latest    (AR + jobs + IAM)
+         (build dbt + parse + compile)         + dbt:latest → AR)
 ```
 
 | Job | Rôle | Condition |
 | --- | --- | --- |
 | `ingestion-verify` | Build Dockerfile ingestion (vérification validité) | Toujours |
 | `dbt-verify` | Build image dbt + `dbt parse` + `dbt compile` | Toujours |
-| `terraform` | `terraform apply` — bloqué si verify échoue | needs: [ingestion-verify, dbt-verify] |
-| `push-images` | Build + push `ingestion:latest` et `dbt:latest` vers AR | needs: [terraform], main seulement |
+| `push-images` | Build + push `ingestion:latest` et `dbt:latest` vers AR | needs: [ingestion-verify, dbt-verify], main seulement |
+| `terraform` | `terraform apply` — bloqué si push-images échoue | needs: [ingestion-verify, dbt-verify, push-images] |
 
-Sur **PR** : verify + plan (pas d'apply, pas de push images).
+Sur **PR** : verify + plan (push-images skipped, terraform plan s'exécute).
 Sur **push develop** : verify + init + validate (pas de plan, pas d'apply).
 
 ---
@@ -60,8 +60,9 @@ Sur **push develop** : verify + init + validate (pas de plan, pas d'apply).
 | `TF_VAR_create_dbt_job` | `"true"` | Cloud Run Job dbt actif |
 | `TF_VAR_create_external_tables` | `"true"` | External Tables BQ actives |
 | `TF_VAR_manage_log_retention` | `"true"` | Rétention logs 60j gérée par Terraform |
-| `TF_VAR_bucket_*_prefix_delete_age_days` | `"60"` | Purge auto par préfixe à 60j |
-| `TF_VAR_bucket_nearline_age_days` | `"30"` | Transition NEARLINE à 30j |
+| `TF_VAR_bucket_france_travail/apec/jooble_prefix_delete_age_days` | `"30"` | Purge hebdo à 30j (~4 semaines) |
+| `TF_VAR_bucket_sirene/geo_prefix_delete_age_days` | `"31"` | Purge mensuelle à 31j |
+| `TF_VAR_bucket_nearline_age_days` | *(non défini)* | Désactivé — conflit avec delete 30j |
 | `TF_VAR_artifact_registry_keep_recent_versions` | `1` | Garder latest uniquement |
 
 ---
@@ -137,23 +138,9 @@ Guides d'exécution :
 
 ## Actions restantes
 
-### IAM manquant — `roles/logging.configWriter` sur SA WIF
+### ~~IAM manquant — `roles/logging.configWriter`~~ ✅ Résolu
 
-**Cause** : Terraform gère la rétention du bucket `_Default` Cloud Logging (`TF_VAR_manage_log_retention=true`).
-Le SA WIF (`${GCP_WIF_SERVICE_ACCOUNT}`) n'a pas `roles/logging.configWriter` → erreur 403 lors du `terraform apply`.
-
-**Fix — exécuter une seule fois depuis Cloud Shell** :
-
-```bash
-TF_SA="$(gcloud config get account)"   # ou l'email exact du SA WIF
-PROJECT="$(gcloud config get project)"
-
-gcloud projects add-iam-policy-binding ${PROJECT} \
-  --member="serviceAccount:${TF_SA}" \
-  --role="roles/logging.configWriter"
-```
-
-Puis relancer le workflow (`workflow_dispatch` ou push).
+`roles/logging.configWriter` accordé manuellement sur `terraform-deployer-sa` (2026-05-04). `terraform apply` ne retourne plus d'erreur 403 sur `google_logging_project_bucket_config`.
 
 ### Prochaines étapes INFRA-09 (qualité CI)
 

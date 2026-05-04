@@ -35,20 +35,21 @@ Ce document centralise toutes les ressources GCP créées par Terraform, leur co
 | Force destroy | `false` |
 | Versioning | activé |
 
-### Règles lifecycle (7 règles actives en CI)
+### Règles lifecycle (6 règles actives en CI)
 
 | Règle | Condition | Action |
 | --- | --- | --- |
-| Transition NEARLINE | `age ≥ 30j` (tous objets) | `SetStorageClass = NEARLINE` |
-| Purge `raw/france_travail/` | `age ≥ 60j` | Delete |
-| Purge `raw/apec/` | `age ≥ 60j` | Delete |
-| Purge `raw/jooble/` | `age ≥ 60j` | Delete |
-| Purge `raw/sirene/` | `age ≥ 60j` | Delete |
-| Purge `raw/geo/` | `age ≥ 60j` | Delete |
+| Purge `raw/france_travail/` | `age ≥ 30j` (~4 semaines) | Delete |
+| Purge `raw/apec/` | `age ≥ 30j` (~4 semaines) | Delete |
+| Purge `raw/jooble/` | `age ≥ 30j` (~4 semaines) | Delete |
+| Purge `raw/sirene/` | `age ≥ 31j` (1 snapshot mensuel) | Delete |
+| Purge `raw/geo/` | `age ≥ 31j` (1 snapshot mensuel) | Delete |
 | Suppression globale | `age ≥ 365j` | Delete |
-| Nettoyage versions ARCHIVED | `num_newer_versions ≥ 2` | Delete |
+| Nettoyage versions ARCHIVED | `num_newer_versions ≥ 1` | Delete |
 
-La règle ARCHIVED s'applique uniquement aux objets réécrits (sirene, geo) — sans effet sur france_travail/apec/jooble qui écrivent toujours vers un nouveau chemin.
+Transition NEARLINE désactivée (`bucket_nearline_age_days = null`) — NEARLINE facture au minimum 30 jours de stockage, ce qui crée un surcoût si les objets sont supprimés à 30j.
+
+La règle ARCHIVED supprime toute version archivée dès qu'une version plus récente existe (latest only). S'applique aux objets réécrits (sirene, geo) — sans effet sur france_travail/apec/jooble qui écrivent toujours vers un nouveau chemin.
 
 ### IAM bucket
 
