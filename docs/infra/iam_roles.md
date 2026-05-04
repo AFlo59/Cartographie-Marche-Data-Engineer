@@ -266,7 +266,7 @@ Ce SA est utilisé par Terraform (CI GitHub Actions via WIF, ou ADC en local). I
 | `roles/serviceusage.serviceUsageAdmin` | Projet | Activer les APIs GCP manquantes depuis la CI | ✅ Accordé |
 | `roles/iam.serviceAccountUser` | SA Resource | Assigner les SA aux Cloud Run Jobs | ✅ Accordé (via Terraform compute module) |
 | `roles/artifactregistry.writer` | Projet | Pousser les images Docker vers Artifact Registry | ✅ Accordé (via Terraform compute module) |
-| `roles/logging.configWriter` | Projet | Gérer la rétention du bucket `_Default` Cloud Logging | ❌ **MANQUANT** — cause erreur 403 `logging.buckets.create` |
+| `roles/logging.configWriter` | Projet | Gérer la rétention du bucket `_Default` Cloud Logging | ✅ Accordé |
 
 **Commandes gcloud** :
 
@@ -287,8 +287,7 @@ for ROLE in \
     --role="${ROLE}"
 done
 
-# ❌ MANQUANT — résout l'erreur 403 logging.buckets.create
-# Requis pour que Terraform gère la rétention du bucket _Default Cloud Logging
+# Gère la rétention du bucket _Default Cloud Logging
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/logging.configWriter"
@@ -335,7 +334,7 @@ gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
 | `dbt-sa` | ✅ Créé | BQ dataViewer(raw) ✅ + BQ dataEditor(staging,marts) ✅ + BQ jobUser ✅ + Storage objectViewer ✅ + AR reader ✅ | ✅ Complet |
 | `dashboard-sa` | ✅ Créé | BQ dataViewer(marts) ✅ + BQ jobUser ✅ | ✅ Complet |
 | `scheduler-sa` (ou ingestion-sa) | ✅ Créé | run.jobsExecutorWithOverrides (job + projet) ✅ | ✅ Géré Terraform |
-| `terraform-deployer-sa` (SA WIF) | ✅ Créé | storage.admin ✅ + bigquery.admin ✅ + artifactregistry.admin ✅ + run.admin ✅ + cloudscheduler.admin ✅ + secretmanager.admin ✅ + serviceusage.serviceUsageAdmin ✅ + iam.serviceAccountUser ✅ / **logging.configWriter ❌ MANQUANT** | ⚠️ Presque complet — ajouter logging.configWriter |
+| `terraform-deployer-sa` (SA WIF) | ✅ Créé | storage.admin ✅ + bigquery.admin ✅ + artifactregistry.admin ✅ + run.admin ✅ + cloudscheduler.admin ✅ + secretmanager.admin ✅ + serviceusage.serviceUsageAdmin ✅ + iam.serviceAccountUser ✅ + logging.configWriter ✅ | ✅ Complet |
 
 ---
 

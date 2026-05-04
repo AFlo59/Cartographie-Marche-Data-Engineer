@@ -138,23 +138,9 @@ Guides d'exécution :
 
 ## Actions restantes
 
-### IAM manquant — `roles/logging.configWriter` sur SA WIF
+### ~~IAM manquant — `roles/logging.configWriter`~~ ✅ Résolu
 
-**Cause** : Terraform gère la rétention du bucket `_Default` Cloud Logging (`TF_VAR_manage_log_retention=true`).
-Le SA WIF (`${GCP_WIF_SERVICE_ACCOUNT}`) n'a pas `roles/logging.configWriter` → erreur 403 lors du `terraform apply`.
-
-**Fix — exécuter une seule fois depuis Cloud Shell** :
-
-```bash
-TF_SA="$(gcloud config get account)"   # ou l'email exact du SA WIF
-PROJECT="$(gcloud config get project)"
-
-gcloud projects add-iam-policy-binding ${PROJECT} \
-  --member="serviceAccount:${TF_SA}" \
-  --role="roles/logging.configWriter"
-```
-
-Puis relancer le workflow (`workflow_dispatch` ou push).
+`roles/logging.configWriter` accordé manuellement sur `terraform-deployer-sa` (2026-05-04). `terraform apply` ne retourne plus d'erreur 403 sur `google_logging_project_bucket_config`.
 
 ### Prochaines étapes INFRA-09 (qualité CI)
 

@@ -119,8 +119,8 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/bigquery.admin"
 
-# ❌ REQUIS — sans ce rôle, terraform apply échoue avec 403 sur le repo AR
-# (update de la description du repo Artifact Registry)
+# ⚠️ Ne pas oublier — sans ce rôle, terraform apply échoue avec 403 sur le repo AR
+# (update de la description/cleanup policy du repo Artifact Registry)
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${TF_SA}" \
   --role="roles/artifactregistry.admin"
