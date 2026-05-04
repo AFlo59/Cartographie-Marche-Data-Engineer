@@ -158,7 +158,7 @@ terraform import 'module.compute.google_logging_project_bucket_config.default_re
 
 # Cloud Schedulers
 SCHEDULER_PREFIX="${TF_VAR_scheduler_job_name_prefix:-datatalent-ingestion}"
-for SOURCE in france_travail sirene geo; do
+for SOURCE in france_travail apec jooble sirene geo; do
   terraform import "module.scheduler[0].google_cloud_scheduler_job.ingestion[\"${SOURCE}\"]" \
     projects/${GCP_PROJECT_ID}/locations/${GCP_REGION:-europe-west1}/jobs/${SCHEDULER_PREFIX}-${SOURCE}
 done
@@ -245,6 +245,18 @@ gcloud run jobs execute ${JOB_NAME} \
   --region=${GCP_REGION} \
   --project=${GCP_PROJECT_ID} \
   --update-env-vars INGESTION_SOURCE=france_travail
+
+# APEC
+gcloud run jobs execute ${JOB_NAME} \
+  --region=${GCP_REGION} \
+  --project=${GCP_PROJECT_ID} \
+  --update-env-vars INGESTION_SOURCE=apec
+
+# Jooble
+gcloud run jobs execute ${JOB_NAME} \
+  --region=${GCP_REGION} \
+  --project=${GCP_PROJECT_ID} \
+  --update-env-vars INGESTION_SOURCE=jooble
 
 # Sirene
 gcloud run jobs execute ${JOB_NAME} \
