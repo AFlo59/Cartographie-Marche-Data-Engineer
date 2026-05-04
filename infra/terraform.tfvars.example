@@ -48,6 +48,7 @@ scheduler_time_zone              = "Europe/Paris"
 scheduler_france_travail_schedule = "0 6 * * 1"  # Weekly Monday 6 AM
 scheduler_apec_schedule           = "0 7 * * 1"  # Weekly Monday 7 AM
 scheduler_jooble_schedule         = "0 8 * * 1"  # Weekly Monday 8 AM
+scheduler_dbt_schedule            = "0 9 * * 1"  # Weekly Monday 9 AM (apres ingestions)
 scheduler_sirene_schedule         = "0 3 1 * *"  # Monthly 1st, 3 AM
 scheduler_geo_schedule            = "0 4 1 * *"  # Monthly 1st, 4 AM
 

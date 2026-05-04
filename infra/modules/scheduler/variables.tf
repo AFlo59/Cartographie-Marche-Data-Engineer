@@ -59,3 +59,21 @@ variable "jooble_schedule" {
   type        = string
   default     = "0 8 * * 1"
 }
+
+variable "create_dbt_scheduler" {
+  description = "Whether to create the Cloud Scheduler job for dbt"
+  type        = bool
+  default     = false
+}
+
+variable "dbt_job_name" {
+  description = "Cloud Run Job name for dbt transformations"
+  type        = string
+  default     = ""
+}
+
+variable "dbt_schedule" {
+  description = "Cron schedule for dbt run (after all ingestions)"
+  type        = string
+  default     = "0 9 * * 1"
+}

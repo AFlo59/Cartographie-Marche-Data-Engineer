@@ -170,6 +170,9 @@ module "scheduler" {
   geo_schedule                    = var.scheduler_geo_schedule
   apec_schedule                   = var.scheduler_apec_schedule
   jooble_schedule                 = var.scheduler_jooble_schedule
+  create_dbt_scheduler            = var.create_dbt_job
+  dbt_job_name                    = var.dbt_job_name
+  dbt_schedule                    = var.scheduler_dbt_schedule
 
   depends_on = [module.compute]
 }
