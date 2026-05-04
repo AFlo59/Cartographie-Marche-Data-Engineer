@@ -57,7 +57,7 @@ resource "google_storage_bucket" "raw" {
     }
   }
 
-  # sirene : snapshot mensuel YYYY-MM/ — purge après N jours (2 mois = latest + précédent)
+  # sirene : snapshot mensuel YYYY-MM/ — purge après N jours (31j = 1 snapshot mensuel)
   dynamic "lifecycle_rule" {
     for_each = var.sirene_prefix_delete_age_days == null ? [] : [1]
 
@@ -87,7 +87,7 @@ resource "google_storage_bucket" "raw" {
     }
   }
 
-  # apec : partition hebdomadaire dt=YYYY-MM-DD/ — purge après N jours (default 60 = ~8 semaines)
+  # apec : partition hebdomadaire dt=YYYY-MM-DD/ — purge après N jours (default 30 = ~4 semaines)
   dynamic "lifecycle_rule" {
     for_each = var.apec_prefix_delete_age_days == null ? [] : [1]
 
@@ -117,19 +117,17 @@ resource "google_storage_bucket" "raw" {
     }
   }
 
-  # Versions non-courantes (ARCHIVED) — garder latest + 1 version précédente par objet.
-  # Comportement : si raw/geo/2026-04/regions.parquet est écrasé N fois dans le mois,
-  # seules la version courante (live) et la version immédiatement précédente sont conservées.
-  # num_newer_versions = 2 → supprimer une version ARCHIVED dès qu'il existe 2+ versions plus récentes.
-  # Exemple : run1(v1) → run2(v2, v1=archived) → run3(v3, v2=archived, v1 supprimé car 2 newer)
-  # Pour france_travail (chemin unique par jour), les fichiers ne sont jamais réécrits → sans effet.
+  # Versions non-courantes (ARCHIVED) — garder uniquement la version courante (latest only).
+  # num_newer_versions = 1 → supprimer toute version ARCHIVED dès qu'il existe 1 version plus récente.
+  # Exemple : run1(v1) → run2(v2, v1=archivée supprimée immédiatement)
+  # Utile en test quand l'ingestion tourne plusieurs fois le même jour sur le même chemin GCS.
   dynamic "lifecycle_rule" {
     for_each = var.versioning_enabled ? [1] : []
 
     content {
       condition {
         with_state         = "ARCHIVED"
-        num_newer_versions = 2
+        num_newer_versions = 1
       }
       action {
         type = "Delete"
