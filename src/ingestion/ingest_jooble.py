@@ -21,6 +21,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
@@ -35,10 +36,12 @@ from utils.logging_config import get_logger  # noqa: E402
 logger = get_logger("ingest_jooble")
 
 _LOOKBACK_DAYS = 8  # Pour couvrir une semaine complète + marge
+_MAX_RETRIES = 3
+_RETRY_BACKOFF = [2, 5]  # secondes entre les tentatives
 
 
 def _fetch_jobs_page(page: int) -> dict:
-    """Appelle l'API Jooble pour une page de résultats."""
+    """Appelle l'API Jooble pour une page de résultats, avec retry."""
     api_key = Config.jooble_api_key()
     if not api_key:
         raise ValueError(
@@ -48,17 +51,30 @@ def _fetch_jobs_page(page: int) -> dict:
     body = json.dumps({"keywords": "data engineer", "location": "France", "page": page})
     headers = {"Content-type": "application/json"}
 
-    connection = http.client.HTTPSConnection(Config.JOOBLE_HOST)
-    try:
-        connection.request("POST", f"/api/{api_key}", body, headers)
-        response = connection.getresponse()
+    last_exc: Exception = RuntimeError("Aucune tentative effectuée")
+    for attempt in range(_MAX_RETRIES):
+        connection = http.client.HTTPSConnection(Config.JOOBLE_HOST, timeout=30)
+        try:
+            connection.request("POST", f"/api/{api_key}", body, headers)
+            response = connection.getresponse()
 
-        if response.status != 200:
-            raise ValueError(f"Erreur API Jooble : {response.status} {response.reason}")
+            if response.status != 200:
+                raise ValueError(f"Erreur API Jooble : {response.status} {response.reason}")
 
-        return json.loads(response.read())
-    finally:
-        connection.close()
+            return json.loads(response.read())
+        except Exception as exc:
+            last_exc = exc
+            if attempt < _MAX_RETRIES - 1:
+                wait = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
+                logger.warning(
+                    f"Tentative {attempt + 1}/{_MAX_RETRIES} échouée ({exc}), "
+                    f"retry dans {wait}s"
+                )
+                time.sleep(wait)
+        finally:
+            connection.close()
+
+    raise last_exc
 
 
 def _clean_snippet(text: str) -> str:

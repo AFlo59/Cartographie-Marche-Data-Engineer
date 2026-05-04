@@ -58,8 +58,23 @@ def _run_source(source: str) -> None:
         print("Toutes les ingestions sont terminées.")
         return
 
+    if source == "weekly":
+        print("Lancement ingestion hebdomadaire (france_travail, apec, jooble)...")
+        _run_source("france_travail")
+        _run_source("apec")
+        _run_source("jooble")
+        print("Ingestion hebdomadaire terminée.")
+        return
+
+    if source == "monthly":
+        print("Lancement ingestion mensuelle (sirene, geo)...")
+        _run_source("sirene")
+        _run_source("geo")
+        print("Ingestion mensuelle terminée.")
+        return
+
     print(f"Source inconnue : {source}")
-    print("Sources supportées : sirene, geo, france_travail, apec, jooble, all")
+    print("Sources supportées : sirene, geo, france_travail, apec, jooble, all, weekly, monthly")
     sys.exit(1)
 
 

@@ -72,7 +72,7 @@ class Config:
         os.getenv("GCP_PROJECT_ID", "").strip()
         or os.getenv("GOOGLE_CLOUD_PROJECT", "").strip()
     )
-    GCP_REGION: str = os.getenv("GCP_REGION", "europe-west1")
+    GCP_REGION: str = os.getenv("GCP_REGION", "us-central1")
 
     RAW_BUCKET: str = os.getenv("INGESTION_RAW_BUCKET", "").strip()
     FT_PREFIX: str = os.getenv("INGESTION_FRANCE_TRAVAIL_PREFIX", "raw/france_travail/")

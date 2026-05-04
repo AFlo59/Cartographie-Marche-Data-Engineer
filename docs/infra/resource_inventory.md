@@ -29,7 +29,7 @@ Ce document centralise toutes les ressources GCP créées par Terraform, leur co
 | Paramètre | Valeur |
 | --- | --- |
 | Nom | `datatalent-dev-<project_id>-raw` (calculé) |
-| Région | `europe-west1` — **single-region** |
+| Région | `us-central1` — **single-region** |
 | Uniform bucket-level access | `true` |
 | Public access prevention | `enforced` |
 | Force destroy | `false` |
@@ -66,7 +66,7 @@ La règle ARCHIVED s'applique uniquement aux objets réécrits (sirene, geo) —
 | Paramètre | Valeur |
 | --- | --- |
 | Nom | `datatalent-tfstate-<project_id>` (hardcodé dans le workflow) |
-| Région | `europe-west1` |
+| Région | `us-central1` |
 | Versioning | activé |
 | Lifecycle | Supprimer versions ARCHIVED quand `numNewerVersions ≥ 2` (conserve live + 1 précédente) |
 | Accès | Uniform bucket-level access |
@@ -83,7 +83,7 @@ terraform init -backend-config="bucket=datatalent-tfstate-<project_id>"
 
 **Ressource Terraform** : `module.warehouse.google_bigquery_dataset.*`  
 **Fichier** : [infra/modules/warehouse/main.tf](../../infra/modules/warehouse/main.tf)  
-**Location** : `EU` — **multi-région Europe** (différent du bucket GCS qui est single-region)
+**Location** : `US` — **multi-région États-Unis** (différent du bucket GCS qui est single-region)
 
 | Dataset | ID |
 | --- | --- |
@@ -116,7 +116,7 @@ Conditionnel : `manage_project_job_user_bindings = true` (local) / `false` en CI
 **Ressource Terraform** : `module.warehouse.google_bigquery_table.*`  
 **Conditionnel** : `create_external_tables = true`  
 **Format** : PARQUET — `autodetect = true` — `deletion_protection = false`  
-**Location** : héritée du dataset `raw` → `EU`
+**Location** : héritée du dataset `raw` → `US`
 
 | Table BQ | URI GCS source | Partitionnement |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ Zéro stockage BigQuery facturé : BQ lit directement GCS à la query.
 | Paramètre | Valeur |
 | --- | --- |
 | Nom du repo | `datatalent` |
-| Région | `europe-west1` — **single-region** |
+| Région | `us-central1` — **single-region** |
 | Format | `DOCKER` |
 | Dry run cleanup | `false` |
 
@@ -150,7 +150,7 @@ Zéro stockage BigQuery facturé : BQ lit directement GCS à la query.
 
 | Policy | Action | Condition |
 | --- | --- | --- |
-| `keep-recent-versions` | KEEP | `most_recent_versions = 2` (latest + 1 précédente) |
+| `keep-recent-versions` | KEEP | `most_recent_versions = 1` (latest uniquement) |
 | `delete-older-versions` | DELETE | `tag_state = ANY`, `older_than = 1s` (purge quasi-immédiate, asynchrone GCP) |
 
 ### Images gérées
@@ -178,11 +178,11 @@ Zéro stockage BigQuery facturé : BQ lit directement GCS à la query.
 | Paramètre | Valeur |
 | --- | --- |
 | Nom | `datatalent-ingestion-job` |
-| Région | `europe-west1` |
-| Image | `europe-west1-docker.pkg.dev/<project_id>/datatalent/ingestion:latest` |
+| Région | `us-central1` |
+| Image | `us-central1-docker.pkg.dev/<project_id>/datatalent/ingestion:latest` |
 | CPU | `1` |
 | Mémoire | `512Mi` |
-| Timeout | `1800s` (30 min) |
+| Timeout | `3600s` (60 min) |
 | Max retries | `1` |
 | Service account | `ingestion-sa@<project_id>.iam.gserviceaccount.com` |
 
@@ -217,8 +217,8 @@ Zéro stockage BigQuery facturé : BQ lit directement GCS à la query.
 | Paramètre | Valeur |
 | --- | --- |
 | Nom | `datatalent-dbt-job` |
-| Région | `europe-west1` |
-| Image | `europe-west1-docker.pkg.dev/<project_id>/datatalent/dbt:latest` |
+| Région | `us-central1` |
+| Image | `us-central1-docker.pkg.dev/<project_id>/datatalent/dbt:latest` |
 | CPU | `1` |
 | Mémoire | `1Gi` |
 | Timeout | `1800s` (30 min) |
@@ -230,7 +230,10 @@ Zéro stockage BigQuery facturé : BQ lit directement GCS à la query.
 | Variable | Valeur |
 | --- | --- |
 | `GCP_PROJECT_ID` | `<project_id>` |
-| `DBT_TARGET` | `dev` |
+| `GCP_LOCATION` | `US` |
+| `DBT_TARGET` | `ci` |
+| `DBT_BIGQUERY_DATASET` | `staging` |
+| `DBT_BIGQUERY_TIMEOUT_SECONDS` | `900` |
 
 ---
 
@@ -261,24 +264,22 @@ Alimentation des valeurs : voir [docs/platform/secret_manager_setup.md](../platf
 
 | Paramètre global | Valeur |
 | --- | --- |
-| Région | `europe-west1` |
+| Région | `us-central1` |
 | Timezone | `Europe/Paris` |
 | attempt_deadline | `320s` |
-| retry_count | `3` |
+| retry_count | `1` |
 | Méthode HTTP | POST |
-| Target | `https://run.googleapis.com/v2/projects/<project>/locations/europe-west1/jobs/datatalent-ingestion-job:run` |
+| Target | `https://run.googleapis.com/v2/projects/<project>/locations/us-central1/jobs/datatalent-ingestion-job:run` |
 | Auth | OAuth2 — `ingestion-sa` — scope `cloud-platform` |
 | Body | JSON : `containerOverrides.env[INGESTION_SOURCE=<source>]` |
 
-### 5 jobs actifs
+### 3 jobs actifs (free tier GCP)
 
-| Nom | Schedule | Fréquence |
+| Nom | Schedule | Sources déclenchées |
 | --- | --- | --- |
-| `datatalent-ingestion-france_travail` | `0 6 * * 1` | Hebdomadaire — lundi 6h |
-| `datatalent-ingestion-apec` | `0 7 * * 1` | Hebdomadaire — lundi 7h |
-| `datatalent-ingestion-jooble` | `0 8 * * 1` | Hebdomadaire — lundi 8h |
-| `datatalent-ingestion-sirene` | `0 3 1 * *` | Mensuel — 1er du mois 3h |
-| `datatalent-ingestion-geo` | `0 4 1 * *` | Mensuel — 1er du mois 4h |
+| `datatalent-ingestion-weekly` | `0 6 * * 1` — lundi 6h | `weekly` → france_travail + apec + jooble |
+| `datatalent-ingestion-monthly` | `0 3 1 * *` — 1er du mois 3h | `monthly` → sirene + geo |
+| `datatalent-dbt` | `0 9 * * 1` — lundi 9h | dbt run + test (Cloud Run Job dbt) |
 
 ---
 
@@ -364,7 +365,7 @@ Alimentation des valeurs : voir [docs/platform/secret_manager_setup.md](../platf
 | --- | --- | --- | --- |
 | Cloud Run Job ingestion | `create_compute_job` | `true` | `false` |
 | Cloud Run Job dbt | `create_dbt_job` | `true` | `false` |
-| Cloud Scheduler (5 jobs) | `create_compute_job` | `true` | `false` |
+| Cloud Scheduler (3 jobs) | `create_compute_job` | `true` | `false` |
 | External Tables BQ (8) | `create_external_tables` | `true` | `false` |
 | Cloud Logging retention | `manage_log_retention` | `true` | `true` |
 | BigQuery jobUser bindings projet | `manage_project_job_user_bindings` | `false` | `true` |
@@ -381,7 +382,7 @@ Alimentation des valeurs : voir [docs/platform/secret_manager_setup.md](../platf
 | [infra/modules/storage/main.tf](../../infra/modules/storage/main.tf) | Bucket raw + lifecycle + IAM bucket |
 | [infra/modules/warehouse/main.tf](../../infra/modules/warehouse/main.tf) | Datasets BQ + External Tables + IAM datasets |
 | [infra/modules/compute/main.tf](../../infra/modules/compute/main.tf) | AR repo + Cloud Run Jobs + time_sleep 90s + IAM AR + Cloud Logging |
-| [infra/modules/scheduler/main.tf](../../infra/modules/scheduler/main.tf) | 5 Cloud Scheduler jobs |
+| [infra/modules/scheduler/main.tf](../../infra/modules/scheduler/main.tf) | 3 Cloud Scheduler jobs (weekly + monthly + dbt) |
 | [infra/modules/secrets/main.tf](../../infra/modules/secrets/main.tf) | Secret Manager containers + IAM secretAccessor |
 | [.github/workflows/infra-deploy.yml](../../.github/workflows/infra-deploy.yml) | CI/CD : valeurs actives en production |
 | [infra/terraform.tfvars.example](../../infra/terraform.tfvars.example) | Template vars locales |

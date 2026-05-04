@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
-      AR_REGION: europe-west1
+      AR_REGION: us-central1
       AR_REPO: datatalent
 
     steps:
@@ -96,8 +96,8 @@ jobs:
       CI_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT != '' && secrets.GCP_WIF_SERVICE_ACCOUNT || vars.GCP_WIF_SERVICE_ACCOUNT }}
       # Projet GCP
       TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
-      TF_VAR_region: europe-west1
-      TF_VAR_location: EU
+      TF_VAR_region: us-central1
+      TF_VAR_location: US
       TF_VAR_environment: dev
       TF_VAR_project_prefix: datatalent
       # Bucket
@@ -134,23 +134,20 @@ jobs:
       TF_VAR_create_external_tables: "true"
       # Compute (INFRA-04)
       TF_VAR_compute_job_name: datatalent-ingestion-job
-      TF_VAR_compute_image: europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
+      TF_VAR_compute_image: us-central1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest
       TF_VAR_compute_memory: 512Mi
       TF_VAR_compute_cpu: "1"
-      TF_VAR_compute_timeout_seconds: "1800"
+      TF_VAR_compute_timeout_seconds: "3600"
       TF_VAR_compute_max_retries: "1"
       # Secrets (INFRA-06)
       TF_VAR_secret_ft_client_id_name: FT_CLIENT_ID
       TF_VAR_secret_ft_client_secret_name: FT_CLIENT_SECRET
       TF_VAR_secret_datagouv_api_key_name: DATAGOUV_API_KEY
       TF_VAR_secret_jooble_api_key_name: JOOBLE_API_KEY
-      # Schedulers — toutes les fréquences explicites
-      TF_VAR_scheduler_france_travail_schedule: "0 6 * * 1"
-      TF_VAR_scheduler_apec_schedule: "0 7 * * 1"
-      TF_VAR_scheduler_jooble_schedule: "0 8 * * 1"
+      # Schedulers — 3 jobs (dans le free tier)
+      TF_VAR_scheduler_ingestion_weekly_schedule: "0 6 * * 1"
+      TF_VAR_scheduler_ingestion_monthly_schedule: "0 3 1 * *"
       TF_VAR_scheduler_dbt_schedule: "0 9 * * 1"
-      TF_VAR_scheduler_sirene_schedule: "0 3 1 * *"
-      TF_VAR_scheduler_geo_schedule: "0 4 1 * *"
       # Cloud Logging retention
       TF_VAR_log_retention_days: "60"
       # CI SA pour push Artifact Registry (même SA que WIF)
@@ -158,7 +155,7 @@ jobs:
       # Cloud Run Job dbt (false tant que l'image dbt n'est pas dans Artifact Registry)
       TF_VAR_create_dbt_job: "true"
       TF_VAR_dbt_job_name: datatalent-dbt-job
-      TF_VAR_dbt_compute_image: europe-west1-docker.pkg.dev/cartographie-data-engineer/datatalent/dbt:latest
+      TF_VAR_dbt_compute_image: us-central1-docker.pkg.dev/cartographie-data-engineer/datatalent/dbt:latest
       TF_VAR_dbt_memory: 1Gi
       TF_VAR_dbt_cpu: "1"
       TF_VAR_dbt_timeout_seconds: "1800"
@@ -494,25 +491,17 @@ jobs:
             echo "Skip logging retention import (TF_VAR_manage_log_retention=false)."
           fi
 
-          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["france_travail"]' \
-            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-france_travail" \
-            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-france_travail --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["weekly"]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-weekly" \
+            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-weekly --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
 
-          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["sirene"]' \
-            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-sirene" \
-            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-sirene --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["monthly"]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-monthly" \
+            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-monthly --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
 
-          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["geo"]' \
-            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-geo" \
-            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-geo --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
-
-          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["apec"]' \
-            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-apec" \
-            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-apec --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
-
-          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.ingestion["jooble"]' \
-            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/${TF_VAR_scheduler_job_name_prefix}-jooble" \
-            "gcloud scheduler jobs describe ${TF_VAR_scheduler_job_name_prefix}-jooble --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
+          import_if_needed 'module.scheduler[0].google_cloud_scheduler_job.dbt[0]' \
+            "projects/${TF_VAR_project_id}/locations/${TF_VAR_region}/jobs/datatalent-dbt" \
+            "gcloud scheduler jobs describe datatalent-dbt --location=${TF_VAR_region} --project=${TF_VAR_project_id} >/dev/null 2>&1"
 
       # ── 13. Terraform Apply (merge main uniquement) ──────────────────────────
       - name: Terraform Apply
@@ -528,7 +517,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
-      AR_REGION: europe-west1
+      AR_REGION: us-central1
       AR_REPO: datatalent
 
     steps:

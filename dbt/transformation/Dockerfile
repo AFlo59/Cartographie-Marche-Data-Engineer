@@ -6,11 +6,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.txt ./requirements.txt
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# Copy only package manifests — dbt deps layer cached independently from model/macro changes
+COPY packages.yml dbt_project.yml profiles.yml ./
+RUN dbt deps --project-dir /app --profiles-dir /app
 
 COPY . .
-RUN dbt deps --project-dir /app --profiles-dir /app
 
 ENV DBT_PROFILES_DIR=/app
 

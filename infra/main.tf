@@ -165,11 +165,8 @@ module "scheduler" {
   scheduler_service_account_email = local.scheduler_service_account_email
   job_name_prefix                 = var.scheduler_job_name_prefix
   time_zone                       = var.scheduler_time_zone
-  france_travail_schedule         = var.scheduler_france_travail_schedule
-  sirene_schedule                 = var.scheduler_sirene_schedule
-  geo_schedule                    = var.scheduler_geo_schedule
-  apec_schedule                   = var.scheduler_apec_schedule
-  jooble_schedule                 = var.scheduler_jooble_schedule
+  ingestion_weekly_schedule       = var.scheduler_ingestion_weekly_schedule
+  ingestion_monthly_schedule      = var.scheduler_ingestion_monthly_schedule
   create_dbt_scheduler            = var.create_dbt_job
   dbt_job_name                    = var.dbt_job_name
   dbt_schedule                    = var.scheduler_dbt_schedule

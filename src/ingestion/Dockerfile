@@ -5,11 +5,8 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        bash \
-        curl \
         gcc \
         g++ \
-        git \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,7 +16,8 @@ WORKDIR /workspace
 COPY requirements.txt /tmp/requirements.txt
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /tmp/requirements.txt
+    && pip install --no-cache-dir -r /tmp/requirements.txt \
+    && apt-get purge -y --auto-remove gcc g++
 
 COPY . /workspace/
 
