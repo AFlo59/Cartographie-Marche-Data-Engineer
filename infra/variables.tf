@@ -52,39 +52,39 @@ variable "bucket_lifecycle_delete_age_days" {
 }
 
 variable "bucket_nearline_age_days" {
-  description = "Transition raw objects to NEARLINE storage class after N days (~40% cheaper for Sirene multi-Go). Default: 30 (enabled). Override to null in terraform.tfvars to disable."
+  description = "Transition raw objects to NEARLINE storage class after N days. Disabled by default (null) — NEARLINE minimum billing is 30 days, which conflicts with the 30-day delete rules."
+  type        = number
+  default     = null
+}
+
+variable "bucket_geo_prefix_delete_age_days" {
+  description = "Delete raw/geo/ objects older than N days. Default: 31 (1 snapshot mensuel). Override to null to disable."
+  type        = number
+  default     = 31
+}
+
+variable "bucket_france_travail_prefix_delete_age_days" {
+  description = "Delete raw/france_travail/ objects older than N days. Default: 30 (~4 semaines de partitions hebdomadaires). Override to null to disable."
   type        = number
   default     = 30
 }
 
-variable "bucket_geo_prefix_delete_age_days" {
-  description = "Delete raw/geo/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Override to null to disable."
-  type        = number
-  default     = 60
-}
-
-variable "bucket_france_travail_prefix_delete_age_days" {
-  description = "Delete raw/france_travail/ objects older than N days. Default: 60 (keeps ~2 months of daily partitions). Override to null to disable."
-  type        = number
-  default     = 60
-}
-
 variable "bucket_apec_prefix_delete_age_days" {
-  description = "Delete raw/apec/ objects older than N days. Default: 60 (~8 weekly partitions). Override to null to disable."
+  description = "Delete raw/apec/ objects older than N days. Default: 30 (~4 partitions hebdomadaires). Override to null to disable."
   type        = number
-  default     = 60
+  default     = 30
 }
 
 variable "bucket_sirene_prefix_delete_age_days" {
-  description = "Delete raw/sirene/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Override to null to disable."
+  description = "Delete raw/sirene/ objects older than N days. Default: 31 (1 snapshot mensuel). Override to null to disable."
   type        = number
-  default     = 60
+  default     = 31
 }
 
 variable "bucket_jooble_prefix_delete_age_days" {
-  description = "Delete raw/jooble/ objects older than N days. Default: 60 (~8 weekly partitions). Override to null to disable."
+  description = "Delete raw/jooble/ objects older than N days. Default: 30 (~4 partitions hebdomadaires). Override to null to disable."
   type        = number
-  default     = 60
+  default     = 30
 }
 
 variable "ingestion_service_account_email" {

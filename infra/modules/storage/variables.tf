@@ -32,13 +32,13 @@ variable "lifecycle_delete_age_days" {
 }
 
 variable "nearline_transition_age_days" {
-  description = "Transition objects to NEARLINE storage class after N days (~40% cheaper). Null (module default) disables — controlled by root var bucket_nearline_age_days (default 30)."
+  description = "Transition objects to NEARLINE storage class after N days. Null disables (default) — NEARLINE minimum billing is 30 days, conflicts with 30-day delete rules."
   type        = number
   default     = null
 }
 
 variable "geo_prefix_delete_age_days" {
-  description = "Delete raw/geo/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Null disables."
+  description = "Delete raw/geo/ objects older than N days. Default: 31 (1 snapshot mensuel). Null disables."
   type        = number
   default     = null
 }
@@ -56,9 +56,9 @@ variable "france_travail_prefix" {
 }
 
 variable "france_travail_prefix_delete_age_days" {
-  description = "Delete raw/france_travail/ objects older than N days. Default: 60 (~2 months of daily partitions). Null disables."
+  description = "Delete raw/france_travail/ objects older than N days. Default: 30 (~4 semaines de partitions hebdomadaires). Null disables."
   type        = number
-  default     = 60
+  default     = 30
 }
 
 variable "sirene_prefix" {
@@ -68,9 +68,9 @@ variable "sirene_prefix" {
 }
 
 variable "sirene_prefix_delete_age_days" {
-  description = "Delete raw/sirene/ objects older than N days. Default: 60 (keeps last 2 monthly snapshots). Null disables."
+  description = "Delete raw/sirene/ objects older than N days. Default: 31 (1 snapshot mensuel). Null disables."
   type        = number
-  default     = 60
+  default     = 31
 }
 
 variable "apec_prefix" {
@@ -80,9 +80,9 @@ variable "apec_prefix" {
 }
 
 variable "apec_prefix_delete_age_days" {
-  description = "Delete raw/apec/ objects older than N days. Default: 60 (~8 weeks of weekly partitions). Null disables."
+  description = "Delete raw/apec/ objects older than N days. Default: 30 (~4 partitions hebdomadaires). Null disables."
   type        = number
-  default     = 60
+  default     = 30
 }
 
 variable "jooble_prefix" {
@@ -92,9 +92,9 @@ variable "jooble_prefix" {
 }
 
 variable "jooble_prefix_delete_age_days" {
-  description = "Delete raw/jooble/ objects older than N days. Default: 60 (~2 months of daily partitions). Null disables."
+  description = "Delete raw/jooble/ objects older than N days. Default: 30 (~4 partitions hebdomadaires). Null disables."
   type        = number
-  default     = 60
+  default     = 30
 }
 
 variable "ingestion_sa_email" {

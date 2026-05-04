@@ -104,10 +104,11 @@ jobs:
       TF_VAR_bucket_versioning_enabled: "true"
       TF_VAR_bucket_force_destroy: "false"
       TF_VAR_bucket_lifecycle_delete_age_days: "365"
-      TF_VAR_bucket_nearline_age_days: "30"
-      TF_VAR_bucket_geo_prefix_delete_age_days: "60"
-      TF_VAR_bucket_france_travail_prefix_delete_age_days: "60"
-      TF_VAR_bucket_sirene_prefix_delete_age_days: "60"
+      TF_VAR_bucket_geo_prefix_delete_age_days: "31"
+      TF_VAR_bucket_france_travail_prefix_delete_age_days: "30"
+      TF_VAR_bucket_sirene_prefix_delete_age_days: "31"
+      TF_VAR_bucket_apec_prefix_delete_age_days: "30"
+      TF_VAR_bucket_jooble_prefix_delete_age_days: "30"
       # BigQuery
       TF_VAR_raw_dataset_id: raw
       TF_VAR_staging_dataset_id: staging
@@ -119,8 +120,6 @@ jobs:
       TF_VAR_ingestion_geo_prefix: raw/geo/
       TF_VAR_ingestion_apec_prefix: raw/apec/
       TF_VAR_ingestion_jooble_prefix: raw/jooble/
-      TF_VAR_bucket_apec_prefix_delete_age_days: "60"
-      TF_VAR_bucket_jooble_prefix_delete_age_days: "60"
       # Service accounts (nécessaire pour maintenir les IAM bindings en state)
       TF_VAR_ingestion_service_account_email: ingestion-sa@cartographie-data-engineer.iam.gserviceaccount.com
       TF_VAR_dbt_service_account_email: dbt-sa@cartographie-data-engineer.iam.gserviceaccount.com
@@ -130,9 +129,7 @@ jobs:
       TF_VAR_manage_project_job_user_bindings: "false"
       # Cloud Run Job + Scheduler (false tant que l'image n'est pas dans Artifact Registry)
       TF_VAR_create_compute_job: "true"
-      # External Tables BQ — false pendant migration US (bucket vide, autodetect échouerait)
-      # Remettre à "true" après restauration des données GCS (étape 5 migration)
-      TF_VAR_create_external_tables: "false"
+      TF_VAR_create_external_tables: "true"
       # Compute (INFRA-04)
       TF_VAR_compute_job_name: datatalent-ingestion-job
       TF_VAR_compute_image: us-central1-docker.pkg.dev/cartographie-data-engineer/datatalent/ingestion:latest

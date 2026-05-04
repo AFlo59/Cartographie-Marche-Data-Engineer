@@ -16,13 +16,13 @@ project_prefix = "datatalent"
 bucket_versioning_enabled        = true
 bucket_force_destroy             = false
 bucket_lifecycle_delete_age_days = 365
-bucket_nearline_age_days         = 30
-# Purge par source — 60 jours (latest + 1 snapshot précédent). null = désactivé.
-bucket_france_travail_prefix_delete_age_days = 60  # ~8 partitions hebdomadaires
-bucket_apec_prefix_delete_age_days           = 60  # ~8 partitions hebdomadaires
-bucket_jooble_prefix_delete_age_days         = 60  # ~8 partitions hebdomadaires
-bucket_sirene_prefix_delete_age_days         = 60  # 2 snapshots mensuels
-bucket_geo_prefix_delete_age_days            = 60  # 2 snapshots mensuels
+bucket_nearline_age_days         = null  # Désactivé — conflit avec delete à 30j (NEARLINE = facturation min 30j)
+# Purge par source — 30/31 jours (1 mois). null = désactivé.
+bucket_france_travail_prefix_delete_age_days = 30  # ~4 partitions hebdomadaires
+bucket_apec_prefix_delete_age_days           = 30  # ~4 partitions hebdomadaires
+bucket_jooble_prefix_delete_age_days         = 30  # ~4 partitions hebdomadaires
+bucket_sirene_prefix_delete_age_days         = 31  # 1 snapshot mensuel
+bucket_geo_prefix_delete_age_days            = 31  # 1 snapshot mensuel
 
 raw_dataset_id          = "raw"
 staging_dataset_id      = "staging"
@@ -64,8 +64,8 @@ ci_service_account_email = ""
 
 # Artifact Registry — repository Docker (créé automatiquement, défaut: "datatalent")
 # artifact_registry_repository_id = "datatalent"
-# Nettoyage auto Artifact Registry : conserve N versions récentes par image (latest + N-1)
-artifact_registry_keep_recent_versions = 2
+# Nettoyage auto Artifact Registry : conserve N versions récentes par image (latest uniquement)
+artifact_registry_keep_recent_versions = 1
 # true = simulation sans suppression; false = suppression effective
 artifact_registry_cleanup_dry_run = false
 # Age minimal avant suppression d'une version non retenue par la policy KEEP.
