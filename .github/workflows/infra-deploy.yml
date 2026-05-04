@@ -86,8 +86,8 @@ jobs:
             dbt compile --project-dir /app --profiles-dir /app
 
   terraform:
-    needs: [ingestion-verify, dbt-verify]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: [ingestion-verify, dbt-verify, push-images]
+    if: always() && needs.ingestion-verify.result == 'success' && needs.dbt-verify.result == 'success' && (needs.push-images.result == 'success' || needs.push-images.result == 'skipped') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     name: Terraform ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'Apply' || 'Plan' }}
     runs-on: ubuntu-latest
 
@@ -510,11 +510,11 @@ jobs:
         working-directory: infra
         run: terraform apply -auto-approve
 
-  # ── Push images vers Artifact Registry (après apply, main uniquement) ────────
+  # ── Push images vers Artifact Registry (avant apply, main uniquement) ────────
   push-images:
-    needs: [terraform]
+    needs: [ingestion-verify, dbt-verify]
     name: Push ingestion & dbt images to Artifact Registry
-    if: always() && needs.terraform.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID != '' && secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
