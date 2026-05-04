@@ -1,7 +1,7 @@
 # Setup dbt BigQuery (GCP)
 
-Ce document reste un resume rapide.
-Pour un parcours complet et ordonne (amont GCP, setup local, run local, run Docker), utiliser :
+Ce document reste un résumé rapide.
+Pour un parcours complet et ordonné (amont GCP, setup local, run local, run Docker), utiliser :
 
 - `setup_guide.md`
 
@@ -22,13 +22,13 @@ docker compose --profile dbt run --rm dbt dbt test
 Depuis la racine du repo :
 
 ```bash
-# Variables exemple
-export GCP_PROJECT_ID=your-gcp-project-id
-export GCP_REGION=europe-west1
-export DBT_IMAGE=${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/datatalent/dbt:latest
+# Variables — adapter à votre projet
+PROJECT_ID="votre-projet-gcp"
+REGION="europe-west1"
+DBT_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/datatalent/dbt:latest"
 
 # Auth Docker vers Artifact Registry
-gcloud auth configure-docker ${GCP_REGION}-docker.pkg.dev
+gcloud auth configure-docker ${REGION}-docker.pkg.dev
 
 # Build image dbt
 docker build -f dbt/transformation/Dockerfile -t ${DBT_IMAGE} dbt/transformation
@@ -37,7 +37,7 @@ docker build -f dbt/transformation/Dockerfile -t ${DBT_IMAGE} dbt/transformation
 docker push ${DBT_IMAGE}
 ```
 
-Prerequis IAM minimaux pour push :
+Prérequis IAM minimaux pour push :
 
 - `roles/artifactregistry.writer` sur le repository Artifact Registry
 - repository Artifact Registry existant (ex: `datatalent`)

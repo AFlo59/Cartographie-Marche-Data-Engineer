@@ -1,11 +1,11 @@
-# Run dbt en local (sans Docker)
+# Exécuter dbt en local (sans Docker)
 
-Ce guide couvre l'execution dbt depuis votre machine avec Python local.
+Ce guide couvre l'exécution dbt depuis votre machine avec Python local.
 
-## Prerequis
+## Prérequis
 
 - Python 3.11+
-- acces GCP configure (voir `gcp_manual_setup.md`)
+- accès GCP configuré (voir `gcp_manual_setup.md`)
 - variables `.env` disponibles dans votre shell
 
 ## 1. Se placer dans le dossier dbt
@@ -14,7 +14,7 @@ Ce guide couvre l'execution dbt depuis votre machine avec Python local.
 cd dbt/transformation
 ```
 
-## 2. Creer un environnement Python local
+## 2. Créer un environnement Python local
 
 ```bash
 python -m venv .venv
@@ -47,7 +47,7 @@ Variable optionnelle :
 
 - `DBT_BIGQUERY_PROJECT` (si vous voulez surcharger `GCP_PROJECT_ID`)
 
-## 4. Verifier dbt
+## 4. Vérifier dbt
 
 ```bash
 dbt --version
@@ -55,7 +55,7 @@ dbt debug --profiles-dir .
 dbt parse --profiles-dir .
 ```
 
-## 5. Executer les transformations
+## 5. Exécuter les transformations
 
 ```bash
 dbt run --profiles-dir .

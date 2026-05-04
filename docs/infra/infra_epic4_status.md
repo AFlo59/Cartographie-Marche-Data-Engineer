@@ -5,7 +5,7 @@
 - ✅ **INFRA-01** : Choix du cloud (GCP) documenté dans le README.
 - ✅ **INFRA-02** : Module bucket raw (`infra/modules/storage`) et bucket créé dans GCP. Lifecycle enrichi :
   - Transition NEARLINE à 30j (~40% d'économie Sirene)
-  - **Purge automatique par préfixe à 60j** (france_travail, sirene, geo) — conserve latest + 1 snapshot mensuel précédent
+  - **Purge automatique par préfixe à 60j** (france_travail, apec, jooble, sirene, geo) — conserve latest + 1 snapshot mensuel précédent
   - Suppression globale à 365j (filet de sécurité)
 - ✅ **INFRA-03** : Module datasets raw/staging/marts (`infra/modules/warehouse`) et datasets créés dans GCP. 3 External Tables BigQuery définies : `sirene_etablissements`, `sirene_unites_legales`, `france_travail_offres` — pointent sur les Parquet GCS, aucun stockage BQ facturé pour les données raw. Activation conditionnée par `var.create_external_tables` (passé `true` en CI après première ingestion).
 - ✅ **INFRA-04** : Module compute Cloud Run Job (`infra/modules/compute`).
@@ -15,8 +15,10 @@
   - Artifact Registry repo `datatalent` avec cleanup policy : **garder 2 versions** (latest + précédente), suppression des versions excédentaires avec délai minimal puis purge asynchrone côté GCP
   - **Rétention logs Cloud Logging** : bucket `_Default` configuré à 60j (`TF_VAR_manage_log_retention=true`)
   - CI SA reçoit `roles/artifactregistry.writer` et `roles/iam.serviceAccountUser` via Terraform
-- ✅ **INFRA-05** : Module scheduler (`infra/modules/scheduler`) avec 3 jobs cron actifs :
-  - France Travail quotidien `0 6 * * *`
+- ✅ **INFRA-05** : Module scheduler (`infra/modules/scheduler`) avec 5 jobs cron actifs :
+  - France Travail hebdomadaire lundi `0 6 * * 1`
+  - APEC hebdomadaire lundi `0 7 * * 1`
+  - Jooble hebdomadaire lundi `0 8 * * 1`
   - Sirene mensuel `0 3 1 * *`
   - Géo mensuel `0 4 1 * *`
   - Scheduler conditionné par `var.create_compute_job` (actif)
@@ -41,7 +43,7 @@ push main
 ```
 
 | Job | Rôle | Condition |
-|-----|------|-----------|
+| --- | --- | --- |
 | `ingestion-verify` | Build Dockerfile ingestion (vérification validité) | Toujours |
 | `dbt-verify` | Build image dbt + `dbt parse` + `dbt compile` | Toujours |
 | `terraform` | `terraform apply` — bloqué si verify échoue | needs: [ingestion-verify, dbt-verify] |
@@ -55,7 +57,7 @@ Sur **push develop** : verify + init + validate (pas de plan, pas d'apply).
 ## Variables Terraform actives en CI (`infra-deploy.yml`)
 
 | Variable | Valeur en CI | Description |
-|----------|-------------|-------------|
+| --- | --- | --- |
 | `TF_VAR_create_compute_job` | `"true"` | Cloud Run Job ingestion actif |
 | `TF_VAR_create_dbt_job` | `"true"` | Cloud Run Job dbt actif |
 | `TF_VAR_create_external_tables` | `"true"` | External Tables BQ actives |
@@ -71,7 +73,7 @@ Sur **push develop** : verify + init + validate (pas de plan, pas d'apply).
 Trois conteneurs sont disponibles dans `docker-compose.yml` :
 
 - `infra-iac` : `infra/Dockerfile` — image outillée (`terraform` + `tofu` + `gcloud`) pour exécuter l'IaC
-- `ingestion-jobs` : `src/ingestion/Dockerfile` — image Python pour les scripts d'ingestion (`france_travail`, `sirene`, `geo`, `all`)
+- `ingestion-jobs` : `src/ingestion/Dockerfile` — image Python pour les scripts d'ingestion (`france_travail`, `apec`, `jooble`, `sirene`, `geo`, `all`)
 - `dbt` (profile dbt) : `dbt/transformation/Dockerfile` — image dbt-bigquery pour les transformations
 
 Guides d'exécution :
@@ -174,7 +176,7 @@ Cible : < 5€/mois hors free tier GCP avec les optimisations en place.
   - Bucket raw : `${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw`
   - Datasets : `raw`, `staging`, `marts`
   - Cloud Run Jobs : `datatalent-ingestion-job`, `datatalent-dbt-job`
-  - Schedulers : `datatalent-ingestion-france_travail`, `datatalent-ingestion-sirene`, `datatalent-ingestion-geo`
+  - Schedulers : `datatalent-ingestion-france_travail`, `datatalent-ingestion-apec`, `datatalent-ingestion-jooble`, `datatalent-ingestion-sirene`, `datatalent-ingestion-geo`
   - Artifact Registry : repo `datatalent` (region `${TF_VAR_region}`)
 
 ---
@@ -186,4 +188,4 @@ Cible : < 5€/mois hors free tier GCP avec les optimisations en place.
 
 ---
 
-**Dernière mise à jour** : Avril 2026
+**Dernière mise à jour** : Mai 2026

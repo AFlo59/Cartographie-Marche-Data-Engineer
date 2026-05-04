@@ -1,68 +1,70 @@
-# Guide de setup — point d'entrée unique
+# Guide de setup â€” point d'entrÃ©e unique
 
-Ce document est le point d'entrée principal pour monter l'infrastructure du projet sans se perdre entre plusieurs fichiers.
+Ce document est le point d'entrÃ©e principal pour monter l'infrastructure du projet sans se perdre entre plusieurs fichiers.
 
 ## Objectif
 
-Obtenir un projet GCP prêt, une exécution Terraform opérationnelle, puis un mode de déploiement clair selon le contexte :
+Obtenir un projet GCP prÃªt, une exÃ©cution Terraform opÃ©rationnelle, puis un mode de dÃ©ploiement clair selon le contexte :
 
 - setup manuel GCP une seule fois,
-- exécution infra via Docker,
-- ou exécution infra en installation locale,
-- avec des guides séparés pour les options avancées.
+- exÃ©cution infra via Docker,
+- ou exÃ©cution infra en installation locale,
+- avec des guides sÃ©parÃ©s pour les options avancÃ©es.
 
-## Règle d'usage
+## RÃ¨gle d'usage
 
-- **Chemin principal de release/déploiement dans le périmètre infra actuel** : GitHub Actions via merge sur `main` pour `terraform plan/apply`.
-- **Docker et terminal local** : utilisés surtout pour le développement, la validation, le debug et les tests manuels avant ouverture de PR.
-- **Cloud Shell / setup GCP manuel** : utilisé pour les opérations one-shot d'initialisation et d'administration.
+- **Chemin principal de release/dÃ©ploiement dans le pÃ©rimÃ¨tre infra actuel** : GitHub Actions via merge sur `main` pour `terraform plan/apply`.
+- **Docker et terminal local** : utilisÃ©s surtout pour le dÃ©veloppement, la validation, le debug et les tests manuels avant ouverture de PR.
+- **Cloud Shell / setup GCP manuel** : utilisÃ© pour les opÃ©rations one-shot d'initialisation et d'administration.
 
-Note de périmètre :
-- ce guide couvre l'infrastructure GCP actuelle (`storage`, `warehouse`, `compute`, `scheduler`, `secrets`, IAM associé),
-- il ne remplace pas le backlog complet INFRA-09 côté qualité Python et dbt, encore partiellement à compléter.
-- côté structure repo, le futur projet dbt est désormais attendu dans `dbt/transformation/` plutôt qu'avec un dossier racine `models/`.
+Note de pÃ©rimÃ¨tre :
 
-## Ordre recommandé
+- ce guide couvre l'infrastructure GCP actuelle (`storage`, `warehouse`, `compute`, `scheduler`, `secrets`, IAM associÃ©),
+- il ne remplace pas le backlog complet INFRA-09 cÃ´tÃ© qualitÃ© Python et dbt, encore partiellement Ã  complÃ©ter,
+- cÃ´tÃ© structure repo, le projet dbt est dans `dbt/transformation/`.
 
-### 1. Préparer GCP une seule fois
+## Ordre recommandÃ©
+
+### 1. PrÃ©parer GCP une seule fois
 
 Commencer par le setup manuel GCP dans Cloud Shell :
+
 - activation des APIs,
-- création des service accounts,
-- droits du compte de déploiement Terraform,
-- vérifications de base.
+- crÃ©ation des service accounts,
+- droits du compte de dÃ©ploiement Terraform,
+- vÃ©rifications de base.
 
 Guide : [docs/platform/gcp_terminal_setup.md](platform/gcp_terminal_setup.md)
 
-### 2. Vérifier les rôles IAM
+### 2. VÃ©rifier les rÃ´les IAM
 
-Pour savoir quel compte reçoit quel rôle, ce qui est déjà géré par Terraform, et ce qui doit rester manuel :
+Pour savoir quel compte reÃ§oit quel rÃ´le, ce qui est dÃ©jÃ  gÃ©rÃ© par Terraform, et ce qui doit rester manuel :
 
 Guide : [docs/infra/iam_roles.md](infra/iam_roles.md)
 
 ### 3. Charger les secrets runtime
 
-Terraform crée les conteneurs Secret Manager, mais les valeurs réelles des secrets sont ajoutées manuellement.
+Terraform crÃ©e les conteneurs Secret Manager, mais les valeurs rÃ©elles des secrets sont ajoutÃ©es manuellement.
 
 Guide : [docs/platform/secret_manager_setup.md](platform/secret_manager_setup.md)
 
-### 4. Choisir un mode d'exécution Terraform
+### 4. Choisir un mode d'exÃ©cution Terraform
 
-#### Option A — Docker recommandé
+#### Option A â€” Docker recommandÃ©
 
-À privilégier si vous ne voulez pas installer Terraform et gcloud localement.
+Ã€ privilÃ©gier si vous ne voulez pas installer Terraform et gcloud localement.
 
 Guide : [docs/infra/docker_run_commands.md](infra/docker_run_commands.md)
 
-#### Option B — Installation locale
+#### Option B â€” Installation locale
 
-À utiliser si Terraform, gcloud et les dépendances sont déjà installés sur votre poste.
+Ã€ utiliser si Terraform, gcloud et les dÃ©pendances sont dÃ©jÃ  installÃ©s sur votre poste.
 
 Guide : [docs/infra/manual_commands.md](infra/manual_commands.md)
 
-### 5. Configurer le déploiement CI GitHub Actions
+### 5. Configurer le dÃ©ploiement CI GitHub Actions
 
-Pour l'authentification GitHub vers GCP sans clé JSON, utiliser WIF. C'est le chemin cible de release et de déploiement automatique **de l'infrastructure Terraform** dans le périmètre actuel.
+Pour l'authentification GitHub vers GCP sans clÃ© JSON, utiliser WIF. C'est le chemin cible de release et de dÃ©ploiement automatique **de l'infrastructure Terraform** dans le pÃ©rimÃ¨tre actuel.
 
 Guide : [docs/cicd/github_wif_setup.md](cicd/github_wif_setup.md)
 
@@ -73,59 +75,62 @@ Guide : [docs/cicd/github_wif_setup.md](cicd/github_wif_setup.md)
 1. [Setup GCP manuel](platform/gcp_terminal_setup.md)
 2. [Revue IAM](infra/iam_roles.md)
 3. [Setup Secret Manager](platform/secret_manager_setup.md)
-4. [Exécution Docker](infra/docker_run_commands.md)
+4. [ExÃ©cution Docker](infra/docker_run_commands.md)
 5. [Setup WIF GitHub](cicd/github_wif_setup.md)
 
 ### Travailler en local au quotidien
 
-1. Vérifier `.env`
+1. VÃ©rifier `.env`
 2. Choisir Docker ou installation locale
-3. Lancer `validate` ? `plan` ? `apply`
-4. Vérifier les ressources créées
-5. En cas d'erreur `409 already exists`, suivre la section dédiée "Gérer une erreur 409" du guide local
+3. Lancer `validate` â†’ `plan` â†’ `apply`
+4. VÃ©rifier les ressources crÃ©Ã©es
+5. En cas d'erreur `409 already exists`, suivre la section dÃ©diÃ©e "GÃ©rer une erreur 409" du guide local
 
 Voir :
+
 - [docs/infra/docker_run_commands.md](infra/docker_run_commands.md)
 - [docs/infra/manual_commands.md](infra/manual_commands.md)
 
-### Préparer la CI
+### PrÃ©parer la CI
 
 1. Activer une fois les APIs GCP requises (`storage`, `bigquery`, `run`, `cloudscheduler`, `secretmanager`)
-2. Vérifier les rôles de `terraform-deployer-sa`
-3. Vérifier le binding `iam.serviceAccountUser`
+2. VÃ©rifier les rÃ´les de `terraform-deployer-sa`
+3. VÃ©rifier le binding `iam.serviceAccountUser`
 4. Configurer WIF
-5. Vérifier le workflow GitHub Actions
+5. VÃ©rifier le workflow GitHub Actions
 
-Point d'attention : si les APIs ne sont pas activées, le workflow échoue avant `terraform apply` avec `Required API is disabled`, même si l'authentification WIF fonctionne correctement.
+Point d'attention : si les APIs ne sont pas activÃ©es, le workflow Ã©choue avant `terraform apply` avec `Required API is disabled`, mÃªme si l'authentification WIF fonctionne correctement.
 
 Voir :
+
 - [docs/infra/iam_roles.md](infra/iam_roles.md)
 - [docs/platform/gcp_terminal_setup.md](platform/gcp_terminal_setup.md)
 - [docs/cicd/github_wif_setup.md](cicd/github_wif_setup.md)
 
 ## Cartographie des docs
 
-- [docs/setup_guide.md](setup_guide.md) : point d'entrée et ordre global
+- [docs/setup_guide.md](setup_guide.md) : point d'entrÃ©e et ordre global
 - [docs/platform/gcp_terminal_setup.md](platform/gcp_terminal_setup.md) : setup manuel GCP one-shot
-- [docs/infra/docker_run_commands.md](infra/docker_run_commands.md) : exécution Terraform via Docker
-- [docs/infra/manual_commands.md](infra/manual_commands.md) : exécution Terraform avec outils installés localement
-- [docs/platform/secret_manager_setup.md](platform/secret_manager_setup.md) : création et alimentation des secrets
-- [docs/cicd/github_wif_setup.md](cicd/github_wif_setup.md) : CI GitHub ? GCP via WIF
-- [docs/infra/iam_roles.md](infra/iam_roles.md) : matrice des rôles et permissions
-- [docs/cicd/deployment_orchestration.md](cicd/deployment_orchestration.md) : vue d'ensemble de l'enchaînement infra ? ingestion ? dbt ? dashboard
-- [docs/infra/infra_epic4_status.md](infra/infra_epic4_status.md) : état d'avancement des tickets infra
+- [docs/infra/docker_run_commands.md](infra/docker_run_commands.md) : exÃ©cution Terraform via Docker
+- [docs/infra/manual_commands.md](infra/manual_commands.md) : exÃ©cution Terraform avec outils installÃ©s localement
+- [docs/platform/secret_manager_setup.md](platform/secret_manager_setup.md) : crÃ©ation et alimentation des secrets
+- [docs/cicd/github_wif_setup.md](cicd/github_wif_setup.md) : CI GitHub â†’ GCP via WIF
+- [docs/infra/iam_roles.md](infra/iam_roles.md) : matrice des rÃ´les et permissions
+- [docs/cicd/deployment_orchestration.md](cicd/deployment_orchestration.md) : vue d'ensemble de l'enchaÃ®nement infra â†’ ingestion â†’ dbt â†’ dashboard
+- [docs/infra/infra_epic4_status.md](infra/infra_epic4_status.md) : Ã©tat d'avancement des tickets infra
 
 ## Structure repo retenue pour la suite
 
 - `src/ingestion/` pour l'EPIC ingestion,
-- `dbt/transformation/` pour le futur projet dbt et son conteneur dédié,
+- `dbt/transformation/` pour le projet dbt et son conteneur dÃ©diÃ©,
 - `infra/` pour Terraform,
-- `docs/` pour la documentation opérationnelle.
+- `docs/` pour la documentation opÃ©rationnelle.
 
-## Règle de maintenance documentaire
+## RÃ¨gle de maintenance documentaire
 
-Pour éviter les doublons :
+Pour Ã©viter les doublons :
+
 - les commandes one-shot GCP restent dans [docs/platform/gcp_terminal_setup.md](platform/gcp_terminal_setup.md),
-- les commandes récurrentes Docker restent dans [docs/infra/docker_run_commands.md](infra/docker_run_commands.md),
-- les commandes récurrentes sans Docker restent dans [docs/infra/manual_commands.md](infra/manual_commands.md),
-- les options avancées ou sensibles ont leur sous-guide dédié.
+- les commandes rÃ©currentes Docker restent dans [docs/infra/docker_run_commands.md](infra/docker_run_commands.md),
+- les commandes rÃ©currentes sans Docker restent dans [docs/infra/manual_commands.md](infra/manual_commands.md),
+- les options avancÃ©es ou sensibles ont leur sous-guide dÃ©diÃ©.
