@@ -41,8 +41,9 @@ WITH cleanup AS (
         SAFE_CAST(latitude  AS FLOAT64) AS latitude,
         SAFE_CAST(longitude AS FLOAT64) AS longitude,
 
-        published_at AS date_publication,
-        validated_at AS date_validation,
+        -- INT64 (ns depuis epoch) dans Parquet → conversion via parse_event_ts UDF
+        DATE(`cartographie-data-engineer.staging.parse_event_ts`(CAST(published_at AS STRING))) AS date_publication,
+        DATE(`cartographie-data-engineer.staging.parse_event_ts`(CAST(validated_at AS STRING))) AS date_validation,
         scraped_at,
 
         COALESCE(
