@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: dim_entreprise
+    description: >
+      Dimension entreprise — référentiel SIRENE consolidé exposé aux outils BI.
+      1 ligne par SIRET (établissement). Clé secondaire : siren (unité légale).
+      Enrichi des libellés métier : tranche effectifs, segment taille.
+      Jointure depuis fct_offres.siret_sirene → dim_entreprise.siret.
+    config:
+      materialized: table
+      contract:
+        enforced: true
+    columns:
+      - name: siret
+        data_type: STRING
+        description: "SIRET de l'établissement (14 chiffres) — clé primaire"
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - unique
+      - name: siren
+        data_type: STRING
+        description: "SIREN de l'unité légale (9 chiffres)"
+      - name: nom_etablissement
+        data_type: STRING
+        description: "Nom de l'établissement (enseigne)"
+      - name: raison_sociale
+        data_type: STRING
+        description: "Raison sociale de l'unité légale"
+      - name: nom_affiche
+        data_type: STRING
+        description: "Nom affiché : établissement si disponible, sinon raison sociale"
+      - name: nom_commune
+        data_type: STRING
+        description: "Nom commune de l'établissement normalisé"
+      - name: code_postal
+        data_type: STRING
+        description: "Code postal de l'établissement"
+      - name: code_insee
+        data_type: STRING
+        description: "Code INSEE commune de l'établissement"
+      - name: code_departement
+        data_type: STRING
+        description: "Code département déduit du code postal"
+      - name: latitude
+        data_type: FLOAT64
+        description: "Latitude WGS84 (Lambert-93 converti)"
+      - name: longitude
+        data_type: FLOAT64
+        description: "Longitude WGS84"
+      - name: code_naf
+        data_type: STRING
+        description: "Code APE/NAF de l'activité principale"
+      - name: code_categorie_juridique
+        data_type: STRING
+        description: "Code catégorie juridique INSEE (ex: 5710 SA, 5499 SARL)"
+      - name: categorie_entreprise
+        data_type: STRING
+        description: "Catégorie INSEE : PME | ETI | GE"
+      - name: tranche_effectifs
+        data_type: STRING
+        description: "Code tranche effectifs INSEE"
+      - name: libelle_tranche_effectifs
+        data_type: STRING
+        description: "Libellé lisible de la tranche effectifs (ex: '20 à 49 salariés')"
+      - name: segment_taille
+        data_type: STRING
+        description: "Segment simplifié pour filtres BI : TPE (<10) | PME (10-199) | ETI (200-499) | GE (500+) | Inconnu"

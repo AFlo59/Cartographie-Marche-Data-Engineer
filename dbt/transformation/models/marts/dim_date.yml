@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: >
+      Dimension calendrier 2020-2031 générée via GENERATE_DATE_ARRAY BigQuery.
+      1 ligne par jour. Clé primaire : date_id (DATE).
+      Jointure depuis fct_offres.date_creation → dim_date.date_id.
+    config:
+      materialized: table
+      contract:
+        enforced: true
+    columns:
+      - name: date_id
+        data_type: DATE
+        description: "Clé primaire — date du jour"
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - unique
+      - name: date_complete
+        data_type: DATE
+        description: "Date complète (doublon de date_id pour clarté BI)"
+      - name: annee
+        data_type: INT64
+        description: "Année (ex: 2024)"
+      - name: trimestre
+        data_type: INT64
+        description: "Trimestre 1-4"
+      - name: mois_num
+        data_type: INT64
+        description: "Mois 1-12"
+      - name: nom_mois_en
+        data_type: STRING
+        description: "Nom du mois en anglais (January…December)"
+      - name: nom_mois_fr
+        data_type: STRING
+        description: "Nom du mois en français (Janvier…Décembre)"
+      - name: semaine_iso
+        data_type: INT64
+        description: "Numéro de semaine ISO 1-53"
+      - name: annee_semaine_iso
+        data_type: INT64
+        description: "Année ISO de la semaine (peut différer de annee en début/fin d'année)"
+      - name: jour_annee
+        data_type: INT64
+        description: "Numéro de jour dans l'année 1-366"
+      - name: jour_mois
+        data_type: INT64
+        description: "Numéro de jour dans le mois 1-31"
+      - name: jour_semaine_num
+        data_type: INT64
+        description: "Jour de semaine : 1=Dimanche, 2=Lundi, …, 7=Samedi"
+      - name: nom_jour_fr
+        data_type: STRING
+        description: "Nom du jour en français (Lundi…Dimanche)"
+      - name: est_jour_ouvrable
+        data_type: BOOL
+        description: "TRUE si lundi à vendredi"
+      - name: annee_mois
+        data_type: STRING
+        description: "Libellé agrégat mois : 'YYYY-MM' (ex: 2024-06)"
+      - name: annee_semaine
+        data_type: STRING
+        description: "Libellé agrégat semaine ISO : 'YYYY-SWW' (ex: 2024-S23)"
+      - name: annee_trimestre
+        data_type: STRING
+        description: "Libellé agrégat trimestre : 'YYYY-TN' (ex: 2024-T2)"

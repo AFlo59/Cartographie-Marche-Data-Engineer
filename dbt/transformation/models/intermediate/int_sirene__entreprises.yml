@@ -1,0 +1,63 @@
+version: 2
+
+models:
+  - name: int_sirene__entreprises
+    description: >
+      Table de référence SIRENE consolidée : 1 ligne par SIRET actif.
+      Joint stg_sirene__etablissements (coordonnées, NAF local) avec stg_sirene__unites_legales
+      (raison sociale, catégorie juridique, taille) sur le SIREN commun.
+      Pré-calcule nom_normalise pour jointure sans SIRET dans les couches enrichies.
+      Refresh mensuel (TABLE, full refresh).
+    config:
+      materialized: table
+    columns:
+      - name: siret
+        data_type: STRING
+        description: "SIRET de l'établissement (14 chiffres)"
+        tests:
+          - not_null
+          - unique
+      - name: siren
+        data_type: STRING
+        description: "SIREN de l'unité légale (9 premiers chiffres du SIRET)"
+        tests:
+          - not_null
+      - name: nom
+        data_type: STRING
+        description: "Nom de l'établissement (enseigne en priorité, sinon raison sociale)"
+      - name: nom_unite_legale
+        data_type: STRING
+        description: "Raison sociale de l'unité légale (denomination ou nom de famille)"
+      - name: nom_commune
+        data_type: STRING
+        description: "Nom de la commune de l'établissement normalisé"
+      - name: code_insee
+        data_type: STRING
+        description: "Code INSEE de la commune (5 chars)"
+      - name: code_postal
+        data_type: STRING
+        description: "Code postal de l'établissement (5 chars)"
+      - name: departement
+        data_type: STRING
+        description: "Code département déduit du code postal"
+      - name: code_naf
+        data_type: STRING
+        description: "Code APE/NAF (établissement en priorité, sinon unité légale)"
+      - name: code_categorie_juridique
+        data_type: STRING
+        description: "Code catégorie juridique (ex: 5710 SA, 5499 SARL)"
+      - name: categorie_entreprise
+        data_type: STRING
+        description: "Catégorie INSEE : PME | ETI | GE"
+      - name: tranche_effectifs
+        data_type: STRING
+        description: "Tranche effectifs salariés (00=0, 53=10000+)"
+      - name: latitude
+        data_type: FLOAT64
+        description: "Latitude WGS84 convertie depuis Lambert-93"
+      - name: longitude
+        data_type: FLOAT64
+        description: "Longitude WGS84 convertie depuis Lambert-93"
+      - name: nom_normalise
+        data_type: STRING
+        description: "Nom normalisé pré-calculé pour jointure sans SIRET (clean_string + suppression séparateurs)"

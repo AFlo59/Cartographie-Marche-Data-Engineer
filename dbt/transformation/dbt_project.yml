@@ -34,6 +34,8 @@ models:
     +persist_docs:
       relation: true
       columns: true
+    +contract:
+          enforced: false
 
     staging:
       +materialized: view    # defaut view, modeles lourds surchargent via config()
@@ -46,6 +48,26 @@ models:
     marts:
       +materialized: view           # passthrough depuis intermediate gold
       +schema: marts
+      # Contract enforced pour les modèles marts :
+      # BigQuery valide le schéma à la compilation (types + présence des colonnes).
+      # Requiert que TOUTES les colonnes soient typées dans le YAML du modèle.
+      # Les modèles sans YAML complet peuvent surcharger avec contract.enforced: false.
+      +contract:
+        enforced: true
+      # Dimensions : TABLE (refresh complet hebdo, données stables)
+      dim_date:
+        +materialized: table
+      dim_territoire:
+        +materialized: table
+      dim_entreprise:
+        +materialized: table
+      # Table de faits : TABLE (UNION ALL des 3 sources, cohérence garantie)
+      fct_offres:
+        +materialized: table
+      # Vue BI : contract non enforced (SELECT * depuis fct_offres + colonnes calculées)
+      mart_marche_emploi:
+        +contract:
+          enforced: false
 
 seeds:
   datatalent_transformation:

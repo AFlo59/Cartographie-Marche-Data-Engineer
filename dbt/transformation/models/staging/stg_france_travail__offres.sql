@@ -48,8 +48,10 @@ WITH cleanup AS (
         {{ clean_string('CAST(entreprise_nom AS STRING)') }}   AS nom,
         {{ clean_siret_valid('entreprise_numeroSiret') }}       AS siret,
 
-        {{ parse_salaire_auto('CAST(salaire_libelle AS STRING)') }} AS salaire,
-        {{ clean_string('CAST(salaire_complement1 AS STRING)') }}   AS bonus,
+        -- Conservation du texte brut salaire pour affichage BI
+        CAST(salaire_libelle AS STRING)                                                    AS salaire_texte_raw,
+        {{ parse_salaire_auto('CAST(salaire_libelle AS STRING)') }}                        AS salaire,
+        {{ clean_string('CAST(salaire_complement1 AS STRING)') }}                          AS bonus,
 
         {{ clean_string('CAST(typeContrat AS STRING)') }}                                  AS code_contrat,
         {{ parse_contrat(clean_string('CAST(typeContratLibelle AS STRING)')) }}            AS contrat,
@@ -59,7 +61,6 @@ WITH cleanup AS (
         {{ clean_string('CAST(experienceExige AS STRING)') }}                              AS experience,
         {{ clean_string('CAST(qualificationCode AS STRING)') }}                            AS qualification,
 
-        -- dt = colonne Hive-partition injectée par BigQuery (STRING "YYYY-MM-DD")
         COALESCE(
             SAFE_CAST(dt AS DATE),
             SAFE.PARSE_DATE('%Y-%m-%d', CAST(dt AS STRING)),
@@ -76,6 +77,23 @@ dedup AS (
         PARTITION BY offre_id
         ORDER BY date_creation DESC NULLS LAST, date_insertion DESC NULLS LAST
     ) = 1
+),
+
+-- Enrichissement métier : champs calculés dérivés du staging propre
+enrich AS (
+    SELECT
+        *,
+        -- Salaire annuel min/max aplati (depuis STRUCT) pour jointures et BI directes
+        salaire.min_annuel                                                              AS salary_min_annual,
+        salaire.max_annuel                                                              AS salary_max_annual,
+        -- Type de contrat normalisé (valeur canonique partagée entre sources)
+        {{ contract_type_normalized('code_contrat', 'contrat.type_contrat') }}         AS contract_type_normalized,
+        -- Score de pertinence Data Engineering
+        {{ relevance_score_data_eng('intitule', 'description') }}                      AS relevance_score
+    FROM dedup
 )
 
-SELECT * FROM dedup
+SELECT
+    *,
+    {{ matching_confidence_data_eng('relevance_score') }} AS matching_confidence
+FROM enrich

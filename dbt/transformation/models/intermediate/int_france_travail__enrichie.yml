@@ -1,0 +1,140 @@
+version: 2
+
+models:
+  - name: int_france_travail__enrichie
+    description: >
+      Gold layer France Travail : offres enrichies géographie + SIRENE.
+      Jointure SIRENE 5 priorités (SIRET exact > nom+CP > nom+INSEE > nom+dept > nom seul).
+      Company name recovery via STRPOS(description, nom_SIRENE) pour les offres sans entreprise.
+      Incremental merge sur offre_id, fenêtre -7j pour partitions tardives.
+    config:
+      materialized: incremental
+      unique_key: offre_id
+      incremental_strategy: merge
+    columns:
+      - name: offre_id
+        data_type: STRING
+        description: "Identifiant unique de l'offre France Travail"
+        tests:
+          - not_null
+          - unique
+      - name: source_offre
+        data_type: STRING
+        description: "Toujours 'france_travail'"
+      - name: intitule
+        data_type: STRING
+        description: "Titre du poste normalisé"
+      - name: description
+        data_type: STRING
+        description: "Description du poste normalisée"
+      - name: date_creation
+        data_type: DATE
+        description: "Date de création de l'offre"
+      - name: date_insertion
+        data_type: DATE
+        description: "Date d'insertion (partition Hive)"
+      - name: code_postal
+        data_type: STRING
+        description: "Code postal normalisé"
+      - name: code_insee
+        data_type: STRING
+        description: "Code INSEE commune"
+      - name: commune
+        data_type: STRING
+        description: "Nom commune (référentiel geo en priorité, sinon source)"
+      - name: departement
+        data_type: STRING
+        description: "Code département (code_postal en priorité)"
+      - name: nom_departement
+        data_type: STRING
+        description: "Nom du département (référentiel)"
+      - name: code_region
+        data_type: STRING
+        description: "Code région INSEE"
+      - name: nom_region
+        data_type: STRING
+        description: "Nom de la région (référentiel)"
+      - name: latitude
+        data_type: FLOAT64
+        description: "Latitude WGS84 (SIRENE Lambert-93 converti)"
+      - name: longitude
+        data_type: FLOAT64
+        description: "Longitude WGS84"
+      - name: nom_entreprise_source
+        data_type: STRING
+        description: "Nom entreprise depuis la source FT (ou récupéré par STRPOS)"
+      - name: siret
+        data_type: STRING
+        description: "SIRET fourni par France Travail (validé 14 chiffres)"
+      - name: siret_sirene
+        data_type: STRING
+        description: "SIRET depuis SIRENE après jointure"
+      - name: siren_sirene
+        data_type: STRING
+        description: "SIREN depuis SIRENE (9 chiffres)"
+      - name: nom_entreprise_sirene
+        data_type: STRING
+        description: "Nom entreprise depuis SIRENE après jointure"
+      - name: nom_entreprise_final
+        data_type: STRING
+        description: "Nom entreprise final : SIRENE si disponible, sinon source, sinon récupéré"
+      - name: code_naf
+        data_type: STRING
+        description: "Code NAF/APE de l'établissement SIRENE"
+      - name: code_categorie_juridique
+        data_type: STRING
+        description: "Code catégorie juridique SIRENE"
+      - name: categorie_entreprise
+        data_type: STRING
+        description: "Catégorie entreprise INSEE : PME | ETI | GE"
+      - name: tranche_effectifs
+        data_type: STRING
+        description: "Tranche effectifs SIRENE"
+      - name: fiabilite_jointure_sirene
+        data_type: STRING
+        description: "Fiabilité jointure SIRENE : HIGH | MEDIUM | LOW | RECOVERED | NO_MATCH"
+      - name: code_contrat
+        data_type: STRING
+        description: "Code contrat brut France Travail (CDI, CDD, MIS…)"
+      - name: contract_type_normalized
+        data_type: STRING
+        description: "Type de contrat normalisé inter-sources"
+      - name: type_contrat_libelle
+        data_type: STRING
+        description: "Type de contrat parsé depuis typeContratLibelle"
+      - name: duree_contrat_mois
+        data_type: NUMERIC
+        description: "Durée du contrat en mois (NULL si CDI ou non précisé)"
+      - name: salaire_texte
+        data_type: STRING
+        description: "Texte brut du salaire pour affichage"
+      - name: salary_min_annual
+        data_type: NUMERIC
+        description: "Salaire annuel minimum en euros"
+      - name: salary_max_annual
+        data_type: NUMERIC
+        description: "Salaire annuel maximum en euros"
+      - name: bonus
+        data_type: STRING
+        description: "Complément salaire (primes, avantages)"
+      - name: code_rome
+        data_type: STRING
+        description: "Code ROME du métier (ex: M1811)"
+      - name: appellation
+        data_type: STRING
+        description: "Libellé ROME de l'appellation"
+      - name: experience
+        data_type: STRING
+        description: "Niveau expérience requis (D/S/E)"
+      - name: qualification
+        data_type: STRING
+        description: "Code qualification du poste"
+      - name: relevance_score
+        data_type: INT64
+        description: "Score de pertinence Data Engineering"
+      - name: matching_confidence
+        data_type: STRING
+        description: "Confiance pertinence : HIGH | MEDIUM | LOW | NOT_RELEVANT"
+      - name: url
+        data_type: STRING
+        description: "URL de l'offre (NULL pour France Travail — non exposée par l'API)"

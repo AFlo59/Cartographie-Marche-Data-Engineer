@@ -1,0 +1,153 @@
+version: 2
+
+models:
+  - name: fct_offres
+    description: >
+      Table de faits principale — marché de l'emploi Data Engineering.
+      UNION ALL France Travail + APEC + Jooble après enrichissement gold.
+      Schéma unifié 39 colonnes lowercase. Les colonnes non disponibles par source
+      sont NULL explicitement (ex: code_rome NULL pour APEC et Jooble).
+      Clé primaire : offre_id_global (préfixe source + offre_id d'origine).
+    config:
+      materialized: table
+      contract:
+        enforced: true
+    columns:
+      - name: offre_id_global
+        data_type: STRING
+        description: "Clé primaire globale : 'ft_' | 'apec_' | 'jooble_' + offre_id"
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - unique
+      - name: offre_id
+        data_type: STRING
+        description: "Identifiant d'origine dans la source"
+        constraints:
+          - type: not_null
+      - name: source_offre
+        data_type: STRING
+        description: "Source : france_travail | apec | jooble"
+        constraints:
+          - type: not_null
+        tests:
+          - accepted_values:
+              values: ['france_travail', 'apec', 'jooble']
+      - name: url
+        data_type: STRING
+        description: "URL directe vers l'offre (Jooble uniquement)"
+      - name: intitule
+        data_type: STRING
+        description: "Titre du poste normalisé UPPER sans accents"
+      - name: description
+        data_type: STRING
+        description: "Description du poste normalisée"
+      - name: date_creation
+        data_type: DATE
+        description: "Date de publication/création de l'offre"
+      - name: date_insertion
+        data_type: DATE
+        description: "Date d'insertion (partition Hive)"
+      - name: nom_entreprise_source
+        data_type: STRING
+        description: "Nom entreprise issu directement de la source"
+      - name: nom_entreprise_sirene
+        data_type: STRING
+        description: "Nom entreprise depuis SIRENE (après jointure)"
+      - name: nom_entreprise_final
+        data_type: STRING
+        description: "Nom entreprise final : SIRENE > source > récupéré par STRPOS (FT)"
+      - name: siret
+        data_type: STRING
+        description: "SIRET fourni par la source (France Travail uniquement)"
+      - name: siret_sirene
+        data_type: STRING
+        description: "SIRET depuis SIRENE après jointure"
+      - name: siren_sirene
+        data_type: STRING
+        description: "SIREN depuis SIRENE (9 chiffres)"
+      - name: fiabilite_jointure_sirene
+        data_type: STRING
+        description: "Fiabilité jointure SIRENE : HIGH | MEDIUM | LOW | RECOVERED | NO_MATCH"
+      - name: code_contrat
+        data_type: STRING
+        description: "Code ou libellé contrat brut de la source"
+      - name: contract_type_normalized
+        data_type: STRING
+        description: "Type contrat normalisé : CDI | CDD | INTERIM | ALTERNANCE | STAGE | FREELANCE | AUTRE"
+      - name: type_contrat_libelle
+        data_type: STRING
+        description: "Libellé type contrat parsé (France Travail uniquement)"
+      - name: duree_contrat_mois
+        data_type: NUMERIC
+        description: "Durée contrat en mois (France Travail uniquement)"
+      - name: salaire_texte
+        data_type: STRING
+        description: "Texte brut du salaire pour affichage"
+      - name: salary_min_annual
+        data_type: NUMERIC
+        description: "Salaire annuel minimum en euros"
+      - name: salary_max_annual
+        data_type: NUMERIC
+        description: "Salaire annuel maximum en euros"
+      - name: bonus
+        data_type: STRING
+        description: "Complément salaire (France Travail uniquement)"
+      - name: code_postal
+        data_type: STRING
+        description: "Code postal (5 chiffres)"
+      - name: code_insee
+        data_type: STRING
+        description: "Code INSEE commune"
+      - name: commune
+        data_type: STRING
+        description: "Nom commune normalisé"
+      - name: departement
+        data_type: STRING
+        description: "Code département (2-3 chars)"
+      - name: nom_departement
+        data_type: STRING
+        description: "Nom du département"
+      - name: code_region
+        data_type: STRING
+        description: "Code région INSEE"
+      - name: nom_region
+        data_type: STRING
+        description: "Nom de la région"
+      - name: latitude
+        data_type: FLOAT64
+        description: "Latitude WGS84"
+      - name: longitude
+        data_type: FLOAT64
+        description: "Longitude WGS84"
+      - name: code_naf
+        data_type: STRING
+        description: "Code NAF/APE de l'établissement SIRENE"
+      - name: code_categorie_juridique
+        data_type: STRING
+        description: "Code catégorie juridique SIRENE"
+      - name: categorie_entreprise
+        data_type: STRING
+        description: "Catégorie entreprise INSEE : PME | ETI | GE"
+      - name: tranche_effectifs
+        data_type: STRING
+        description: "Tranche effectifs SIRENE"
+      - name: code_rome
+        data_type: STRING
+        description: "Code ROME du métier (France Travail uniquement)"
+      - name: appellation
+        data_type: STRING
+        description: "Libellé ROME de l'appellation (France Travail uniquement)"
+      - name: experience
+        data_type: STRING
+        description: "Niveau expérience (France Travail : D/S/E)"
+      - name: qualification
+        data_type: STRING
+        description: "Code qualification (France Travail uniquement)"
+      - name: relevance_score
+        data_type: INT64
+        description: "Score pertinence Data Engineering"
+      - name: matching_confidence
+        data_type: STRING
+        description: "Confiance pertinence : HIGH | MEDIUM | LOW | NOT_RELEVANT"
