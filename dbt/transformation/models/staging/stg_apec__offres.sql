@@ -30,8 +30,9 @@ WITH cleanup AS (
         SAFE_CAST(latitude  AS FLOAT64) AS latitude,
         SAFE_CAST(longitude AS FLOAT64) AS longitude,
 
-        published_at  AS date_publication,
-        validated_at  AS date_validation,
+        -- INT64 (ns depuis epoch) dans Parquet → parse_event_ts gère les epochs ns/μs/ms/s
+        DATE({{ parse_event_ts('published_at') }}) AS date_publication,
+        DATE({{ parse_event_ts('validated_at') }}) AS date_validation,
         scraped_at,
 
         COALESCE(
