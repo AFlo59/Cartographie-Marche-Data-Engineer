@@ -10,7 +10,8 @@ AS
 
 WITH cleanup AS (
     SELECT
-        jooble_id AS offre_id,
+        -- jooble_id stocke INT64 dans Parquet → CAST STRING pour aligner avec FT/APEC
+        CAST(jooble_id AS STRING) AS offre_id,
 
         -- Titre : suppression bouton "Ajouter aux favoris" injecte par Jooble + H/F
         `cartographie-data-engineer.staging.clean_string`(
