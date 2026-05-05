@@ -3,72 +3,75 @@ version: 2
 models:
   - name: stg_apec__offres
     description: >
-      Offres APEC (cadres) nettoyees et normalisees.
-      Dedoublonnage sur offre_id (derniere date_publication / date_insertion).
-      Salaire structure en STRUCT via UDF parse_salaire_auto.
-      Materialisee en TABLE pour eviter le re-scan des external tables BQ.
+      Offres APEC (cadres) nettoyées et normalisées. Dédoublonnage sur offre_id.
+      Salaire structuré en STRUCT via UDF parse_salaire_auto.
+      Enrichi des champs calculés : relevance_score, contract_type_normalized, salary_min/max_annual.
     config:
       materialized: table
     columns:
       - name: offre_id
         data_type: STRING
-        description: "Identifiant unique de l offre (champ apec_id source)"
+        description: "Identifiant unique de l'offre (champ apec_id source)"
         tests:
           - not_null
           - unique
-
       - name: intitule
         data_type: STRING
-        description: "Titre du poste normalise UPPER sans accents, indicateurs H/F supprimes"
-
+        description: "Titre du poste normalisé UPPER sans accents, indicateurs H/F supprimés"
       - name: description
         data_type: STRING
-        description: "Apercu du descriptif de poste, HTML supprime et texte normalise"
-
+        description: "Aperçu du descriptif de poste, HTML supprimé et texte normalisé"
       - name: nom
         data_type: STRING
-        description: "Nom commercial de l entreprise normalise"
-
+        description: "Nom commercial de l'entreprise normalisé"
+      - name: salaire_texte_raw
+        data_type: STRING
+        description: "Texte brut du salaire conservé pour affichage (format APEC : 35/55 k€)"
       - name: salaire
         data_type: "STRUCT<type STRING, min_amount NUMERIC, max_amount NUMERIC, nb_mois INT64, min_mensuel NUMERIC, max_mensuel NUMERIC, min_annuel NUMERIC, max_annuel NUMERIC>"
-        description: "Salaire parse par l UDF parse_salaire_auto (format APEC: 35/55 k annuel sur 13 mois)"
-
+        description: "Salaire parsé par l'UDF parse_salaire_auto (format APEC : 35/55 k€ annuel sur 13 mois)"
+      - name: salary_min_annual
+        data_type: NUMERIC
+        description: "Salaire annuel minimum en euros (aplati depuis salaire.min_annuel)"
+      - name: salary_max_annual
+        data_type: NUMERIC
+        description: "Salaire annuel maximum en euros (aplati depuis salaire.max_annuel)"
       - name: code_contrat
         data_type: STRING
-        description: "Type de contrat decode par l ingestion (CDI, CDD, Stage, Interim, Alternance) normalise"
-
+        description: "Type de contrat décodé par l'ingestion (CDI, CDD, Stage, Intérim, Alternance)"
+      - name: contract_type_normalized
+        data_type: STRING
+        description: "Type de contrat normalisé inter-sources : CDI | CDD | INTERIM | ALTERNANCE | STAGE | FREELANCE | AUTRE"
       - name: commune
         data_type: STRING
-        description: "Nom de la commune extrait du champ lieuTexte par l ingestion, normalise"
-
+        description: "Nom de la commune extrait par l'ingestion, normalisé UPPER"
       - name: departement
         data_type: STRING
-        description: "Code departement extrait du champ lieuTexte (2-3 chars), mis en majuscules"
-
+        description: "Code département extrait par l'ingestion (2-3 chars), mis en majuscules"
       - name: lieu_texte
         data_type: STRING
-        description: "Texte brut du lieu normalise (ex: PARIS 75)"
-
+        description: "Texte brut du lieu normalisé (ex: PARIS 75)"
       - name: latitude
         data_type: FLOAT64
-        description: "Latitude WGS84 fournie par l API APEC"
-
+        description: "Latitude WGS84 fournie par l'API APEC (geocodage ingestion)"
       - name: longitude
         data_type: FLOAT64
-        description: "Longitude WGS84 fournie par l API APEC"
-
+        description: "Longitude WGS84 fournie par l'API APEC"
+      - name: relevance_score
+        data_type: INT64
+        description: "Score de pertinence Data Engineering"
+      - name: matching_confidence
+        data_type: STRING
+        description: "Confiance pertinence : HIGH | MEDIUM | LOW | NOT_RELEVANT"
       - name: date_publication
         data_type: TIMESTAMP
-        description: "Date et heure de publication de l offre (UTC)"
-
+        description: "Date et heure de publication de l'offre (UTC)"
       - name: date_validation
         data_type: TIMESTAMP
-        description: "Date et heure de validation de l offre (UTC)"
-
+        description: "Date et heure de validation de l'offre (UTC)"
       - name: scraped_at
         data_type: TIMESTAMP
-        description: "Timestamp de collecte de l offre (UTC)"
-
+        description: "Timestamp de collecte de l'offre (UTC)"
       - name: date_insertion
         data_type: DATE
-        description: "Date d insertion derivee de la partition Hive dt"
+        description: "Date d'insertion dérivée de la partition Hive dt"

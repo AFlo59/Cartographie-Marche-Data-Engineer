@@ -3,83 +3,107 @@ version: 2
 models:
   - name: mart_marche_emploi
     description: >
-      Vue analytique du marche de l emploi Data Engineer.
-      Passthrough depuis int_offres_enrichies (couche gold incremental).
-      Materialisee en VIEW : zero re-computation, toujours a jour.
-      Exposee dans le dataset marts pour lecture par dashboard-sa (Looker Studio).
+      Vue BI principale — marché de l'emploi Data Engineering toutes sources.
+      Passthrough depuis fct_offres avec colonnes enrichies pour self-service BI :
+      effectifs_libelle, salary_median_estimate, semaine_publication.
+      Compatible Looker Studio, Power BI, Metabase, Tableau, Superset.
     config:
       materialized: view
     columns:
-      - name: offre_id
+      - name: offre_id_global
         data_type: STRING
-        description: "Identifiant unique de l offre France Travail"
+        description: "Identifiant unique global : préfixe source + offre_id d'origine"
         tests:
           - not_null
           - unique
-
+      - name: source_offre
+        data_type: STRING
+        description: "Source de l'offre : france_travail | apec | jooble"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['france_travail', 'apec', 'jooble']
       - name: intitule
         data_type: STRING
-        description: "Titre du poste normalise UPPER sans accents"
-
-      - name: code_contrat
-        data_type: STRING
-        description: "Code type de contrat brut (CDI, CDD, MIS, SAI, etc.)"
-
-      - name: type_contrat
-        data_type: STRING
-        description: "Type de contrat parse"
-
-      - name: duree_contrat_mois
-        data_type: NUMERIC
-        description: "Duree du contrat en mois (NULL si non precise ou contrat indefini)"
-
+        description: "Titre du poste normalisé UPPER sans accents"
       - name: date_creation
-        data_type: TIMESTAMP
-        description: "Date de creation de l offre"
-
-      - name: departement
-        data_type: STRING
-        description: "Code departement (2-3 chars)"
-
-      - name: commune
-        data_type: STRING
-        description: "Nom de la commune normalise"
-
-      - name: code_region
-        data_type: STRING
-        description: "Code region"
-
-      - name: siret
-        data_type: STRING
-        description: "SIRET de l entreprise recruteur (14 chiffres) ou NULL"
-
-      - name: siren
-        data_type: STRING
-        description: "SIREN de l entreprise (9 chiffres) ou NULL"
-
-      - name: code_naf
-        data_type: STRING
-        description: "Code APE/NAF de l activite principale SIRENE (ex: 6201Z)"
-
-      - name: salaire
-        data_type: "STRUCT<type STRING, min_amount NUMERIC, max_amount NUMERIC, nb_mois INT64, min_mensuel NUMERIC, max_mensuel NUMERIC, min_annuel NUMERIC, max_annuel NUMERIC>"
-        description: >
-          Salaire parse. type MENSUEL ou ANNUEL.
-          min/max_mensuel et min/max_annuel projections calculees.
-          nb_mois nombre de mois de salaire.
-
-      - name: code_rome
-        data_type: STRING
-        description: "Code ROME du metier (5 chars, ex: M1811)"
-
-      - name: appellation
-        data_type: STRING
-        description: "Libelle ROME de l appellation du poste"
-
-      - name: experience
-        data_type: STRING
-        description: "Niveau experience (D debutant, S confirme, E expert)"
-
+        data_type: DATE
+        description: "Date de publication de l'offre"
       - name: date_insertion
         data_type: DATE
-        description: "Date d insertion derivee de la partition Hive dt"
+        description: "Date d'insertion (partition Hive)"
+      - name: url
+        data_type: STRING
+        description: "URL directe vers l'offre (Jooble uniquement)"
+      - name: entreprise
+        data_type: STRING
+        description: "Nom entreprise final (SIRENE > source > récupéré)"
+      - name: fiabilite_jointure_sirene
+        data_type: STRING
+        description: "Fiabilité jointure SIRENE : HIGH | MEDIUM | LOW | RECOVERED | NO_MATCH"
+      - name: taille_entreprise
+        data_type: STRING
+        description: "Catégorie entreprise INSEE : PME | ETI | GE"
+      - name: effectifs_libelle
+        data_type: STRING
+        description: "Libellé lisible de la tranche d'effectifs"
+      - name: code_naf
+        data_type: STRING
+        description: "Code APE/NAF de l'activité principale"
+      - name: type_contrat
+        data_type: STRING
+        description: "Type de contrat normalisé : CDI | CDD | INTERIM | ALTERNANCE | STAGE | FREELANCE | AUTRE"
+      - name: duree_contrat_mois
+        data_type: NUMERIC
+        description: "Durée du contrat en mois (France Travail uniquement)"
+      - name: salary_min_annual
+        data_type: NUMERIC
+        description: "Salaire annuel minimum en euros"
+      - name: salary_max_annual
+        data_type: NUMERIC
+        description: "Salaire annuel maximum en euros"
+      - name: salary_median_estimate
+        data_type: NUMERIC
+        description: "Estimation salaire médian = (min + max) / 2, ou min si max absent"
+      - name: salaire_texte
+        data_type: STRING
+        description: "Texte brut du salaire pour affichage"
+      - name: commune
+        data_type: STRING
+        description: "Nom de la commune normalisé"
+      - name: departement
+        data_type: STRING
+        description: "Code département (2-3 chars)"
+      - name: nom_departement
+        data_type: STRING
+        description: "Nom du département"
+      - name: code_region
+        data_type: STRING
+        description: "Code région INSEE"
+      - name: nom_region
+        data_type: STRING
+        description: "Nom de la région"
+      - name: latitude
+        data_type: FLOAT64
+        description: "Latitude WGS84"
+      - name: longitude
+        data_type: FLOAT64
+        description: "Longitude WGS84"
+      - name: code_rome
+        data_type: STRING
+        description: "Code ROME du métier (France Travail uniquement)"
+      - name: appellation
+        data_type: STRING
+        description: "Libellé ROME de l'appellation (France Travail uniquement)"
+      - name: experience
+        data_type: STRING
+        description: "Niveau expérience requis (France Travail : D/S/E)"
+      - name: relevance_score
+        data_type: INT64
+        description: "Score de pertinence Data Engineering"
+      - name: matching_confidence
+        data_type: STRING
+        description: "Confiance pertinence : HIGH | MEDIUM | LOW | NOT_RELEVANT"
+      - name: semaine_publication
+        data_type: DATE
+        description: "Début de semaine (lundi) de publication — pour graphiques de tendances"

@@ -3,56 +3,70 @@ version: 2
 models:
   - name: stg_jooble__offres
     description: >
-      Offres Jooble nettoyees et normalisees.
-      Dedoublonnage sur offre_id (derniere date_publication / date_insertion).
-      Le salaire est conserve en texte (format Jooble incompatible avec parse_salaire_auto).
-      Materialisee en TABLE pour eviter le re-scan des external tables BQ.
+      Offres Jooble nettoyées et normalisées. Dédoublonnage sur offre_id.
+      Salaire parsé depuis le texte brut (format "35 000 € - 45 000 €", k€, mensuel).
+      code_postal et ville extraits depuis le champ lieu.
+      Enrichi des champs calculés : relevance_score, contract_type_normalized, salary_min/max_annual.
     config:
       materialized: table
     columns:
       - name: offre_id
         data_type: STRING
-        description: "Identifiant unique de l offre cote Jooble (champ jooble_id source)"
+        description: "Identifiant unique de l'offre Jooble (champ jooble_id source)"
         tests:
           - not_null
           - unique
-
       - name: intitule
         data_type: STRING
-        description: "Titre du poste normalise UPPER sans accents, indicateurs H/F supprimes"
-
+        description: "Titre du poste normalisé UPPER sans accents, H/F et bouton favoris supprimés"
       - name: description
         data_type: STRING
-        description: "Description courte de l offre, HTML et balises supprimes, texte normalise"
-
+        description: "Description courte de l'offre, HTML supprimé, texte normalisé"
       - name: nom
         data_type: STRING
-        description: "Nom de l entreprise normalise (peut etre NULL)"
-
+        description: "Nom de l'entreprise normalisé (peut être NULL)"
       - name: salaire_texte
         data_type: STRING
-        description: "Libelle salaire conserve en texte normalise (format variable Jooble)"
-
+        description: "Libellé salaire brut normalisé (format variable Jooble, conservé pour affichage)"
+      - name: salary_min_annual
+        data_type: NUMERIC
+        description: "Salaire annuel minimum parsé depuis salaire_texte (k€ et mensuel gérés)"
+      - name: salary_max_annual
+        data_type: NUMERIC
+        description: "Salaire annuel maximum parsé depuis salaire_texte"
       - name: code_contrat
         data_type: STRING
-        description: "Type de contrat au format texte libre Jooble normalise"
-
+        description: "Type de contrat au format texte libre Jooble normalisé"
+      - name: contract_type_normalized
+        data_type: STRING
+        description: "Type de contrat normalisé inter-sources : CDI | CDD | INTERIM | ALTERNANCE | STAGE | FREELANCE | AUTRE"
+      - name: lieu_raw
+        data_type: STRING
+        description: "Localisation brute telle que reçue de l'API Jooble"
       - name: lieu
         data_type: STRING
-        description: "Localisation textuelle de l offre normalisee"
-
+        description: "Localisation normalisée UPPER"
+      - name: code_postal
+        data_type: STRING
+        description: "Code postal extrait du champ lieu (5 chiffres) ou NULL"
+      - name: ville
+        data_type: STRING
+        description: "Nom de ville extrait et normalisé depuis le champ lieu"
       - name: url
         data_type: STRING
-        description: "URL directe vers l offre originale (conservee brute)"
-
+        description: "URL directe vers l'offre originale"
+      - name: relevance_score
+        data_type: INT64
+        description: "Score de pertinence Data Engineering"
+      - name: matching_confidence
+        data_type: STRING
+        description: "Confiance pertinence : HIGH | MEDIUM | LOW | NOT_RELEVANT"
       - name: date_publication
         data_type: TIMESTAMP
-        description: "Date de mise a jour de l offre (updated_dt parse par l ingestion, UTC)"
-
+        description: "Date de mise à jour de l'offre (updated_dt parsé, UTC)"
       - name: scraped_at
         data_type: TIMESTAMP
-        description: "Timestamp de collecte de l offre (UTC)"
-
+        description: "Timestamp de collecte de l'offre (UTC)"
       - name: date_insertion
         data_type: DATE
-        description: "Date d insertion derivee de la partition Hive dt"
+        description: "Date d'insertion dérivée de la partition Hive dt"
