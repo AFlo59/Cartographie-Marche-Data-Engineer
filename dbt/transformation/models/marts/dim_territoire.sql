@@ -9,8 +9,8 @@
 
 SELECT
     -- Clés géographiques
-    c.CODE_POSTAL,
-    c.CODE_INSEE,
+    c.CODE_POSTAL                   AS code_postal,
+    c.CODE_INSEE                    AS code_insee,
     c.DEPARTEMENT                   AS code_departement,
     c.CODE_REGION                   AS code_region,
 
@@ -20,9 +20,9 @@ SELECT
     r.NOM                           AS nom_region,
 
     -- Données démographiques et géospatiales
-    c.POPULATION,
-    c.LATITUDE,
-    c.LONGITUDE
+    c.POPULATION                    AS population,
+    c.LATITUDE                      AS latitude,
+    c.LONGITUDE                     AS longitude
 
 FROM {{ ref('stg_geo__communes') }} c
 LEFT JOIN {{ ref('stg_geo__departements') }} d ON c.DEPARTEMENT = d.CODE_DEPARTEMENT

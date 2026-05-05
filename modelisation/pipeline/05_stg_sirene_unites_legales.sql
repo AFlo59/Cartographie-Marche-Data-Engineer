@@ -11,8 +11,8 @@ AS
 
 WITH cleanup AS (
     SELECT
-        -- SIREN : padding a 9 chiffres (SIRENE stocke parfois sans zeros initiaux)
-        LPAD(TRIM(COALESCE(siren, '')), 9, '0') AS SIREN,
+        -- SIREN : stocke INT64 dans Parquet → CAST obligatoire avant COALESCE STRING
+        LPAD(TRIM(COALESCE(CAST(siren AS STRING), '')), 9, '0') AS SIREN,
 
         -- Nom : personnes morales -> denominationUniteLegale
         --       personnes physiques -> prenom + nom de famille
@@ -29,7 +29,8 @@ WITH cleanup AS (
         ) AS NOM_COMPLET,
 
         `cartographie-data-engineer.staging.clean_string`(activitePrincipaleUniteLegale) AS CODE_NAF,
-        UPPER(TRIM(COALESCE(categorieJuridiqueUniteLegale, '')))                          AS CODE_CATEGORIE_JURIDIQUE,
+        -- stocke INT64 dans Parquet (codes numeriques ex: 5710, 5499) → CAST obligatoire
+        UPPER(TRIM(COALESCE(CAST(categorieJuridiqueUniteLegale AS STRING), '')))          AS CODE_CATEGORIE_JURIDIQUE,
         UPPER(TRIM(COALESCE(categorieEntreprise, '')))                                    AS CATEGORIE_ENTREPRISE,
         UPPER(TRIM(COALESCE(trancheEffectifsUniteLegale, '')))                            AS TRANCHE_EFFECTIFS
 
