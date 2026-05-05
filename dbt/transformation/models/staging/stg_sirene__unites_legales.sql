@@ -2,8 +2,8 @@
 
 WITH cleanup AS (
     SELECT
-        -- SIREN : padding à 9 chiffres (SIRENE stocke parfois sans zéros initiaux)
-        LPAD(TRIM(COALESCE(siren, '')), 9, '0')                                         AS SIREN,
+        -- SIREN : stocké INT64 dans Parquet → CAST obligatoire avant COALESCE STRING
+        LPAD(TRIM(COALESCE(CAST(siren AS STRING), '')), 9, '0')                          AS SIREN,
 
         -- Nom : personnes morales → denominationUniteLegale
         --       personnes physiques → prénom + nom de famille
@@ -23,7 +23,8 @@ WITH cleanup AS (
         {{ clean_string('activitePrincipaleUniteLegale') }}                              AS CODE_NAF,
 
         -- Code catégorie juridique (ex: 5710 = SA, 5499 = SARL, 1000 = personne phys.)
-        UPPER(TRIM(COALESCE(categorieJuridiqueUniteLegale, '')))                         AS CODE_CATEGORIE_JURIDIQUE,
+        -- stocké INT64 dans Parquet (valeurs numériques pures) → CAST obligatoire
+        UPPER(TRIM(COALESCE(CAST(categorieJuridiqueUniteLegale AS STRING), '')))         AS CODE_CATEGORIE_JURIDIQUE,
 
         -- Catégorie entreprise INSEE : PME / ETI / GE (nullable)
         UPPER(TRIM(COALESCE(categorieEntreprise, '')))                                   AS CATEGORIE_ENTREPRISE,
@@ -41,12 +42,12 @@ WITH cleanup AS (
 
 dedup AS (
     SELECT
-        SIREN,
-        NOM_COMPLET,
-        CODE_NAF,
-        CODE_CATEGORIE_JURIDIQUE,
-        CATEGORIE_ENTREPRISE,
-        TRANCHE_EFFECTIFS
+        SIREN                    AS siren,
+        NOM_COMPLET              AS nom_complet,
+        CODE_NAF                 AS code_naf,
+        CODE_CATEGORIE_JURIDIQUE AS code_categorie_juridique,
+        CATEGORIE_ENTREPRISE     AS categorie_entreprise,
+        TRANCHE_EFFECTIFS        AS tranche_effectifs
     FROM cleanup
     WHERE SIREN IS NOT NULL AND SIREN != ''
     QUALIFY ROW_NUMBER() OVER (
