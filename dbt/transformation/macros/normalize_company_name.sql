@@ -11,13 +11,5 @@
   la macro clean_string est disponible (même projet dbt).
 #}
 {% macro normalize_company_name(name_expr) %}
-CASE
-    WHEN {{ clean_string(name_expr) }} IS NULL
-      OR TRIM({{ clean_string(name_expr) }}) = ''
-        THEN NULL
-    ELSE TRIM(REGEXP_REPLACE(
-        REGEXP_REPLACE({{ clean_string(name_expr) }}, r'[-\'"_\.]', ' '),
-        r'\s+', ' '
-    ))
-END
+NULLIF(TRIM({{ clean_string(name_expr) }}), '')
 {% endmacro %}

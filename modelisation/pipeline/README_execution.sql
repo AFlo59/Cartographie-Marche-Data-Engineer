@@ -1,0 +1,95 @@
+-- =============================================================================
+-- README_execution.sql — Guide d'execution du pipeline BigQuery
+-- Projet : cartographie-data-engineer
+-- =============================================================================
+--
+-- PRE-REQUIS : creer les datasets s'ils n'existent pas
+--
+--   bq mk --dataset --location=europe-west1 cartographie-data-engineer:staging
+--   bq mk --dataset --location=europe-west1 cartographie-data-engineer:intermediate
+--   bq mk --dataset --location=europe-west1 cartographie-data-engineer:marts
+--
+-- Les tables externes (raw.*) doivent deja exister (creees par Terraform warehouse).
+--
+-- =============================================================================
+-- ORDRE D'EXECUTION
+-- =============================================================================
+--
+-- Etape 1 — UDFs (a executer 1 fois, puis apres toute mise a jour de logique)
+--   -> 00_udfs.sql
+--      Cree 12 fonctions persistantes dans staging :
+--      clean_string, clean_html, clean_siret_valid, clean_commune_tokens,
+--      normalize_company_name, contract_type_normalized,
+--      relevance_score_data_eng, matching_confidence_data_eng,
+--      parse_event_ts, parse_contrat, parse_salaire_auto, lambert93_to_latlon
+--
+-- Etape 2 — Staging (sources brutes -> tables normalisees)
+--   -> 01_stg_france_travail.sql   (~quelques millions de lignes, <10 min)
+--   -> 02_stg_apec.sql             (~quelques centaines de milliers, <5 min)
+--   -> 03_stg_jooble.sql           (~quelques centaines de milliers, <5 min)
+--   -> 04_stg_sirene_etablissements.sql  (~35 M lignes, timeout 3600s recommande)
+--   -> 05_stg_sirene_unites_legales.sql  (~12 M lignes, ~15 min)
+--   -> 06_stg_geo.sql              (3 tables geo, <2 min)
+--
+-- Etape 3 — Intermediate / Gold (jointures SIRENE + enrichissement geo)
+--   -> 07_int_sirene_entreprises.sql     (JOIN etab + UL, ~30 min)
+--   -> 08_int_france_travail_enrichie.sql
+--   -> 09_int_apec_enrichie.sql
+--   -> 10_int_jooble_enrichie.sql
+--   (scripts 08/09/10 peuvent tourner en parallele apres 07)
+--
+-- Etape 4 — Marts / Dimensions + Faits
+--   -> 11_mart_dim_date.sql        (generation pure, <1 min)
+--   -> 12_mart_dim_territoire.sql  (<2 min)
+--   -> 13_mart_dim_entreprise.sql  (<5 min)
+--   -> 14_mart_fct_offres.sql      (UNION ALL 3 sources, <10 min)
+--   -> 15_mart_marche_emploi.sql   (CREATE VIEW, instantane)
+--
+-- =============================================================================
+-- EXECUTION VIA bq CLI (exemple script bash)
+-- =============================================================================
+--
+-- PROJECT="cartographie-data-engineer"
+-- BQ="bq query --nouse_legacy_sql --project_id=$PROJECT"
+--
+-- $BQ < 00_udfs.sql
+-- $BQ < 01_stg_france_travail.sql
+-- $BQ < 02_stg_apec.sql
+-- $BQ < 03_stg_jooble.sql
+-- $BQ --job_timeout_ms=3600000 < 04_stg_sirene_etablissements.sql
+-- $BQ < 05_stg_sirene_unites_legales.sql
+-- $BQ < 06_stg_geo.sql
+-- $BQ < 07_int_sirene_entreprises.sql
+-- $BQ < 08_int_france_travail_enrichie.sql &
+-- $BQ < 09_int_apec_enrichie.sql &
+-- $BQ < 10_int_jooble_enrichie.sql &
+-- wait
+-- $BQ < 11_mart_dim_date.sql
+-- $BQ < 12_mart_dim_territoire.sql
+-- $BQ < 13_mart_dim_entreprise.sql
+-- $BQ < 14_mart_fct_offres.sql
+-- $BQ < 15_mart_marche_emploi.sql
+--
+-- =============================================================================
+-- ADAPTATION DU PROJET GCP
+-- =============================================================================
+-- Si votre project ID est different de "cartographie-data-engineer",
+-- remplacez globalement avec un find-and-replace dans tous les fichiers *.sql :
+--
+--   sed -i 's/cartographie-data-engineer/MON_PROJET/g' *.sql
+--
+-- =============================================================================
+-- INCREMENTAL vs FULL REFRESH
+-- =============================================================================
+-- Ces scripts font un full refresh (CREATE OR REPLACE TABLE).
+-- Pour une execution incrementale (MERGE) sur les tables d'offres,
+-- remplacer le CREATE OR REPLACE TABLE par un MERGE comme suit :
+--
+-- MERGE `projet.dataset.table` AS target
+-- USING (
+--     <requete source avec filtre date_insertion >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)>
+-- ) AS source
+-- ON target.offre_id = source.offre_id
+-- WHEN MATCHED THEN UPDATE SET <toutes les colonnes>
+-- WHEN NOT MATCHED THEN INSERT <toutes les colonnes>;
+-- =============================================================================
