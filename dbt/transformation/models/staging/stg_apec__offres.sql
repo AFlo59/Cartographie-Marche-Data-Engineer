@@ -15,14 +15,15 @@ WITH cleanup AS (
         {{ clean_string('company_name') }} AS nom,
 
         -- salary_text format APEC : "35/55 k€ annuel sur 13 mois"
-        {{ parse_salaire_auto('salary_text') }} AS salaire,
+        CAST(salary_text AS STRING)                       AS salaire_texte_raw,
+        {{ parse_salaire_auto('salary_text') }}            AS salaire,
 
-        -- contract_type deja decode par l ingestion (CDI, CDD, Stage...)
+        -- contract_type déjà décodé par l'ingestion (CDI, CDD, Stage…)
         {{ clean_string('contract_type') }} AS code_contrat,
 
-        -- commune et departement deja extraits par l ingestion (_split_location)
-        {{ clean_string('commune') }} AS commune,
-        UPPER(TRIM(CAST(departement AS STRING))) AS departement,
+        -- commune et departement déjà extraits par l'ingestion (_split_location)
+        {{ clean_string('commune') }}                            AS commune,
+        UPPER(TRIM(CAST(departement AS STRING)))                 AS departement,
 
         {{ clean_string('location_text') }} AS lieu_texte,
 
@@ -33,7 +34,6 @@ WITH cleanup AS (
         validated_at  AS date_validation,
         scraped_at,
 
-        -- dt = colonne Hive-partition injectée par BigQuery
         COALESCE(
             SAFE_CAST(dt AS DATE),
             SAFE.PARSE_DATE('%Y-%m-%d', CAST(dt AS STRING)),
@@ -50,6 +50,22 @@ dedup AS (
         PARTITION BY offre_id
         ORDER BY date_publication DESC NULLS LAST, date_insertion DESC NULLS LAST
     ) = 1
+),
+
+enrich AS (
+    SELECT
+        *,
+        -- Salaire annuel min/max aplati (depuis STRUCT)
+        salaire.min_annuel                                                              AS salary_min_annual,
+        salaire.max_annuel                                                              AS salary_max_annual,
+        -- Type de contrat normalisé (même valeur canonique que FT et Jooble)
+        {{ contract_type_normalized('code_contrat', 'intitule') }}                     AS contract_type_normalized,
+        -- Score de pertinence Data Engineering
+        {{ relevance_score_data_eng('intitule', 'description') }}                      AS relevance_score
+    FROM dedup
 )
 
-SELECT * FROM dedup
+SELECT
+    *,
+    {{ matching_confidence_data_eng('relevance_score') }} AS matching_confidence
+FROM enrich

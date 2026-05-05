@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: stg_sirene__unites_legales
+    description: >
+      Référentiel SIRENE unités légales actives et diffusibles.
+      1 ligne par SIREN (dédoublonné sur nom_complet).
+      Filtre : etatAdministratifUniteLegale = 'A' AND statutDiffusionUniteLegale = 'O'.
+      Source : StockUniteLegale_utf8.parquet, fréquence mensuelle.
+    config:
+      materialized: table
+    columns:
+      - name: siren
+        data_type: STRING
+        description: "SIREN de l'unité légale (9 chiffres, padded)"
+        tests:
+          - not_null
+          - unique
+      - name: nom_complet
+        data_type: STRING
+        description: "Nom normalisé : denomination sociale (personne morale) ou prénom + nom (personne physique)"
+      - name: code_naf
+        data_type: STRING
+        description: "Code APE/NAF de l'activité principale de l'unité légale (ex: 6201Z)"
+      - name: code_categorie_juridique
+        data_type: STRING
+        description: "Code catégorie juridique INSEE (ex: 5710 = SA, 5499 = SARL)"
+      - name: categorie_entreprise
+        data_type: STRING
+        description: "Catégorie INSEE : PME | ETI | GE (nullable)"
+      - name: tranche_effectifs
+        data_type: STRING
+        description: "Tranche effectifs salariés (00=0, 01=1-2, 11=10-19, …, 53=10000+, NN=non renseigné)"
