@@ -27,7 +27,7 @@ SELECT
     'Hebdomadaire (lundi 7h)'       AS frequence_maj,
     'https://www.apec.fr'           AS url_site,
     TRUE                            AS est_source_officielle,
-    'Association Pour l''Emploi des Cadres. Spécialisée postes cadres et ingénieurs. Géocodage intégré à l''ingestion. Pas de SIRET ni code ROME.'
+    'Association Pour l\'Emploi des Cadres. Spécialisée postes cadres et ingénieurs. Géocodage intégré à l\'ingestion. Pas de SIRET ni code ROME.'
                                     AS description
 
 UNION ALL
