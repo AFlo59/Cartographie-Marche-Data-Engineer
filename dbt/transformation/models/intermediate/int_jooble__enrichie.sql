@@ -134,7 +134,7 @@ sirene_best AS (
 
 final AS (
     SELECT
-        o.offre_id,
+        CAST(o.offre_id AS STRING)                          AS offre_id,
         'jooble'                                            AS source_offre,
         o.intitule,
         o.description,
