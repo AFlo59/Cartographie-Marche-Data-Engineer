@@ -6,6 +6,7 @@ models:
       Vue BI principale — marché de l'emploi Data Engineering toutes sources.
       Passthrough depuis fct_offres avec colonnes enrichies pour self-service BI :
       effectifs_libelle, salary_median_estimate, semaine_publication.
+      Jointure dim_source_offre : source_nom_affiche, source_type, source_perimetre, est_source_officielle.
       Compatible Looker Studio, Power BI, Metabase, Tableau, Superset.
     config:
       materialized: view
@@ -18,11 +19,23 @@ models:
           - unique
       - name: source_offre
         data_type: STRING
-        description: "Source de l'offre : france_travail | apec | jooble"
+        description: "Clé source : france_travail | apec | jooble (FK → dim_source_offre.source_id)"
         tests:
           - not_null
           - accepted_values:
               values: ['france_travail', 'apec', 'jooble']
+      - name: source_nom_affiche
+        data_type: STRING
+        description: "Libellé lisible de la source : France Travail | APEC | Jooble"
+      - name: source_type
+        data_type: STRING
+        description: "Catégorie de la plateforme (ex : Service public emploi)"
+      - name: source_perimetre
+        data_type: STRING
+        description: "Public cible de la source (ex : Cadres BAC+4)"
+      - name: est_source_officielle
+        data_type: BOOL
+        description: "True si organisme public ou paritaire (France Travail, APEC)"
       - name: intitule
         data_type: STRING
         description: "Titre du poste normalisé UPPER sans accents"

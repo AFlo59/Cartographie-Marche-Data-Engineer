@@ -3,25 +3,32 @@
 --
 -- Vue BI principale — marché de l'emploi Data Engineering toutes sources.
 -- Passthrough depuis fct_offres avec colonnes métier enrichies pour self-service BI.
+-- Jointure dim_source_offre pour exposer les métadonnées de chaque plateforme.
 -- Compatible : Looker Studio, Power BI, Metabase, Tableau, Superset.
 --
 
 SELECT
     -- Identifiants
-    offre_id_global,
-    source_offre,
+    f.offre_id_global,
+    f.source_offre,
+
+    -- Source (dim_source_offre)
+    s.nom_affiche                                       AS source_nom_affiche,
+    s.type_source                                       AS source_type,
+    s.perimetre_public                                  AS source_perimetre,
+    s.est_source_officielle,
 
     -- Contenu
-    intitule,
-    date_creation,
-    date_insertion,
-    url,
+    f.intitule,
+    f.date_creation,
+    f.date_insertion,
+    f.url,
 
     -- Entreprise
-    nom_entreprise_final                                AS entreprise,
-    fiabilite_jointure_sirene,
-    categorie_entreprise                                AS taille_entreprise,
-    CASE tranche_effectifs
+    f.nom_entreprise_final                              AS entreprise,
+    f.fiabilite_jointure_sirene,
+    f.categorie_entreprise                              AS taille_entreprise,
+    CASE f.tranche_effectifs
         WHEN '00' THEN '0 salarié'
         WHEN '01' THEN '1 à 2'
         WHEN '02' THEN '3 à 5'
@@ -39,43 +46,44 @@ SELECT
         WHEN '53' THEN '10 000 +'
         ELSE NULL
     END                                                 AS effectifs_libelle,
-    code_naf,
+    f.code_naf,
 
     -- Contrat
-    contract_type_normalized                            AS type_contrat,
-    duree_contrat_mois,
+    f.contract_type_normalized                          AS type_contrat,
+    f.duree_contrat_mois,
 
     -- Salaire
-    salary_min_annual,
-    salary_max_annual,
+    f.salary_min_annual,
+    f.salary_max_annual,
     CASE
-        WHEN salary_min_annual IS NOT NULL AND salary_max_annual IS NOT NULL
-            THEN ROUND((salary_min_annual + salary_max_annual) / 2, 0)
-        WHEN salary_min_annual IS NOT NULL
-            THEN salary_min_annual
+        WHEN f.salary_min_annual IS NOT NULL AND f.salary_max_annual IS NOT NULL
+            THEN ROUND((f.salary_min_annual + f.salary_max_annual) / 2, 0)
+        WHEN f.salary_min_annual IS NOT NULL
+            THEN f.salary_min_annual
         ELSE NULL
     END                                                 AS salary_median_estimate,
-    salaire_texte,
+    f.salaire_texte,
 
     -- Localisation
-    commune,
-    departement,
-    nom_departement,
-    code_region,
-    nom_region,
-    latitude,
-    longitude,
+    f.commune,
+    f.departement,
+    f.nom_departement,
+    f.code_region,
+    f.nom_region,
+    f.latitude,
+    f.longitude,
 
     -- Classification métier (France Travail uniquement)
-    code_rome,
-    appellation,
-    experience,
+    f.code_rome,
+    f.appellation,
+    f.experience,
 
     -- Pertinence Data Engineering
-    relevance_score,
-    matching_confidence,
+    f.relevance_score,
+    f.matching_confidence,
 
     -- Agrégat semaine de publication (graphiques de tendances)
-    DATE_TRUNC(date_creation, WEEK(MONDAY))             AS semaine_publication
+    DATE_TRUNC(f.date_creation, WEEK(MONDAY))           AS semaine_publication
 
-FROM {{ ref('fct_offres') }}
+FROM {{ ref('fct_offres') }} f
+LEFT JOIN {{ ref('dim_source_offre') }} s ON f.source_offre = s.source_id

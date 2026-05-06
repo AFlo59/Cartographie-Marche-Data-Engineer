@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: dim_source_offre
+    description: >
+      Dimension source d'offre — référentiel statique des 3 plateformes ingérées.
+      1 ligne par source. Clé primaire : source_id.
+      Jointure depuis fct_offres.source_offre → dim_source_offre.source_id.
+    config:
+      materialized: table
+      contract:
+        enforced: true
+    columns:
+      - name: source_id
+        data_type: STRING
+        description: "Clé primaire : france_travail | apec | jooble"
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['france_travail', 'apec', 'jooble']
+      - name: nom_affiche
+        data_type: STRING
+        description: "Libellé lisible pour filtres BI"
+        constraints:
+          - type: not_null
+      - name: type_source
+        data_type: STRING
+        description: "Catégorie de la plateforme"
+        constraints:
+          - type: not_null
+      - name: perimetre_public
+        data_type: STRING
+        description: "Public cible de la source"
+        constraints:
+          - type: not_null
+      - name: frequence_maj
+        data_type: STRING
+        description: "Cadence de mise à jour par le scheduler"
+        constraints:
+          - type: not_null
+      - name: url_site
+        data_type: STRING
+        description: "URL du site de la plateforme"
+        constraints:
+          - type: not_null
+      - name: est_source_officielle
+        data_type: BOOL
+        description: "True si organisme public ou paritaire (France Travail, APEC)"
+        constraints:
+          - type: not_null
+      - name: description
+        data_type: STRING
+        description: "Description courte de la source et de ses spécificités"
