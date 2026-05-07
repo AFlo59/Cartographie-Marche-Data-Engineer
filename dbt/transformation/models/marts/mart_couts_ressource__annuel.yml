@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: mart_couts_ressource__annuel
+    description: >
+      Vue BI — coûts GCP annuels par ressource spécifique.
+      Même granularité que mart_couts_ressource__mensuel avec grain annuel uniquement.
+    config:
+      materialized: view
+    columns:
+      - name: projet_id
+        description: "ID du projet GCP"
+        tests:
+          - not_null
+      - name: service
+        description: "Nom du service GCP facturé"
+        tests:
+          - not_null
+      - name: sku
+        description: "Libellé détaillé du SKU facturé"
+      - name: ressource_nom
+        description: "Nom court de la ressource GCP. Null si non applicable."
+      - name: ressource_global_nom
+        description: "Identifiant global complet de la ressource. Null si non applicable."
+      - name: ressource_type
+        description: "Type de ressource GCP. Null si non applicable."
+      - name: region
+        description: "Région GCP de la ressource. Null pour les ressources globales."
+      - name: pays
+        description: "Pays de la ressource (ex: BE, US)."
+      - name: type_cout
+        description: "Type de ligne de coût : regular, tax, adjustment, rounding_error."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['regular', 'tax', 'adjustment', 'rounding_error']
+      - name: annee
+        description: "Année de facturation."
+        tests:
+          - not_null
+      - name: cout_brut_eur
+        description: "Coût brut en EUR avant crédits."
+        tests:
+          - not_null
+      - name: credits_eur
+        description: "Total des crédits appliqués en EUR."
+        tests:
+          - not_null
+      - name: cout_net_eur
+        description: "Coût net final en EUR après crédits."
+        tests:
+          - not_null
