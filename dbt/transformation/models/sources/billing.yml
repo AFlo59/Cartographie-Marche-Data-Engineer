@@ -1,0 +1,29 @@
+version: 2
+
+sources:
+  - name: billing
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: billing_export
+    description: "Export facturation GCP vers BigQuery — coûts détaillés quotidiens par service et SKU."
+
+    tables:
+      - name: gcp_billing_export_v1_01D8CD_F730D3_5EA02E
+        description: >
+          Export standard des coûts GCP pour le billing account 01D8CD-F730D3-5EA02E.
+          Alimenté automatiquement par GCP chaque jour.
+          Prérequis : activer l'export dans Console → Facturation → Exportation des données.
+        columns:
+          - name: service
+            description: "Struct — service.description = nom du service GCP (Cloud Run, BigQuery, etc.)"
+          - name: usage_start_time
+            description: "Timestamp de début de la période d'utilisation facturée"
+          - name: usage_end_time
+            description: "Timestamp de fin de la période d'utilisation facturée"
+          - name: cost
+            description: "Coût brut en EUR avant application des crédits"
+          - name: credits
+            description: "Array de crédits appliqués (promotions, remises usage, etc.)"
+          - name: project
+            description: "Struct — project.id = ID du projet GCP concerné"
+          - name: sku
+            description: "Struct — sku.description = libellé détaillé du SKU facturé"

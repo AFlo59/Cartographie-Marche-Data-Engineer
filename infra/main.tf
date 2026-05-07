@@ -93,6 +93,7 @@ module "warehouse" {
   raw_apec_prefix                  = var.ingestion_apec_prefix
   raw_jooble_prefix                = var.ingestion_jooble_prefix
   create_external_tables           = var.create_external_tables
+  billing_export_dataset_id        = var.billing_export_dataset_id
 }
 
 module "secrets" {

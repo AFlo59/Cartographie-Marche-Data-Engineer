@@ -91,3 +91,14 @@ dbt_max_retries     = 0
 
 # Mettre à false si le compte Terraform n'a pas le droit de modifier l'IAM projet
 manage_project_job_user_bindings = false
+
+# Billing export — opt-in. Renseigner le nom du dataset créé manuellement dans GCP Console.
+# Quand non vide, Terraform accorde roles/bigquery.dataViewer au dbt-sa sur ce dataset.
+# Laisser vide ("") si l'export billing n'est pas encore activé.
+billing_export_dataset_id = ""  # ← ex: "billing_export"
+
+# Monitoring & Alerting — opt-in.
+# Prérequis : roles/monitoring.admin sur terraform-deployer-sa + API monitoring.googleapis.com.
+# Voir docs/infra/monitoring_setup.md.
+create_monitoring = false
+alert_emails      = []  # ← ex: ["prenom.nom@exemple.com","autre@exemple.com"]

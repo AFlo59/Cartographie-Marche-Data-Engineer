@@ -70,6 +70,11 @@ services:
       TF_VAR_manage_project_job_user_bindings: ${TF_VAR_manage_project_job_user_bindings:-true}
       TF_VAR_manage_log_retention: ${TF_VAR_manage_log_retention:-false}
       TF_VAR_log_retention_days: ${TF_VAR_log_retention_days:-60}
+      # Billing export IAM — opt-in, vide = désactivé
+      TF_VAR_billing_export_dataset_id: ${TF_VAR_billing_export_dataset_id:-}
+      # Monitoring & Alerting — opt-in
+      TF_VAR_create_monitoring: ${TF_VAR_create_monitoring:-false}
+      TF_VAR_alert_emails: ${TF_VAR_alert_emails:-[]}
     volumes:
       - ./:/workspace
       - ./secrets:/workspace/secrets:ro
