@@ -352,3 +352,17 @@ variable "dbt_max_retries" {
   type        = number
   default     = 0
 }
+
+# ── Monitoring & Alerting ────────────────────────────────────────────────────
+
+variable "create_monitoring" {
+  description = "Create Cloud Monitoring alert policies for Cloud Run Job failures. Requires monitoring.googleapis.com enabled and roles/monitoring.admin on terraform-deployer-sa."
+  type        = bool
+  default     = false
+}
+
+variable "alert_emails" {
+  description = "List of email addresses to receive pipeline failure alerts. Required when create_monitoring = true."
+  type        = list(string)
+  default     = []
+}
