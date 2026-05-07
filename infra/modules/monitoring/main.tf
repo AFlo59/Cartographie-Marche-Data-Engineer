@@ -1,3 +1,10 @@
+check "alert_emails_required" {
+  assert {
+    condition     = !var.create_monitoring || length(var.alert_emails) > 0
+    error_message = "create_monitoring = true mais alert_emails est vide — les alert policies seront créées sans destinataires."
+  }
+}
+
 resource "google_monitoring_notification_channel" "email" {
   for_each = var.create_monitoring ? toset(var.alert_emails) : toset([])
 

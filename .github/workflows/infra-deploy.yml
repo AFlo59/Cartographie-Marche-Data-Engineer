@@ -161,8 +161,8 @@ jobs:
       # Cloud Logging retention: disabled in CI by default unless CI identity has logging bucket config permissions
       TF_VAR_manage_log_retention: "true"
       # Monitoring & Alerting
-      TF_VAR_create_monitoring: "true"
-      TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS }}
+      TF_VAR_create_monitoring: ${{ vars.ALERT_EMAILS != '' && 'true' || 'false' }}
+      TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS || '[]' }}
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
