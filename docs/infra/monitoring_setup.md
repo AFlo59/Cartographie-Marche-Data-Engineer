@@ -100,7 +100,9 @@ Résultat attendu : une ligne avec `roles/monitoring.admin` et l'email du SA.
 
 **Chemin** : `Repository → Settings → Secrets and variables → Actions → onglet Variables → New repository variable`
 
-### Variable `ALERT_EMAILS`
+### Secret `ALERT_EMAILS`
+
+**Chemin** : `Repository → Settings → Secrets and variables → Actions → Secrets → New repository secret`
 
 | Champ | Valeur |
 |-------|--------|
