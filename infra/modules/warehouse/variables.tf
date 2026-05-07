@@ -97,3 +97,9 @@ variable "create_external_tables" {
   type        = bool
   default     = false
 }
+
+variable "billing_export_dataset_id" {
+  description = "Dataset ID for GCP billing export (created by GCP billing, not Terraform). When non-empty, grants dbt-sa roles/bigquery.dataViewer on this dataset."
+  type        = string
+  default     = ""
+}

@@ -160,6 +160,8 @@ jobs:
       TF_VAR_dbt_max_retries: "0"
       # Cloud Logging retention: disabled in CI by default unless CI identity has logging bucket config permissions
       TF_VAR_manage_log_retention: "true"
+      # Billing export IAM
+      TF_VAR_billing_export_dataset_id: billing_export
       # Monitoring & Alerting
       TF_VAR_create_monitoring: ${{ vars.ALERT_EMAILS != '' && 'true' || 'false' }}
       TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS || '[]' }}

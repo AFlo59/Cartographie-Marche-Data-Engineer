@@ -237,6 +237,15 @@ resource "google_bigquery_table" "raw_jooble_offres" {
   }
 }
 
+resource "google_bigquery_dataset_iam_member" "dbt_billing_viewer" {
+  count = var.billing_export_dataset_id != "" && var.dbt_service_account != "" ? 1 : 0
+
+  project    = var.project_id
+  dataset_id = var.billing_export_dataset_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${var.dbt_service_account}"
+}
+
 resource "google_project_iam_member" "ingestion_job_user" {
   count = var.manage_project_job_user_bindings && var.ingestion_service_account != "" ? 1 : 0
 

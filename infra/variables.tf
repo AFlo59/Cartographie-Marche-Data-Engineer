@@ -355,6 +355,12 @@ variable "dbt_max_retries" {
 
 # ── Monitoring & Alerting ────────────────────────────────────────────────────
 
+variable "billing_export_dataset_id" {
+  description = "Dataset ID for GCP billing export. When non-empty, grants dbt-sa roles/bigquery.dataViewer on this dataset."
+  type        = string
+  default     = ""
+}
+
 variable "create_monitoring" {
   description = "Create Cloud Monitoring alert policies for Cloud Run Job failures. Requires monitoring.googleapis.com enabled and roles/monitoring.admin on terraform-deployer-sa."
   type        = bool
