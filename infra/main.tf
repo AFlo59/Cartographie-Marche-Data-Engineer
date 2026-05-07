@@ -173,3 +173,13 @@ module "scheduler" {
 
   depends_on = [module.compute]
 }
+
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  project_id         = var.project_id
+  create_monitoring  = var.create_monitoring
+  alert_emails       = var.alert_emails
+  ingestion_job_name = var.compute_job_name
+  dbt_job_name       = var.create_dbt_job ? var.dbt_job_name : ""
+}
