@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: mart_couts__annuel
+    description: >
+      Vue BI — coûts GCP annuels par service, SKU, ressource, région et type de coût.
+      Agrégation annuelle de l'export billing BigQuery.
+      Inclut coût brut, crédits appliqués et coût net final.
+    config:
+      materialized: view
+    columns:
+      - name: projet_id
+        description: "ID du projet GCP"
+      - name: service
+        description: "Nom du service GCP facturé (ex: Cloud Run, BigQuery, Cloud Storage, Artifact Registry)"
+      - name: sku
+        description: "Libellé détaillé du SKU facturé"
+      - name: ressource_nom
+        description: "Nom de la ressource GCP spécifique. Null si non applicable."
+      - name: ressource_type
+        description: "Type de ressource GCP. Null si non applicable."
+      - name: region
+        description: "Région GCP de la ressource. Null pour les ressources globales."
+      - name: pays
+        description: "Pays de la ressource."
+      - name: type_cout
+        description: "Type de ligne de coût : regular, tax, adjustment, rounding_error."
+      - name: annee
+        description: "Année de facturation (ex: 2026)."
+      - name: cout_brut_eur
+        description: "Coût brut en EUR avant application des crédits."
+      - name: credits_eur
+        description: "Total des crédits appliqués en EUR (valeur négative = réduction de coût)."
+      - name: cout_net_eur
+        description: "Coût net final en EUR après crédits — montant réellement facturé."
