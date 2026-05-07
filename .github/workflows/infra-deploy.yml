@@ -160,6 +160,9 @@ jobs:
       TF_VAR_dbt_max_retries: "0"
       # Cloud Logging retention: disabled in CI by default unless CI identity has logging bucket config permissions
       TF_VAR_manage_log_retention: "true"
+      # Monitoring & Alerting
+      TF_VAR_create_monitoring: "true"
+      TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS }}
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
@@ -217,6 +220,7 @@ jobs:
             bigquery.googleapis.com
             storage.googleapis.com
             artifactregistry.googleapis.com
+            monitoring.googleapis.com
           )
 
           failed_services=()
@@ -367,6 +371,7 @@ jobs:
             bigquery.googleapis.com
             storage.googleapis.com
             artifactregistry.googleapis.com
+            monitoring.googleapis.com
           )
 
           missing=0
