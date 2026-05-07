@@ -24,6 +24,7 @@ Prérequis déjà documentés ailleurs :
 | Alert policy — Cloud Run Job dbt | `google_monitoring_alert_policy` | ✅ Terraform |
 | Permission `roles/monitoring.admin` sur terraform-deployer-sa | IAM | 🔧 Manuel |
 | Variable GitHub Actions `ALERT_EMAILS` | GitHub repo settings | 🔧 Manuel |
+| Variable GitHub Actions `BILLING_EXPORT_DATASET_ID` | GitHub repo settings | 🔧 Manuel (opt-in) |
 
 ---
 
@@ -93,11 +94,13 @@ Résultat attendu : une ligne avec `roles/monitoring.admin` et l'email du SA.
 
 ---
 
-## Étape 3 — Configurer la variable GitHub Actions `ALERT_EMAILS`
+## Étape 3 — Configurer les variables GitHub Actions
 
 🔧 Manuel (GitHub UI)
 
 **Chemin** : `Repository → Settings → Secrets and variables → Actions → onglet Variables → New repository variable`
+
+### Variable `ALERT_EMAILS`
 
 | Champ | Valeur |
 |-------|--------|
@@ -120,6 +123,16 @@ Plusieurs destinataires :
 
 > Pas d'espace entre les éléments. Guillemets doubles obligatoires. Terraform parse ce JSON automatiquement via `TF_VAR_alert_emails`.
 
+### Variable `BILLING_EXPORT_DATASET_ID` (opt-in)
+
+| Champ     | Valeur                                                                      |
+|-----------|-----------------------------------------------------------------------------|
+| **Name**  | `BILLING_EXPORT_DATASET_ID`                                                 |
+| **Value** | Nom du dataset billing export créé dans GCP Console (ex: `billing_export`)  |
+
+Quand non vide, Terraform accorde `roles/bigquery.dataViewer` au `dbt-sa` sur ce dataset.
+Laisser non créée si l'export billing n'est pas encore activé — le binding ne sera pas créé.
+
 ---
 
 ## Étape 4 — Déploiement Terraform
@@ -135,8 +148,8 @@ TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS }}
 
 Terraform crée :
 - Un `google_monitoring_notification_channel` de type `email` par destinataire
-- Une `google_monitoring_alert_policy` pour le job ingestion (`datatalent-ingestion-job`)
-- Une `google_monitoring_alert_policy` pour le job dbt (`datatalent-dbt-job`)
+- Une `google_monitoring_alert_policy` pour le job ingestion (nom : valeur de `TF_VAR_compute_job_name`)
+- Une `google_monitoring_alert_policy` pour le job dbt (nom : valeur de `TF_VAR_dbt_job_name`)
 
 Chaque alert policy se déclenche sur `severity>=ERROR` dans les logs Cloud Run du job concerné, avec un délai minimum de 5 minutes entre deux notifications.
 
@@ -162,7 +175,7 @@ gcloud alpha monitoring policies list \
   --project=${GCP_PROJECT_ID}
 ```
 
-Résultat attendu : deux policies — `Cloud Run Job Failure — datatalent-ingestion-job` et `Cloud Run Job Failure — datatalent-dbt-job`.
+Résultat attendu : deux policies dont le nom suit le format `Cloud Run Job Failure — ${TF_VAR_compute_job_name}` et `Cloud Run Job Failure — ${TF_VAR_dbt_job_name}`.
 
 ### 5.3 Confirmer la réception email
 

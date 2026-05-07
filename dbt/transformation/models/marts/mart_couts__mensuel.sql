@@ -18,7 +18,7 @@ SELECT
     cost_type                                               AS type_cout,
 
     -- Dimensions temporelles
-    DATE_TRUNC(usage_start_time, MONTH)                     AS mois,
+    DATE_TRUNC(DATE(usage_start_time), MONTH)               AS mois,
     EXTRACT(YEAR FROM usage_start_time)                     AS annee,
     EXTRACT(QUARTER FROM usage_start_time)                  AS trimestre,
 
@@ -38,4 +38,3 @@ FROM {{ source('billing', 'gcp_billing_export_v1_01D8CD_F730D3_5EA02E') }}
 WHERE project.id = '{{ env_var("GCP_PROJECT_ID") }}'
 
 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-ORDER BY mois DESC, cout_net_eur DESC

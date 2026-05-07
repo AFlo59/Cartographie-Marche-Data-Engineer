@@ -11,12 +11,16 @@ models:
     columns:
       - name: projet_id
         description: "ID du projet GCP"
+        tests:
+          - not_null
       - name: service
         description: "Nom du service GCP facturé (ex: Cloud Run, BigQuery, Cloud Storage, Artifact Registry)"
+        tests:
+          - not_null
       - name: sku
         description: "Libellé détaillé du SKU facturé (ex: Jobs CPU in europe-west1, Standard Storage Belgium)"
       - name: ressource_nom
-        description: "Nom de la ressource GCP spécifique (ex: datatalent-ingestion-job, datatalent-dbt-job). Null si non applicable."
+        description: "Nom de la ressource GCP spécifique. Null si non applicable."
       - name: ressource_type
         description: "Type de ressource GCP (ex: cloud_run_job, bigquery_dataset). Null si non applicable."
       - name: region
@@ -25,15 +29,29 @@ models:
         description: "Pays de la ressource (ex: BE pour Belgique, US pour États-Unis)."
       - name: type_cout
         description: "Type de ligne de coût : regular (utilisation normale), tax (taxe), adjustment (ajustement), rounding_error."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['regular', 'tax', 'adjustment', 'rounding_error']
       - name: mois
         description: "Premier jour du mois de facturation — filtre principal pour les graphiques mensuels."
+        tests:
+          - not_null
       - name: annee
         description: "Année de facturation — pour filtres croisés avec trimestre."
+        tests:
+          - not_null
       - name: trimestre
         description: "Trimestre de facturation (1 à 4) — pour regroupements trimestriels."
       - name: cout_brut_eur
         description: "Coût brut en EUR avant application des crédits."
+        tests:
+          - not_null
       - name: credits_eur
         description: "Total des crédits appliqués en EUR (valeur négative = réduction de coût). Inclut promotions et remises usage."
+        tests:
+          - not_null
       - name: cout_net_eur
         description: "Coût net final en EUR après crédits — montant réellement facturé."
+        tests:
+          - not_null

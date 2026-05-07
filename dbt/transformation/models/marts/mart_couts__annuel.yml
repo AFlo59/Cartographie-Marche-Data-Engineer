@@ -11,8 +11,12 @@ models:
     columns:
       - name: projet_id
         description: "ID du projet GCP"
+        tests:
+          - not_null
       - name: service
         description: "Nom du service GCP facturé (ex: Cloud Run, BigQuery, Cloud Storage, Artifact Registry)"
+        tests:
+          - not_null
       - name: sku
         description: "Libellé détaillé du SKU facturé"
       - name: ressource_nom
@@ -25,11 +29,23 @@ models:
         description: "Pays de la ressource."
       - name: type_cout
         description: "Type de ligne de coût : regular, tax, adjustment, rounding_error."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['regular', 'tax', 'adjustment', 'rounding_error']
       - name: annee
         description: "Année de facturation (ex: 2026)."
+        tests:
+          - not_null
       - name: cout_brut_eur
         description: "Coût brut en EUR avant application des crédits."
+        tests:
+          - not_null
       - name: credits_eur
         description: "Total des crédits appliqués en EUR (valeur négative = réduction de coût)."
+        tests:
+          - not_null
       - name: cout_net_eur
         description: "Coût net final en EUR après crédits — montant réellement facturé."
+        tests:
+          - not_null

@@ -20,8 +20,8 @@ Prérequis déjà documentés ailleurs :
 
 | Ressource | Type | Gestion |
 |-----------|------|---------|
-| Export billing → dataset `billing_export` | GCP Console | 🔧 Manuel |
-| `roles/bigquery.dataViewer` dbt-sa sur `billing_export` | `google_bigquery_dataset_iam_member` | ✅ Terraform |
+| Export billing → dataset `${BILLING_DATASET}` | GCP Console | 🔧 Manuel |
+| `roles/bigquery.dataViewer` dbt-sa sur `${BILLING_DATASET}` | `google_bigquery_dataset_iam_member` | ✅ Terraform |
 | Vue mensuelle `mart_couts__mensuel` | modèle dbt | ✅ dbt (Cloud Run Job) |
 | Vue annuelle `mart_couts__annuel` | modèle dbt | ✅ dbt (Cloud Run Job) |
 
@@ -57,12 +57,12 @@ BILLING_TABLE="gcp_billing_export_v1_${BILLING_ACCOUNT_ID}"
 | Champ | Valeur |
 |-------|--------|
 | **Projet** | `${GCP_PROJECT_ID}` |
-| **Nom du dataset** | `billing_export` |
+| **Nom du dataset** | `${BILLING_DATASET}` |
 | **Localisation** | `us-central1` (ou la région de votre choix) |
 
 Cliquer sur **Enregistrer**.
 
-> GCP crée automatiquement le dataset `billing_export` et commence à alimenter la table.
+> GCP crée automatiquement le dataset `${BILLING_DATASET}` et commence à alimenter la table.
 > **Latence initiale : 24 à 48h** — le dataset est vide jusqu'au premier export automatique.
 > L'export n'est **pas rétroactif** : seules les données postérieures à l'activation sont disponibles.
 
@@ -76,9 +76,9 @@ Le module warehouse crée automatiquement le binding :
 
 ```hcl
 resource "google_bigquery_dataset_iam_member" "dbt_billing_viewer" {
-  dataset_id = "billing_export"
+  dataset_id = var.billing_export_dataset_id  # valeur de TF_VAR_billing_export_dataset_id
   role       = "roles/bigquery.dataViewer"
-  member     = "serviceAccount:dbt-sa@..."
+  member     = "serviceAccount:${var.dbt_service_account}"
 }
 ```
 
@@ -105,8 +105,9 @@ Résultat attendu : `roles/bigquery.dataViewer` présent dans la liste (binding 
 
 ```bash
 GCP_PROJECT_ID="$(gcloud config get project)"
+BILLING_DATASET="billing_export"   # adapter si vous avez utilisé un autre nom
 
-bq ls --project_id=${GCP_PROJECT_ID} billing_export
+bq ls --project_id=${GCP_PROJECT_ID} ${BILLING_DATASET}
 ```
 
 Résultat attendu (exemple) :
@@ -164,7 +165,7 @@ BILLING_TABLE="gcp_billing_export_v1_${BILLING_ACCOUNT_ID}"
 bq mk \
   --table \
   --project_id=${GCP_PROJECT_ID} \
-  ${GCP_PROJECT_ID}:billing_export.${BILLING_TABLE} \
+  ${GCP_PROJECT_ID}:${BILLING_DATASET}.${BILLING_TABLE} \
   "service:RECORD,usage_start_time:TIMESTAMP,usage_end_time:TIMESTAMP,\
 project:RECORD,sku:RECORD,resource:RECORD,location:RECORD,\
 cost:FLOAT,credits:RECORD,cost_type:STRING"
@@ -197,10 +198,10 @@ ou créer la table stub (étape 5) pour valider la compilation.
 
 ### `Access Denied: bigquery.tables.get` dans dbt
 
-Le dbt-sa n'a pas encore `roles/bigquery.dataViewer` sur `billing_export`.
-Vérifier que le Terraform apply s'est bien exécuté (merge sur `main` requis).
+Le dbt-sa n'a pas encore `roles/bigquery.dataViewer` sur `${BILLING_DATASET}`.
+Vérifier que le Terraform apply s'est bien exécuté (merge sur `main` requis) et que `TF_VAR_billing_export_dataset_id` est non vide en CI.
 
-### Le dataset `billing_export` n'existe pas
+### Le dataset `${BILLING_DATASET}` n'existe pas
 
 L'export n'a pas encore été activé. Reprendre l'étape 1.
 

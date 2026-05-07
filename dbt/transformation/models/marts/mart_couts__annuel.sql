@@ -36,4 +36,3 @@ FROM {{ source('billing', 'gcp_billing_export_v1_01D8CD_F730D3_5EA02E') }}
 WHERE project.id = '{{ env_var("GCP_PROJECT_ID") }}'
 
 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
-ORDER BY annee DESC, cout_net_eur DESC
