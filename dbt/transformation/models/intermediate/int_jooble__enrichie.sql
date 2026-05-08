@@ -58,6 +58,19 @@ sirene AS (
     SELECT * FROM {{ ref('int_sirene__entreprises') }}
 ),
 
+-- Noms de régions et départements normalisés à exclure du champ commune.
+-- Jooble encode parfois location = "Île-de-France" ou "Gironde" au lieu d'une ville précise.
+-- La jointure géo échoue (pas de commune avec ce nom), et la valeur passerait en commune_finale.
+-- On la nullifie ici plutôt que de propager un nom de région/département comme commune.
+geo_excl AS (
+    SELECT DISTINCT {{ clean_string('nom') }} AS label
+    FROM {{ ref('stg_geo__departements') }}
+    WHERE {{ clean_string('nom') }} NOT IN ('PARIS', 'LYON', 'MARSEILLE')
+    UNION DISTINCT
+    SELECT DISTINCT {{ clean_string('nom') }} AS label
+    FROM {{ ref('stg_geo__regions') }}
+),
+
 -- Enrichissement géo Jooble :
 -- P1 : code postal exact → commune la plus peuplée
 -- P2 : nom de ville exact → commune du référentiel
@@ -145,7 +158,8 @@ final AS (
         -- Localisation
         o.code_postal,
         o.code_insee_geo                                    AS code_insee,
-        o.commune_finale                                    AS commune,
+        CASE WHEN excl.label IS NOT NULL THEN NULL
+             ELSE o.commune_finale END                      AS commune,
         o.departement_final                                 AS departement,
         d.nom_departement,
         o.code_region,
@@ -203,6 +217,7 @@ final AS (
     LEFT JOIN sirene_best s     ON o.offre_id = s.offre_id
     LEFT JOIN dept d            ON o.departement_final = d.code_departement
     LEFT JOIN region r          ON o.code_region = r.code_region
+    LEFT JOIN geo_excl excl     ON o.commune_finale = excl.label
 )
 
 SELECT * FROM final

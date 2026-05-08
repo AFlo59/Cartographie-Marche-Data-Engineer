@@ -33,8 +33,8 @@ WITH offres AS (
     {% endif %}
 ),
 
--- Référentiel géo : 1 ligne par code_postal (commune la plus peuplée)
-geo AS (
+-- Référentiel géo P1 : 1 ligne par code_postal (commune la plus peuplée)
+geo_by_cp AS (
     SELECT
         CODE_POSTAL                 AS code_postal,
         CODE_INSEE                  AS code_insee,
@@ -46,6 +46,22 @@ geo AS (
         POPULATION
     FROM {{ ref('stg_geo__communes') }}
     QUALIFY ROW_NUMBER() OVER (PARTITION BY CODE_POSTAL ORDER BY POPULATION DESC NULLS LAST) = 1
+),
+
+-- Référentiel géo P2 : 1 ligne par code_insee — fallback quand code_postal manquant/invalide
+-- France Travail fournit lieuTravail.commune = code INSEE → permet de résoudre commune/dept/région
+-- même quand lieuTravail.codePostal est absent
+geo_by_insee AS (
+    SELECT
+        CODE_POSTAL                 AS code_postal,
+        CODE_INSEE                  AS code_insee,
+        NOM                         AS nom_commune_geo,
+        DEPARTEMENT                 AS code_departement,
+        CODE_REGION                 AS code_region,
+        LATITUDE                    AS geo_latitude,
+        LONGITUDE                   AS geo_longitude
+    FROM {{ ref('stg_geo__communes') }}
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY CODE_INSEE ORDER BY POPULATION DESC NULLS LAST) = 1
 ),
 
 dept AS (
@@ -66,17 +82,20 @@ sirene AS (
     SELECT * FROM {{ ref('int_sirene__entreprises') }}
 ),
 
--- Enrichissement géographique
+-- Enrichissement géographique :
+-- P1 via code_postal (code postal valide → commune la plus peuplée)
+-- P2 via code_insee (lieuTravail.commune = code INSEE) — activé quand P1 ne résout pas
 offres_geo AS (
     SELECT
         o.*,
-        COALESCE(g.nom_commune_geo, o.nom_commune)  AS commune_finale,
-        COALESCE(g.code_departement, o.departement) AS departement_final,
-        g.code_region,
-        g.geo_latitude                               AS latitude,
-        g.geo_longitude                              AS longitude
+        COALESCE(gcp.nom_commune_geo, gisn.nom_commune_geo, o.nom_commune)   AS commune_finale,
+        COALESCE(gcp.code_departement, gisn.code_departement, o.departement) AS departement_final,
+        COALESCE(gcp.code_region,      gisn.code_region)                     AS code_region,
+        COALESCE(gcp.geo_latitude,     gisn.geo_latitude)                    AS latitude,
+        COALESCE(gcp.geo_longitude,    gisn.geo_longitude)                   AS longitude
     FROM offres o
-    LEFT JOIN geo g ON o.code_postal = g.code_postal
+    LEFT JOIN geo_by_cp   gcp  ON o.code_postal = gcp.code_postal
+    LEFT JOIN geo_by_insee gisn ON o.code_insee  = gisn.code_insee
 ),
 
 -- Normalisation du nom entreprise pour jointure SIRENE sans SIRET
