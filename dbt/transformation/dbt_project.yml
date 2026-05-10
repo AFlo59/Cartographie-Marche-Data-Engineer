@@ -68,6 +68,20 @@ models:
       mart_marche_emploi:
         +contract:
           enforced: false
+      # Vues billing : contract non enforced — Jinja IF/ELSE conditionnel (table billing
+      # absente → SELECT vide), et colonnes sans data_type dans le yml.
+      mart_couts__mensuel:
+        +contract:
+          enforced: false
+      mart_couts__annuel:
+        +contract:
+          enforced: false
+      mart_couts_ressource__mensuel:
+        +contract:
+          enforced: false
+      mart_couts_ressource__annuel:
+        +contract:
+          enforced: false
 
 seeds:
   datatalent_transformation:
