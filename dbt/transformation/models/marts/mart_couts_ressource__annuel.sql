@@ -27,7 +27,6 @@ SELECT
     sku.description                                         AS sku,
     resource.name                                           AS ressource_nom,
     resource.global_name                                    AS ressource_global_nom,
-    resource.type                                           AS ressource_type,
 
     -- Dimensions localisation
     location.region                                         AS region,
@@ -54,7 +53,7 @@ FROM {{ source('billing', 'gcp_billing_export_resource_v1_01D8CD_F730D3_5EA02E')
 
 WHERE project.id = '{{ env_var("GCP_PROJECT_ID") }}'
 
-GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
 
 {% else %}
 
@@ -64,7 +63,6 @@ SELECT
     CAST(NULL AS STRING)  AS sku,
     CAST(NULL AS STRING)  AS ressource_nom,
     CAST(NULL AS STRING)  AS ressource_global_nom,
-    CAST(NULL AS STRING)  AS ressource_type,
     CAST(NULL AS STRING)  AS region,
     CAST(NULL AS STRING)  AS pays,
     CAST(NULL AS STRING)  AS type_cout,
