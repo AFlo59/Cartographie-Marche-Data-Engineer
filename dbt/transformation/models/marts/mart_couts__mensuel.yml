@@ -3,9 +3,11 @@ version: 2
 models:
   - name: mart_couts__mensuel
     description: >
-      Vue BI — coûts GCP mensuels par service, SKU, ressource, région et type de coût.
+      Vue BI — coûts GCP mensuels par service, SKU, région et type de coût.
+      Basée sur l'export standard gcp_billing_export_v1 (sans granularité ressource).
       Inclut coût brut, crédits appliqués et coût net final.
       Alimentée par l'export billing BigQuery — latence de 1 jour.
+      Pour le détail par ressource (Cloud Run Job, dataset…), utiliser mart_couts_ressource__mensuel.
     config:
       materialized: view
     columns:
@@ -18,11 +20,7 @@ models:
         tests:
           - not_null
       - name: sku
-        description: "Libellé détaillé du SKU facturé (ex: Jobs CPU in europe-west1, Standard Storage Belgium)"
-      - name: ressource_nom
-        description: "Nom de la ressource GCP spécifique. Null si non applicable."
-      - name: ressource_type
-        description: "Type de ressource GCP (ex: cloud_run_job, bigquery_dataset). Null si non applicable."
+        description: "Libellé détaillé du SKU facturé (ex: Jobs CPU in us-central1, Standard Storage US)"
       - name: region
         description: "Région GCP de la ressource (ex: europe-west1, us-central1). Null pour les ressources globales."
       - name: pays

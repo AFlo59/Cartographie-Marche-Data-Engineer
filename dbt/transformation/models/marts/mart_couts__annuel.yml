@@ -3,9 +3,10 @@ version: 2
 models:
   - name: mart_couts__annuel
     description: >
-      Vue BI — coûts GCP annuels par service, SKU, ressource, région et type de coût.
-      Agrégation annuelle de l'export billing BigQuery.
+      Vue BI — coûts GCP annuels par service, SKU, région et type de coût.
+      Agrégation annuelle de l'export standard gcp_billing_export_v1 (sans granularité ressource).
       Inclut coût brut, crédits appliqués et coût net final.
+      Pour le détail par ressource, utiliser mart_couts_ressource__annuel.
     config:
       materialized: view
     columns:
@@ -19,10 +20,6 @@ models:
           - not_null
       - name: sku
         description: "Libellé détaillé du SKU facturé"
-      - name: ressource_nom
-        description: "Nom de la ressource GCP spécifique. Null si non applicable."
-      - name: ressource_type
-        description: "Type de ressource GCP. Null si non applicable."
       - name: region
         description: "Région GCP de la ressource. Null pour les ressources globales."
       - name: pays

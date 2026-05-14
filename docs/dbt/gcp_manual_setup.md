@@ -41,17 +41,22 @@ bq ls --project_id=${PROJECT_ID}
 
 Dans le `.env` racine (ou variables exportées), vérifier au minimum :
 
-- `GCP_PROJECT_ID`
-- `GCP_LOCATION` (ex: `EU`)
+- `GCP_PROJECT_ID` (ex: `cartographie-data-engineer`)
+- `GCP_LOCATION` — **utiliser `us-central1`** (bucket raw et Artifact Registry migrés en mai 2026 ; la valeur par défaut du profil `EU` n'est plus correcte)
 - `DBT_BIGQUERY_PROJECT`
 - `DBT_BIGQUERY_DATASET`
 - `DBT_TARGET` (`dev` ou `ci`)
 
-## 5. Cas CI / compte de service
+## 5. Cas CI / Cloud Run Job
 
-Pour `DBT_TARGET=ci`, le profil attend :
+### GitHub Actions (dbt-ci.yml)
 
-- `GOOGLE_APPLICATION_CREDENTIALS` pointe vers un fichier JSON valide
-- le compte de service dispose des rôles BigQuery nécessaires
+Les workflows GitHub Actions utilisent **Workload Identity Federation (WIF)** — pas de JSON de compte de service.
+L'ADC est injecté automatiquement par l'action `google-github-actions/auth`.
 
-Ne jamais versionner le JSON de compte de service dans le repo.
+### Cloud Run Job (production)
+
+Le Cloud Run Job `datatalent-dbt-job` s'exécute avec le compte de service `dbt-sa`.
+L'ADC est fourni automatiquement par la métadonnée d'instance GCP — aucune variable `GOOGLE_APPLICATION_CREDENTIALS` nécessaire.
+
+Ne jamais versionner un JSON de compte de service dans le repo.
