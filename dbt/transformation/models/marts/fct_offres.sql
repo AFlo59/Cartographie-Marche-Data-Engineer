@@ -70,4 +70,56 @@ unified AS (
     FROM jooble
 )
 
-SELECT * FROM unified
+final AS (
+    SELECT
+        *,
+
+        -- Source enrichie (affichage BI)
+        CASE source_offre
+            WHEN 'france_travail' THEN 'France Travail'
+            WHEN 'apec'           THEN 'APEC'
+            WHEN 'jooble'         THEN 'Jooble'
+        END                                                             AS source_nom_affiche,
+        CASE source_offre
+            WHEN 'france_travail' THEN 'Pôle emploi officiel'
+            WHEN 'apec'           THEN 'Cadres / Ingénieurs'
+            WHEN 'jooble'         THEN 'Agrégateur'
+        END                                                             AS source_type,
+        'National'                                                      AS source_perimetre,
+        source_offre IN ('france_travail', 'apec')                     AS est_source_officielle,
+
+        -- Entreprise (alias lisibles BI)
+        nom_entreprise_final                                            AS entreprise,
+        categorie_entreprise                                            AS taille_entreprise,
+        CASE tranche_effectifs
+            WHEN 'NN' THEN 'Non renseigné'
+            WHEN '00' THEN '0 salarié'
+            WHEN '01' THEN '1 ou 2 salariés'
+            WHEN '02' THEN '3 à 5 salariés'
+            WHEN '03' THEN '6 à 9 salariés'
+            WHEN '11' THEN '10 à 19 salariés'
+            WHEN '12' THEN '20 à 49 salariés'
+            WHEN '21' THEN '50 à 99 salariés'
+            WHEN '22' THEN '100 à 199 salariés'
+            WHEN '31' THEN '200 à 249 salariés'
+            WHEN '32' THEN '250 à 499 salariés'
+            WHEN '41' THEN '500 à 999 salariés'
+            WHEN '42' THEN '1 000 à 1 999 salariés'
+            WHEN '51' THEN '2 000 à 4 999 salariés'
+            WHEN '52' THEN '5 000 à 9 999 salariés'
+            WHEN '53' THEN '10 000 salariés et plus'
+        END                                                             AS effectifs_libelle,
+
+        -- Contrat (alias lisible)
+        contract_type_normalized                                        AS type_contrat,
+
+        -- Salaire médian estimé
+        SAFE_DIVIDE(salary_min_annual + salary_max_annual, 2)          AS salary_median_estimate,
+
+        -- Semaine de publication (lundi → dimanche)
+        DATE_TRUNC(date_creation, WEEK(MONDAY))                        AS semaine_publication
+
+    FROM unified
+)
+
+SELECT * FROM final

@@ -5,7 +5,7 @@ models:
     description: >
       Table de faits principale — marché de l'emploi Data Engineering.
       UNION ALL France Travail + APEC + Jooble après enrichissement gold.
-      Schéma unifié 39 colonnes lowercase. Les colonnes non disponibles par source
+      Schéma unifié 49 colonnes lowercase. Les colonnes non disponibles par source
       sont NULL explicitement (ex: code_rome NULL pour APEC et Jooble).
       Clé primaire : offre_id_global (préfixe source + offre_id d'origine).
     config:
@@ -151,3 +151,35 @@ models:
       - name: matching_confidence
         data_type: STRING
         description: "Confiance pertinence : HIGH | MEDIUM | LOW | NOT_RELEVANT"
+
+      # --- Colonnes dérivées (affichage BI) ---
+      - name: source_nom_affiche
+        data_type: STRING
+        description: "Nom source lisible : France Travail | APEC | Jooble"
+      - name: source_type
+        data_type: STRING
+        description: "Type de source : Pôle emploi officiel | Cadres / Ingénieurs | Agrégateur"
+      - name: source_perimetre
+        data_type: STRING
+        description: "Périmètre géographique de la source (National)"
+      - name: est_source_officielle
+        data_type: BOOL
+        description: "TRUE si la source est officielle (France Travail ou APEC)"
+      - name: entreprise
+        data_type: STRING
+        description: "Alias lisible de nom_entreprise_final"
+      - name: taille_entreprise
+        data_type: STRING
+        description: "Alias lisible de categorie_entreprise (PME | ETI | GE)"
+      - name: effectifs_libelle
+        data_type: STRING
+        description: "Libellé textuel de la tranche effectifs SIRENE (ex: '10 à 19 salariés')"
+      - name: type_contrat
+        data_type: STRING
+        description: "Alias lisible de contract_type_normalized (CDI | CDD | INTERIM | …)"
+      - name: salary_median_estimate
+        data_type: NUMERIC
+        description: "Estimation médiane du salaire annuel : (salary_min + salary_max) / 2"
+      - name: semaine_publication
+        data_type: DATE
+        description: "Lundi de la semaine de publication de l'offre (DATE_TRUNC WEEK)"
