@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: mart_demo__deploiement
+    description: >
+      Modèle de démonstration du déploiement CI/CD (GitHub Actions + Cloud Run Job dbt
+      sur GCP). Vue autonome sans dépendance ni source — sert uniquement à prouver
+      qu'un changement dbt mergé sur `main` se propage jusqu'à BigQuery. Bump le champ
+      `version` dans le SQL pour matérialiser une mise à jour visible.
+    config:
+      materialized: view
+      contract:
+        enforced: true
+    columns:
+      - name: pipeline_nom
+        data_type: STRING
+        description: "Nom du pipeline (constante)"
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+      - name: version
+        data_type: STRING
+        description: "Version de démo — à incrémenter à chaque déploiement de démonstration"
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+      - name: environnement_dbt
+        data_type: STRING
+        description: "Target dbt actif (dev en local, ci en GitHub Actions)"
+        constraints:
+          - type: not_null
+      - name: nb_sources_ingerees
+        data_type: INT64
+        description: "Nombre de sources d'ingestion du pipeline (france_travail, apec, jooble, sirene, geo)"
+        constraints:
+          - type: not_null
+      - name: genere_a
+        data_type: TIMESTAMP
+        description: "Horodatage d'évaluation de la vue (UTC) — preuve de fraîcheur"
+        constraints:
+          - type: not_null
+      - name: message
+        data_type: STRING
+        description: "Message libre affiché lors de la démonstration"
+        constraints:
+          - type: not_null
