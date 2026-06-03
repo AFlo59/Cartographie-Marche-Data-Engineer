@@ -89,12 +89,17 @@ gcloud services enable \
   run.googleapis.com \
   cloudscheduler.googleapis.com \
   secretmanager.googleapis.com \
+  artifactregistry.googleapis.com \
+  monitoring.googleapis.com \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
   --project ${PROJECT_ID}
 ```
 
 Pourquoi : prépare les services requis par l'infra actuelle et la CI WIF.
+`artifactregistry.googleapis.com` est requis pour le repo Docker `datatalent` ;
+`monitoring.googleapis.com` n'est nécessaire que si le monitoring opt-in est activé
+(`create_monitoring`).
 
 ### 5. Créer les comptes de service
 

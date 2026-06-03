@@ -24,6 +24,8 @@ Prérequis déjà documentés ailleurs :
 | `roles/bigquery.dataViewer` dbt-sa sur `${BILLING_DATASET}` | `google_bigquery_dataset_iam_member` | ✅ Terraform |
 | Vue mensuelle `mart_couts__mensuel` | modèle dbt | ✅ dbt (Cloud Run Job) |
 | Vue annuelle `mart_couts__annuel` | modèle dbt | ✅ dbt (Cloud Run Job) |
+| Vue mensuelle par ressource `mart_couts_ressource__mensuel` | modèle dbt | ✅ dbt (Cloud Run Job) |
+| Vue annuelle par ressource `mart_couts_ressource__annuel` | modèle dbt | ✅ dbt (Cloud Run Job) |
 
 ---
 
@@ -132,24 +134,30 @@ Relever le nom exact de la table — il correspond à `gcp_billing_export_v1_${B
 
 | Modèle | Dataset | Description |
 |--------|---------|-------------|
-| `mart_couts__mensuel` | `marts` | Coûts par service, SKU, ressource, région — grain mensuel |
+| `mart_couts__mensuel` | `marts` | Coûts par service, SKU, région, pays, type de coût — grain mensuel |
 | `mart_couts__annuel` | `marts` | Même granularité — grain annuel |
+| `mart_couts_ressource__mensuel` | `marts` | Idem + détail par ressource (`ressource_nom`, `ressource_global_nom`) — grain mensuel |
+| `mart_couts_ressource__annuel` | `marts` | Idem par ressource — grain annuel |
+
+> Les colonnes `ressource_nom` / `ressource_global_nom` ne sont disponibles que dans les
+> deux marts `mart_couts_ressource__*` (source : `gcp_billing_export_resource_v1_*`).
+> Les marts `mart_couts__*` agrègent au niveau service/SKU/région sans détail ressource.
 
 ### Dimensions disponibles pour le filtrage BI
 
-| Colonne | Exemples de valeurs |
-|---------|-------------------|
-| `service` | Cloud Run, BigQuery, Cloud Storage, Artifact Registry |
-| `sku` | Jobs CPU in europe-west1, Standard Storage Belgium |
-| `ressource_nom` | datatalent-ingestion-job, datatalent-dbt-job |
-| `ressource_type` | cloud_run_job, bigquery_dataset |
-| `region` | europe-west1, us-central1, null (global) |
-| `pays` | BE, US |
-| `type_cout` | regular, tax, adjustment, rounding_error |
-| `mois` | 2026-04-01, 2026-05-01, … |
-| `trimestre` | 1, 2, 3, 4 |
-| `annee` | 2026, 2027, … |
-| `cout_net_eur` | Coût final après crédits |
+| Colonne | Exemples de valeurs | Présente dans |
+|---------|-------------------|---------------|
+| `service` | Cloud Run, BigQuery, Cloud Storage, Artifact Registry | toutes |
+| `sku` | Jobs CPU in europe-west1, Standard Storage Belgium | toutes |
+| `region` | europe-west1, us-central1, null (global) | toutes |
+| `pays` | BE, US | toutes |
+| `type_cout` | regular, tax, adjustment, rounding_error | toutes |
+| `mois` | 2026-04-01, 2026-05-01, … | grain mensuel |
+| `trimestre` | 1, 2, 3, 4 | grain mensuel |
+| `annee` | 2026, 2027, … | toutes |
+| `cout_net_eur` | Coût final après crédits | toutes |
+| `ressource_nom` | datatalent-ingestion-job, datatalent-dbt-job | `mart_couts_ressource__*` |
+| `ressource_global_nom` | chemin global de la ressource | `mart_couts_ressource__*` |
 
 ---
 

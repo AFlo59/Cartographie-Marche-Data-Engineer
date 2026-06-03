@@ -10,21 +10,31 @@ Pour l'exécution en production (Cloud Run Job déclenché par Cloud Scheduler),
 
 ## Architecture ingestion
 
-Le module d'ingestion supporte cinq sources de données :
+Le module d'ingestion supporte cinq sources de données, déclenchées en production
+par **2 Cloud Scheduler d'ingestion** regroupés par fréquence :
 
-| Source | Script | Fréquence Cloud Scheduler |
+| Source | Script | Groupe / déclenchement Cloud Scheduler |
 | --- | --- | --- |
-| `france_travail` | `ingest_france_travail.py` | Hebdomadaire lundi (`0 6 * * 1`) |
-| `apec` | `ingest_apec.py` | Hebdomadaire lundi (`0 7 * * 1`) |
-| `jooble` | `ingest_jooble.py` | Hebdomadaire lundi (`0 8 * * 1`) |
-| `sirene` | `ingest_sirene.py` | Mensuelle (`0 3 1 * *`) |
-| `geo` | `ingest_geo.py` | Mensuelle (`0 4 1 * *`) |
-| `all` | (enchaîne les 5) | — |
+| `france_travail` | `ingest_france_travail.py` | `weekly` — lundi 6h (`0 6 * * 1`) |
+| `apec` | `ingest_apec.py` | `weekly` — lundi 6h (`0 6 * * 1`) |
+| `jooble` | `ingest_jooble.py` | `weekly` — lundi 6h (`0 6 * * 1`) |
+| `sirene` | `ingest_sirene.py` | `monthly` — 1er du mois 3h (`0 3 1 * *`) |
+| `geo` | `ingest_geo.py` | `monthly` — 1er du mois 3h (`0 3 1 * *`) |
+| `all` | (enchaîne les 5) | — (usage manuel uniquement) |
 
-Le point d'entrée est `main.py` qui accepte `--source <source>`.
+Le point d'entrée est `main.py` qui accepte `--source <source>` (valeurs individuelles
+ci-dessus, ou les groupes `weekly` / `monthly` / `all`).
 
-La variable d'environnement `INGESTION_SOURCE` est utilisée par le Cloud Run Job pour sélectionner la source
-(Cloud Scheduler envoie un override d'env var à chaque déclenchement).
+La variable d'environnement `INGESTION_SOURCE` est utilisée par le Cloud Run Job pour
+sélectionner la source. En production, le Cloud Scheduler `weekly` envoie
+`INGESTION_SOURCE=weekly` et `monthly` envoie `INGESTION_SOURCE=monthly` ; `main.py`
+dispatche ensuite vers les sources individuelles du groupe.
+
+> **Un seul déclenchement par groupe, pas d'heures multiples.** Le scheduler `weekly`
+> lance le job **une fois** (lundi 6h) ; dans cette même exécution, `main.py` enchaîne
+> les sources **en série** dans l'ordre `france_travail → apec → jooble`. De même,
+> `monthly` lance le job une fois (1er du mois 3h) et exécute `sirene → geo` en série.
+> Il n'y a donc ni scheduler par source ni horaires décalés (6h/7h/8h).
 
 ---
 

@@ -337,8 +337,10 @@ Le workflow `infra-deploy.yml` orchestre 4 jobs sur push `main` :
 
 1. **`ingestion-verify`** — Checkout + `docker build` Dockerfile ingestion (vérifie la validité)
 2. **`dbt-verify`** — Checkout + Auth WIF + `docker build` dbt + `dbt parse` + `dbt compile`
-3. **`terraform`** (bloqué jusqu'au succès des 2 verify) — Auth WIF + `terraform init/validate/apply`
-4. **`push-images`** (bloqué jusqu'au succès de terraform) — Auth WIF + `docker build` + `docker push` ingestion et dbt vers Artifact Registry
+3. **`push-images`** (bloqué jusqu'au succès des 2 verify, merge `main` uniquement) — Auth WIF + `docker build` + `docker push` ingestion et dbt vers Artifact Registry
+4. **`terraform`** (bloqué jusqu'au succès des 2 verify **et** de `push-images`) — Auth WIF + `terraform init/validate/import/apply`
+
+> `push-images` s'exécute **avant** `terraform apply` : l'image doit déjà être dans Artifact Registry au moment où Terraform crée les Cloud Run Jobs (sinon échec 403/image introuvable).
 
 Le conteneur Terraform ne porte pas de clé JSON persistante.
 

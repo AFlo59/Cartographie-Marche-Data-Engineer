@@ -8,22 +8,22 @@ Pipeline de données end-to-end : cartographie du marché Data Engineer en Franc
 APIs sources                GCS (raw)            BigQuery
 ─────────────               ─────────────────    ────────────────────────────────────
 France Travail  ──┐                              raw          (external tables Parquet)
-APEC            ──┼──> ingestion Python ──>  bucket  ──>  staging      (tables dbt — 1 par source)
+APEC            ──┼──> ingestion Python ──>  bucket  ──>  staging      (views dbt — 1 par source)
 Jooble          ──┤         Cloud Run Job        raw          intermediate (incremental, gold layer)
-INSEE Sirene    ──┤                                           marts        (views dashboard)
+INSEE Sirene    ──┤                                           marts        (tables dims/faits + views)
 API Geo         ──┘
 ```
 
-### Flux d'exécution hebdomadaire (lundi)
+### Flux d'exécution (Cloud Scheduler)
 
-| Heure  | Job                      | Description                                        |
-| ------ | ------------------------ | -------------------------------------------------- |
-| 06h00  | Ingestion France Travail | Cloud Run Job — offres 7 derniers jours            |
-| 07h00  | Ingestion APEC           | Cloud Run Job — offres 7 derniers jours            |
-| 08h00  | Ingestion Jooble         | Cloud Run Job — offres 7 derniers jours            |
-| 09h00  | dbt run + test           | Cloud Run Job — staging → intermediate → marts     |
+Chaque scheduler déclenche **une seule** exécution du Cloud Run Job ; les sources d'un
+groupe sont enchaînées **en série** dans cette exécution (cf. `src/ingestion/main.py`).
 
-Ingestions mensuelles (1er du mois) : Sirene 03h00, Geo 04h00.
+| Scheduler                      | Cron (Europe/Paris) | Job déclenché        | Sources (en série)                       |
+| ------------------------------ | ------------------- | -------------------- | ---------------------------------------- |
+| `datatalent-ingestion-weekly`  | `0 6 * * 1` (lun. 6h) | ingestion (`weekly`)  | france_travail → apec → jooble           |
+| `datatalent-ingestion-monthly` | `0 3 1 * *` (1er 3h)  | ingestion (`monthly`) | sirene → geo                             |
+| `datatalent-dbt`               | `0 9 * * 1` (lun. 9h) | dbt                   | dbt run + test (staging → intermediate → marts) |
 
 ## Stack technique
 
@@ -33,26 +33,47 @@ Ingestions mensuelles (1er du mois) : Sirene 03h00, Geo 04h00.
 | Stockage raw   | GCS (Parquet, partitions Hive `dt=YYYY-MM-DD`)                                   |
 | Entrepôt       | BigQuery — datasets `raw`, `staging`, `intermediate`, `marts`                    |
 | Transformation | dbt (BigQuery adapter) — Cloud Run Job                                           |
-| IaC            | Terraform — modules `storage`, `warehouse`, `compute`, `scheduler`, `secrets`    |
+| IaC            | Terraform — modules `storage`, `warehouse`, `compute`, `scheduler`, `secrets`, `monitoring` |
 | CI/CD          | GitHub Actions + Workload Identity Federation                                    |
-| Dashboard      | Looker Studio — lecture sur dataset `marts`                                      |
+| Monitoring     | Cloud Monitoring (opt-in) — alert policies échec Cloud Run Job + canaux email    |
+| Coûts          | Billing export BigQuery (opt-in) → marts de coûts dbt                            |
+| Dashboard      | *Externe* — Looker Studio d'un collègue, lecture seule sur `marts` (non provisionné ici) |
 
 ## Modèles dbt
 
+Projet `datatalent_transformation`. UDFs BigQuery créées au `on-run-start`
+(`parse_event_ts`, `parse_contrat`, `parse_salaire_auto`, `lambert93_to_latlon`).
+
 ```text
-staging/          tables (1 par source, déduplication, nettoyage)
+staging/          views (1 par source, nettoyage + typage)
   stg_france_travail__offres
   stg_apec__offres
   stg_jooble__offres
-  stg_sirene__etablissements
+  stg_sirene__etablissements / unites_legales
   stg_geo__communes / departements / regions
 
-intermediate/     incremental merge (unique_key=offre_id, fenêtre -7j)
-  int_offres_enrichies   — jointure offres × sirene × geo
+intermediate/     incremental merge — gold layer (jointure géo + Sirene)
+  int_france_travail__enrichie   (unique_key=offre_id)
+  int_apec__enrichie             (unique_key=offre_id)
+  int_jooble__enrichie           (unique_key=offre_id)
+  int_sirene__entreprises        (unique_key=siret, référentiel consolidé)
 
-marts/            views (exposition dashboard)
-  mart_marche_emploi
+marts/            tables (dims/faits) + views (exposition dashboard)
+  fct_offres            — faits unifiés (UNION France Travail + APEC + Jooble)
+  dim_date              — calendrier
+  dim_territoire        — géographie (commune/dept/région)
+  dim_entreprise        — référentiel Sirene exposé BI
+  dim_source_offre      — dimension statique des 3 sources d'offres
+  mart_marche_emploi    — vue BI principale (offres enrichies)
+  mart_couts__mensuel / __annuel               — coûts GCP (source billing export)
+  mart_couts_ressource__mensuel / __annuel     — coûts GCP par ressource
 ```
+
+Les marts de coûts (`mart_couts*`) lisent l'export billing BigQuery et retournent un
+schéma vide tant que l'export n'est pas activé. Le dataset `billing_export` est **créé
+manuellement dans GCP** (Billing → Export BigQuery), hors Terraform/CI ; Terraform
+ajoute seulement le binding IAM `dbt-sa` → `dataViewer` (opt-in) — voir
+[docs/infra/billing_cost_setup.md](docs/infra/billing_cost_setup.md).
 
 ## Structure du repo
 
@@ -117,30 +138,40 @@ docker compose run --rm -e INGESTION_SOURCE=france_travail ingestion-jobs
 
 ## Ressources GCP provisionnées
 
-- **GCS** — bucket raw (`datatalent-<env>-<project_id>-raw`) avec lifecycle par source
-- **BigQuery** — 4 datasets : `raw`, `staging`, `intermediate`, `marts` + external tables Parquet
+- **GCS** — bucket raw (`datatalent-<env>-<project_id>-raw`) avec lifecycle de purge par source (30/31 j)
+- **BigQuery** — 4 datasets : `raw`, `staging`, `intermediate`, `marts` + 8 external tables Parquet
 - **Cloud Run Jobs** — `datatalent-ingestion-job` + `datatalent-dbt-job`
 - **Cloud Scheduler** — 3 jobs (`weekly` + `monthly` + `dbt`)
 - **Secret Manager** — `FT_CLIENT_ID`, `FT_CLIENT_SECRET`, `JOOBLE_API_KEY`, `DATAGOUV_API_KEY`
 - **Artifact Registry** — repo `datatalent` (`us-central1`) — images ingestion + dbt
+- **Cloud Monitoring** *(opt-in `create_monitoring`)* — alert policies échec Cloud Run Job + canaux email
 - **Comptes de service** — `ingestion-sa`, `dbt-sa`, `dashboard-sa`, `terraform-deployer-sa`
+
+Inventaire détaillé (config exacte, IAM, ressources conditionnelles) :
+[docs/infra/resource_inventory.md](docs/infra/resource_inventory.md).
+
+> Le dashboard **n'est pas une ressource de ce projet** : aucun serveur BI n'est
+> hébergé. La restitution se fait via le Looker Studio d'un collègue, qui exploite
+> le dataset `marts` en **lecture seule** (`dashboard-sa` a `roles/bigquery.dataViewer`
+> sur `marts`).
 
 ## Documentation
 
 | Document | Contenu |
 | --- | --- |
 | [docs/setup_guide.md](docs/setup_guide.md) | Point d'entrée — ordre de setup complet |
+| [docs/architecture.md](docs/architecture.md) | Schéma d'architecture global (Mermaid) |
 | [docs/platform/gcp_terminal_setup.md](docs/platform/gcp_terminal_setup.md) | Setup GCP initial (projets, SA, IAM) |
 | [docs/platform/secret_manager_setup.md](docs/platform/secret_manager_setup.md) | Création des secrets runtime |
 | [docs/cicd/github_wif_setup.md](docs/cicd/github_wif_setup.md) | Configuration WIF GitHub ↔ GCP |
+| [docs/cicd/deployment_orchestration.md](docs/cicd/deployment_orchestration.md) | Orchestration globale + pipeline CI/CD |
+| [docs/infra/resource_inventory.md](docs/infra/resource_inventory.md) | Inventaire exhaustif des ressources GCP |
+| [docs/infra/infrastructure_flow.md](docs/infra/infrastructure_flow.md) | Flux infra & déploiement Terraform |
 | [docs/infra/iam_roles.md](docs/infra/iam_roles.md) | Référence complète des rôles IAM |
-| [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md) | Commandes Docker locales |
-| [docs/infra/manual_commands.md](docs/infra/manual_commands.md) | Commandes sans Docker |
+| [docs/infra/monitoring_setup.md](docs/infra/monitoring_setup.md) | Alerting Cloud Monitoring (opt-in) |
+| [docs/infra/billing_cost_setup.md](docs/infra/billing_cost_setup.md) | Export billing BigQuery + marts de coûts |
+| [docs/infra/docker_run_commands.md](docs/infra/docker_run_commands.md) | Commandes Terraform via Docker |
+| [docs/infra/manual_commands.md](docs/infra/manual_commands.md) | Commandes Terraform sans Docker |
 | [docs/infra/infra_epic4_status.md](docs/infra/infra_epic4_status.md) | Statut tickets INFRA + incidents |
-
-## Statut
-
-- INFRA-01 à 07 : complets
-- INFRA-08 (`docs/cost_estimation.md`) : à créer
-- INFRA-09 (CI/CD) : partiel — lint Python + dbt parse/compile actifs ; dbt run/test sur main à ajouter
-- INFRA-10 (branch protection) : à configurer sur GitHub UI
+| [docs/ingestion/ingestion_docker.md](docs/ingestion/ingestion_docker.md) | Exécution de l'ingestion via Docker |
+| [docs/dbt/setup_guide.md](docs/dbt/setup_guide.md) | Setup et exécution dbt (local + Docker) |

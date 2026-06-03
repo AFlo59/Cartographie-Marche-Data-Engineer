@@ -16,8 +16,9 @@ Ce document centralise toutes les ressources GCP créées par Terraform, leur co
 8. [Secret Manager](#8-secret-manager)
 9. [Cloud Scheduler](#9-cloud-scheduler)
 10. [Cloud Logging](#10-cloud-logging)
-11. [IAM Bindings](#11-iam-bindings)
-12. [Ressources conditionnelles — récapitulatif](#12-ressources-conditionnelles--récapitulatif)
+11. [Cloud Monitoring — Alerting](#11-cloud-monitoring--alerting)
+12. [IAM Bindings](#12-iam-bindings)
+13. [Ressources conditionnelles — récapitulatif](#13-ressources-conditionnelles--récapitulatif)
 
 ---
 
@@ -86,12 +87,19 @@ terraform init -backend-config="bucket=datatalent-tfstate-<project_id>"
 **Fichier** : [infra/modules/warehouse/main.tf](../../infra/modules/warehouse/main.tf)  
 **Location** : `US` — **multi-région États-Unis** (différent du bucket GCS qui est single-region)
 
-| Dataset | ID |
-| --- | --- |
-| raw | `raw` |
-| staging | `staging` |
-| intermediate | `intermediate` |
-| marts | `marts` |
+| Dataset | ID | Géré par Terraform |
+| --- | --- | --- |
+| raw | `raw` | ✅ créé par Terraform |
+| staging | `staging` | ✅ créé par Terraform |
+| intermediate | `intermediate` | ✅ créé par Terraform |
+| marts | `marts` | ✅ créé par Terraform |
+| billing export | `billing_export` (ex.) | ❌ **non géré** — créé manuellement par GCP (config billing export) |
+
+> **Le dataset `billing_export` n'est PAS une ressource Terraform.** Il est créé
+> manuellement dans GCP Console (Billing → Export vers BigQuery) et alimenté par GCP,
+> hors GitHub Actions / Terraform. Terraform ne fait qu'**ajouter un binding IAM**
+> `dbt-sa` → `dataViewer` dessus, et seulement si `billing_export_dataset_id` est
+> renseigné (opt-in). Voir [docs/infra/billing_cost_setup.md](billing_cost_setup.md).
 
 ### IAM datasets
 
@@ -103,6 +111,7 @@ terraform init -backend-config="bucket=datatalent-tfstate-<project_id>"
 | `dbt-sa` | `intermediate` | `roles/bigquery.dataEditor` |
 | `dbt-sa` | `marts` | `roles/bigquery.dataEditor` |
 | `dashboard-sa` | `marts` | `roles/bigquery.dataViewer` |
+| `dbt-sa` | `billing_export` (externe) | `roles/bigquery.dataViewer` — opt-in `billing_export_dataset_id` ; dataset non géré par Terraform |
 
 ### IAM projet — `roles/bigquery.jobUser`
 
@@ -222,7 +231,7 @@ Zéro stockage BigQuery facturé : BQ lit directement GCS à la query.
 | Image | `us-central1-docker.pkg.dev/<project_id>/datatalent/dbt:latest` |
 | CPU | `1` |
 | Mémoire | `1Gi` |
-| Timeout | `4500s` (75 min) |
+| Timeout | `4500s` (75 min) en CI/`tfvars.example` — défaut variable `dbt_timeout_seconds = 1800` |
 | Max retries | `0` (pas de retry — idempotence non garantie) |
 | Service account | `dbt-sa@<project_id>.iam.gserviceaccount.com` |
 
@@ -234,7 +243,7 @@ Zéro stockage BigQuery facturé : BQ lit directement GCS à la query.
 | `GCP_LOCATION` | `US` |
 | `DBT_TARGET` | `ci` |
 | `DBT_BIGQUERY_DATASET` | `staging` |
-| `DBT_BIGQUERY_TIMEOUT_SECONDS` | `900` |
+| `DBT_BIGQUERY_TIMEOUT_SECONDS` | `3600` (timeout des queries BQ depuis dbt) |
 
 ---
 
@@ -295,11 +304,28 @@ Alimentation des valeurs : voir [docs/platform/secret_manager_setup.md](../platf
 | Bucket ID | `_Default` |
 | Rétention | `60j` |
 
-> Nécessite `roles/logging.configWriter` sur le SA Terraform. Ce rôle est manquant sur `terraform-deployer-sa` — cause erreur 403 lors du `terraform apply`. Voir [docs/infra/iam_roles.md](iam_roles.md) section 6.
+> Nécessite `roles/logging.configWriter` sur le SA Terraform (`terraform-deployer-sa`). Voir [docs/infra/iam_roles.md](iam_roles.md).
 
 ---
 
-## 11. IAM Bindings
+## 11. Cloud Monitoring — Alerting
+
+**Ressource Terraform** : `module.monitoring.*`
+**Fichier** : [infra/modules/monitoring/main.tf](../../infra/modules/monitoring/main.tf)
+**Conditionnel** : `create_monitoring = true` (opt-in) — requiert `alert_emails` non vide, l'API `monitoring.googleapis.com` activée et `roles/monitoring.admin` sur `terraform-deployer-sa`.
+**Setup** : [docs/infra/monitoring_setup.md](monitoring_setup.md)
+
+| Ressource | Type | Détail |
+| --- | --- | --- |
+| `google_monitoring_notification_channel.email` | Canal email (1 par adresse) | `for_each` sur `alert_emails` |
+| `google_monitoring_alert_policy.ingestion_job_failure` | Alert policy | Logs `cloud_run_job` `datatalent-ingestion-job` `severity>=ERROR` |
+| `google_monitoring_alert_policy.dbt_job_failure` | Alert policy | Logs `cloud_run_job` `datatalent-dbt-job` `severity>=ERROR` (si `dbt_job_name` non vide) |
+
+`alert_strategy` : `notification_rate_limit` (anti-spam) + `auto_close = 86400s` (24 h). Les deux policies notifient tous les canaux email configurés.
+
+---
+
+## 12. IAM Bindings
 
 ### Géré par Terraform — récapitulatif complet
 
@@ -332,6 +358,7 @@ Alimentation des valeurs : voir [docs/platform/secret_manager_setup.md](../platf
 | `dbt-sa` | `intermediate` | `roles/bigquery.dataEditor` |
 | `dbt-sa` | `marts` | `roles/bigquery.dataEditor` |
 | `dashboard-sa` | `marts` | `roles/bigquery.dataViewer` |
+| `dbt-sa` | `billing_export` (dataset externe, non géré par TF) | `roles/bigquery.dataViewer` (si `billing_export_dataset_id` non vide) |
 | `ingestion-sa` | projet | `roles/bigquery.jobUser` (si `manage_project_job_user_bindings=true`) |
 | `dbt-sa` | projet | `roles/bigquery.jobUser` (si `manage_project_job_user_bindings=true`) |
 | `dashboard-sa` | projet | `roles/bigquery.jobUser` (si `manage_project_job_user_bindings=true`) |
@@ -356,20 +383,22 @@ Alimentation des valeurs : voir [docs/platform/secret_manager_setup.md](../platf
 | `terraform-deployer-sa` | `roles/cloudscheduler.admin` | Terraform IaC |
 | `terraform-deployer-sa` | `roles/secretmanager.admin` | Terraform IaC |
 | `terraform-deployer-sa` | `roles/serviceusage.serviceUsageAdmin` | Activation APIs en CI |
-| `terraform-deployer-sa` | `roles/logging.configWriter` | **MANQUANT** — erreur 403 Cloud Logging |
+| `terraform-deployer-sa` | `roles/logging.configWriter` | Gestion de la rétention du bucket Cloud Logging `_Default` |
 
 ---
 
-## 12. Ressources conditionnelles — récapitulatif
+## 13. Ressources conditionnelles — récapitulatif
 
-| Ressource | Flag | Valeur en CI | Valeur locale (.env.example) |
+| Ressource | Flag | Valeur en CI | Valeur locale (`tfvars.example`) |
 | --- | --- | --- | --- |
 | Cloud Run Job ingestion | `create_compute_job` | `true` | `false` |
 | Cloud Run Job dbt | `create_dbt_job` | `true` | `false` |
-| Cloud Scheduler (3 jobs) | `create_compute_job` | `true` | `false` |
+| Cloud Scheduler (3 jobs) | `create_compute_job` / `create_dbt_job` | `true` | `false` |
 | External Tables BQ (8) | `create_external_tables` | `true` | `false` |
-| Cloud Logging retention | `manage_log_retention` | `true` | `true` |
-| BigQuery jobUser bindings projet | `manage_project_job_user_bindings` | `false` | `true` |
+| Cloud Logging retention | `manage_log_retention` | `true` | `false` |
+| Cloud Monitoring (alerting) | `create_monitoring` | `true` si secret `ALERT_EMAILS` défini | `false` |
+| IAM dbt-sa export billing | `billing_export_dataset_id` | secret `BILLING_EXPORT_DATASET_ID` (sinon vide) | `""` |
+| BigQuery jobUser bindings projet | `manage_project_job_user_bindings` | `false` | `false` |
 
 ---
 
@@ -391,4 +420,4 @@ Alimentation des valeurs : voir [docs/platform/secret_manager_setup.md](../platf
 
 ---
 
-**Dernière mise à jour** : Mai 2026
+**Dernière mise à jour** : Juin 2026

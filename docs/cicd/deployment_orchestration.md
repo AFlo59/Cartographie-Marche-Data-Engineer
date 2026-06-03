@@ -9,16 +9,19 @@ Ce document décrit l'enchaînement global des composants du projet sans répét
 3. Les secrets runtime sont versionnés dans Secret Manager.
 4. Cloud Scheduler déclenche le Cloud Run Job d'ingestion.
 5. Les données brutes arrivent dans **GCS (bucket raw)**. BigQuery y accède via des **External Tables** (pas de copie ni de stockage BQ facturé pour la couche raw).
-6. dbt transforme les données via les External Tables → `staging` (tables BQ réelles) → `marts` (tables BQ réelles).
-7. Le dashboard (Looker Studio) consomme `marts`.
+6. dbt transforme les données via les External Tables → `staging` (views) → `intermediate` (tables incremental) → `marts` (tables dims/faits + views).
+7. La restitution est **externe au projet** : le Looker Studio d'un collègue consomme `marts` en lecture seule (aucun outil BI provisionné ici).
 
 ## Décision d'architecture ingestion (recommandée)
 
 ### Choix retenu
 
 - **Un seul Cloud Run Job** d'ingestion (`datatalent-ingestion-job`),
-- **5 jobs Cloud Scheduler** (france_travail, apec, jooble, sirene, geo),
-- chaque scheduler envoie un override de variable d'environnement `INGESTION_SOURCE`.
+- **2 jobs Cloud Scheduler d'ingestion** regroupés par fréquence : `weekly`
+  (france_travail + apec + jooble) et `monthly` (sirene + geo) — soit **3 jobs
+  Cloud Scheduler au total** avec le job `dbt`,
+- chaque scheduler envoie un override de variable d'environnement `INGESTION_SOURCE`
+  (`weekly` / `monthly`), dispatché vers les sources individuelles par `main.py`.
 
 Ce choix est le plus optimisé actuellement pour votre projet (coût + simplicité opérationnelle).
 
@@ -64,13 +67,15 @@ Sinon, garder **1 job paramétré** (actuel) est la meilleure option.
 | --- | --- | --- |
 | 1 Cloud Run Job mutualisé (vs 3 séparés) | ~60% Artifact Registry + ops | ✅ |
 | BigQuery External Tables pour raw (Sirene 10M+ lignes) | ~2-5€/mois stockage BQ | ✅ |
-| GCS Nearline après 30j pour les données raw | ~40% stockage Sirene | ✅ |
-| Suppression auto geo/ après 90j | marginal | ✅ |
+| Purge GCS par source à 30/31 j (1 mois de rétention) | ~40% stockage raw | ✅ |
 | Workload Identity Federation (vs clés JSON) | 0 rotation + 0 coût | ✅ |
 | Looker Studio (vs Metabase Cloud Run) | ~10-20€/mois | ✅ (recommandé DASH-01) |
 | `require_partition_filter: true` sur les tables Sirene dbt | Évite scans > 1To accidentels | ✅ (backlog DBT-07) |
 
-**Cible** : < 5€/mois hors free tier GCP (1 To/mois queries BQ, 5 Go storage BQ, 5 Scheduler jobs, 2M Cloud Run invocations).
+> Transition NEARLINE désactivée (`bucket_nearline_age_days = null`) : la facturation
+> minimale NEARLINE de 30 j entrerait en conflit avec la purge par source à 30/31 j.
+
+**Cible** : < 5€/mois hors free tier GCP (1 To/mois queries BQ, 5 Go storage BQ, 3 Scheduler jobs, 2M Cloud Run invocations).
 
 ## Pipeline CI/CD — workflow `infra-deploy.yml` (push main)
 
@@ -80,12 +85,12 @@ Le workflow unique `infra-deploy.yml` orchestre tout sur push `main` en 4 jobs :
 | --- | --- | --- |
 | `ingestion-verify` | Build Dockerfile ingestion (vérification validité) | Toujours |
 | `dbt-verify` | Build image dbt + `dbt parse` + `dbt compile` | Toujours |
-| `terraform` | `terraform plan` sur PR, puis `terraform import` + `terraform apply` après merge sur `main` | needs: [ingestion-verify, dbt-verify] |
-| `push-images` | Build + push `ingestion:latest` et `dbt:latest` vers AR | needs: [terraform], merge `main` seulement |
+| `push-images` | Build + push `ingestion:latest` et `dbt:latest` vers AR | needs: [ingestion-verify, dbt-verify], merge `main` seulement |
+| `terraform` | `terraform plan` sur PR, puis `terraform import` + `terraform apply` après merge sur `main` | needs: [ingestion-verify, dbt-verify, push-images] |
 
 Sur **PR** vers `develop` ou `main` : seuls `ingestion-verify` + `dbt-verify` + `terraform plan` s'exécutent.
 
-Sur **merge vers `main`** : `terraform import` + `terraform apply`, puis `push-images`.
+Sur **merge vers `main`** : `push-images` (l'image doit exister dans AR avant la création du Cloud Run Job), puis `terraform import` + `terraform apply`.
 
 Workflows séparés `dbt-ci.yml` / `ingestion-ci.yml` et `python-lint.yml` : déclenchés uniquement sur PR et limités à la vérification locale.
 
@@ -116,20 +121,21 @@ Les étapes dbt run/test et dashboard sont rappelées ici pour la vision cible, 
 ## État actuel synthétique
 
 **Créé par Terraform (activé par défaut) :**
-- Bucket raw GCS avec lifecycle Nearline (30j) + suppression geo/ (90j)
-- Datasets BigQuery `raw`, `staging`, `marts`
+- Bucket raw GCS avec purge lifecycle par source (30/31 j) — NEARLINE désactivé
+- Datasets BigQuery `raw`, `staging`, `intermediate`, `marts`
 - IAM complet : tous les SA (ingestion, dbt, dashboard, CI) — y compris IAM Artifact Registry préparés en avance
-- Secret Manager + bindings `secretAccessor` pour `ingestion-sa`
+- Secret Manager (4 secrets) + bindings `secretAccessor` pour `ingestion-sa`
 - Artifact Registry repo `datatalent` (images ingestion + dbt)
-- Pipeline CI : verify ingestion + verify dbt → terraform apply → push images (sur merge main)
+- Pipeline CI : verify ingestion + verify dbt → push images → terraform apply (sur merge main)
 
-**Défini mais désactivé (activer après prérequis) :**
-- `create_compute_job = false` : Cloud Run Job ingestion + 5 Schedulers — activer après premier push image réussi
-- `create_dbt_job = false` : Cloud Run Job dbt — activer après premier push image dbt réussi
-- `create_external_tables = false` : External Tables `raw.sirene_etablissements`, `raw.sirene_unites_legales`, `raw.france_travail_offres` — activer après la première ingestion (BQ autodetect requiert des fichiers Parquet)
+**Activé en CI (`infra-deploy.yml`), désactivé par défaut en local :**
+- `create_compute_job = true` (CI) : Cloud Run Job ingestion + 3 Schedulers — activer en local après premier push image réussi
+- `create_dbt_job = true` (CI) : Cloud Run Job dbt — activer en local après premier push image dbt réussi
+- `create_external_tables = true` (CI) : 8 External Tables `raw.*` (france_travail, apec, jooble, sirene ×2, geo ×3) — activer après la première ingestion (BQ autodetect requiert des fichiers Parquet)
 
-**IAM bloquant à corriger avant le prochain apply :**
-- `roles/artifactregistry.admin` manquant sur `terraform-deployer-sa` → voir [docs/infra/iam_roles.md](../infra/iam_roles.md) section 6
+**Opt-in (désactivé tant que non configuré) :**
+- `create_monitoring` : alert policies Cloud Run Job + canaux email — fournir `alert_emails`
+- `billing_export_dataset_id` : binding IAM dbt-sa `dataViewer` sur l'export billing → marts de coûts. Le dataset `billing_export` est **créé manuellement dans GCP** (hors Terraform/CI) ; Terraform ne gère que le binding
 
 **Conteneurs Docker disponibles :** `infra-iac` (Terraform), `ingestion` (Python), `dbt` (dbt-bigquery)
 
