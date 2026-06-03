@@ -68,13 +68,12 @@ graph TD
     DBT_P ==> |Orchestrate SQL| BQ_INT
     DBT_P ==> |Orchestrate SQL| BQ_MRT
 
-    %% Visualisation
-    subgraph VISUAL ["Visualisation"]
-        LS[Looker Studio: Dashboard]
+    %% Visualisation (externe au projet)
+    subgraph VISUAL ["Visualisation (externe)"]
+        LS[Looker Studio collègue<br/>lecture seule]
     end
 
-    BQ_MRT --> |Query| LS
-    DBT_P -.-> |Refresh Data| LS
+    BQ_MRT --> |Query lecture seule| LS
 
     %% DevOps (CI/CD)
     subgraph DEVOPS ["DevOps / CI-CD"]
@@ -113,10 +112,15 @@ Le projet utilise **dbt** pour transformer les données directement au sein de *
 - **marts** : Vues prêtes pour la consommation.
 
 ### 4. Orchestration
-**Cloud Scheduler** gère le planning :
-- **Ingestion Weekly** : Lundi matin pour les offres d'emploi.
-- **Ingestion Monthly** : 1er du mois pour les entreprises et la géographie.
-- **Job dbt** : Exécuté après les ingestions pour mettre à jour les tableaux de bord.
+**Cloud Scheduler** gère le planning (3 jobs) :
+- **Ingestion Weekly** : un seul déclenchement lundi 6h ; le job enchaîne en série `france_travail → apec → jooble`.
+- **Ingestion Monthly** : un seul déclenchement le 1er du mois 3h ; le job enchaîne en série `sirene → geo`.
+- **Job dbt** : lundi 9h, après les ingestions.
 
-### 5. Infrastructure
+### 5. Visualisation (hors périmètre)
+Aucun outil BI n'est provisionné par ce projet. La restitution s'appuie sur le
+**Looker Studio d'un collègue**, qui consomme le dataset `marts` en **lecture seule**
+(le compte de service `dashboard-sa` dispose de `roles/bigquery.dataViewer` sur `marts`).
+
+### 6. Infrastructure
 L'ensemble de l'infrastructure est défini par du code (**Terraform**) situé dans le dossier `infra/`.

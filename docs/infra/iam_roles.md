@@ -148,6 +148,7 @@ done
 |------|--------|-----------------|----------|--------|---------------------|
 | `roles/bigquery.dataViewer` | Dataset | `raw` | Lire les tables raw (y compris les External Tables) en entrée des modèles dbt | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.dbt_raw_viewer` |
 | `roles/bigquery.dataEditor` | Dataset | `staging` | Créer / écraser les modèles staging | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.dbt_staging_editor` |
+| `roles/bigquery.dataEditor` | Dataset | `intermediate` | Créer / écraser les modèles intermediate (incremental) | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.dbt_intermediate_editor` |
 | `roles/bigquery.dataEditor` | Dataset | `marts` | Créer / écraser les modèles marts | ✅ Terraform | `modules/warehouse` → `google_bigquery_dataset_iam_member.dbt_marts_editor` |
 | `roles/bigquery.jobUser` | Projet | — | Lancer des jobs BigQuery | ✅ Terraform | `modules/warehouse` → `google_project_iam_member.dbt_job_user` |
 | `roles/storage.objectViewer` | Bucket | bucket raw | **Requis pour les BigQuery External Tables** : BQ lit directement GCS au moment de la query | ✅ Terraform | `modules/storage` → `google_storage_bucket_iam_member.dbt_object_viewer` |
@@ -261,7 +262,7 @@ Ce SA est utilisé par Terraform (CI GitHub Actions via WIF, ou ADC en local). I
 | `roles/bigquery.admin` | Projet | Créer / configurer les datasets BigQuery | ✅ Accordé |
 | `roles/artifactregistry.admin` | Projet | Créer ET modifier le repo Artifact Registry (cleanup policy, description) | ✅ Accordé |
 | `roles/run.admin` | Projet | Déployer les Cloud Run Jobs ingestion + dbt | ✅ Accordé |
-| `roles/cloudscheduler.admin` | Projet | Créer / modifier les 5 jobs Cloud Scheduler | ✅ Accordé |
+| `roles/cloudscheduler.admin` | Projet | Créer / modifier les 3 jobs Cloud Scheduler | ✅ Accordé |
 | `roles/secretmanager.admin` | Projet | Créer les secret containers Secret Manager | ✅ Accordé |
 | `roles/serviceusage.serviceUsageAdmin` | Projet | Activer les APIs GCP manquantes depuis la CI | ✅ Accordé |
 | `roles/iam.serviceAccountUser` | SA Resource | Assigner les SA aux Cloud Run Jobs | ✅ Accordé (via Terraform compute module) |
@@ -317,7 +318,7 @@ gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
 |--------|---------------|--------|
 | `ingestion-sa` | `roles/bigquery.dataEditor` sur `staging` / `marts` | L'ingestion n'écrit que dans `raw`. |
 | `ingestion-sa` | `roles/storage.admin` | `objectAdmin` sur le bucket suffit. |
-| `dbt-sa` | `roles/bigquery.dataEditor` sur `raw` | dbt ne doit qu'écrire dans `staging` et `marts`. |
+| `dbt-sa` | `roles/bigquery.dataEditor` sur `raw` | dbt ne doit écrire que dans `staging`, `intermediate` et `marts`. |
 | `dbt-sa` | `roles/storage.objectAdmin` sur le bucket raw | `objectViewer` suffit pour lire les External Tables. |
 | `dashboard-sa` | `roles/bigquery.dataEditor` sur `marts` | Le dashboard n'a besoin que de lire. |
 | `dashboard-sa` | Tout accès à `raw` / `staging` | Le dashboard ne doit voir que les données finales de `marts`. |
@@ -331,7 +332,7 @@ gcloud iam service-accounts add-iam-policy-binding ${DBT_SA} \
 | SA | Création | Permissions core | Statut global |
 |----|----------|------------------|---------------|
 | `ingestion-sa` | ✅ Créé | Storage objectAdmin ✅ + BQ dataEditor(raw) ✅ + BQ jobUser ✅ + Secret Accessor (FT + DATAGOUV + JOOBLE) ✅ + AR reader ✅ | ✅ Complet |
-| `dbt-sa` | ✅ Créé | BQ dataViewer(raw) ✅ + BQ dataEditor(staging,marts) ✅ + BQ jobUser ✅ + Storage objectViewer ✅ + AR reader ✅ | ✅ Complet |
+| `dbt-sa` | ✅ Créé | BQ dataViewer(raw) ✅ + BQ dataEditor(staging, intermediate, marts) ✅ + BQ jobUser ✅ + Storage objectViewer ✅ + AR reader ✅ | ✅ Complet |
 | `dashboard-sa` | ✅ Créé | BQ dataViewer(marts) ✅ + BQ jobUser ✅ | ✅ Complet |
 | `scheduler-sa` (ou ingestion-sa) | ✅ Créé | run.jobsExecutorWithOverrides (job + projet) ✅ | ✅ Géré Terraform |
 | `terraform-deployer-sa` (SA WIF) | ✅ Créé | storage.admin ✅ + bigquery.admin ✅ + artifactregistry.admin ✅ + run.admin ✅ + cloudscheduler.admin ✅ + secretmanager.admin ✅ + serviceusage.serviceUsageAdmin ✅ + iam.serviceAccountUser ✅ + logging.configWriter ✅ | ✅ Complet |

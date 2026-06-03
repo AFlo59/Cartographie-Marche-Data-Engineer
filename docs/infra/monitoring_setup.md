@@ -23,8 +23,8 @@ Prérequis déjà documentés ailleurs :
 | Alert policy — Cloud Run Job ingestion | `google_monitoring_alert_policy` | ✅ Terraform |
 | Alert policy — Cloud Run Job dbt | `google_monitoring_alert_policy` | ✅ Terraform |
 | Permission `roles/monitoring.admin` sur terraform-deployer-sa | IAM | 🔧 Manuel |
-| Variable GitHub Actions `ALERT_EMAILS` | GitHub repo settings | 🔧 Manuel |
-| Variable GitHub Actions `BILLING_EXPORT_DATASET_ID` | GitHub repo settings | 🔧 Manuel (opt-in) |
+| Secret GitHub Actions `ALERT_EMAILS` | GitHub repo settings | 🔧 Manuel |
+| Secret GitHub Actions `BILLING_EXPORT_DATASET_ID` | GitHub repo settings | 🔧 Manuel (opt-in) |
 
 ---
 
@@ -98,7 +98,7 @@ Résultat attendu : une ligne avec `roles/monitoring.admin` et l'email du SA.
 
 🔧 Manuel (GitHub UI)
 
-**Chemin** : `Repository → Settings → Secrets and variables → Actions → onglet Variables → New repository variable`
+> `ALERT_EMAILS` et `BILLING_EXPORT_DATASET_ID` sont lus par le workflow comme des **Secrets** (`secrets.*`), pas des Variables. Les créer dans l'onglet **Secrets**.
 
 ### Secret `ALERT_EMAILS`
 
@@ -125,7 +125,9 @@ Plusieurs destinataires :
 
 > Pas d'espace entre les éléments. Guillemets doubles obligatoires. Terraform parse ce JSON automatiquement via `TF_VAR_alert_emails`.
 
-### Variable `BILLING_EXPORT_DATASET_ID` (opt-in)
+### Secret `BILLING_EXPORT_DATASET_ID` (opt-in)
+
+**Chemin** : `Repository → Settings → Secrets and variables → Actions → Secrets → New repository secret`
 
 | Champ     | Valeur                                                                      |
 |-----------|-----------------------------------------------------------------------------|
@@ -144,8 +146,8 @@ Laisser non créée si l'export billing n'est pas encore activé — le binding 
 Le CI (`infra-deploy.yml`) injecte :
 
 ```yaml
-TF_VAR_create_monitoring: "true"
-TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS }}
+TF_VAR_create_monitoring: ${{ secrets.ALERT_EMAILS != '' && 'true' || 'false' }}
+TF_VAR_alert_emails: ${{ secrets.ALERT_EMAILS || '[]' }}
 ```
 
 Terraform crée :
@@ -189,7 +191,7 @@ GCP envoie un email de confirmation à chaque destinataire lors de la création 
 
 ## Étape 6 — Modifier les destinataires
 
-Pour ajouter ou retirer un destinataire, mettre à jour la variable GitHub Actions `ALERT_EMAILS` et relancer le workflow `infra-deploy.yml` (ou attendre le prochain merge sur `main`).
+Pour ajouter ou retirer un destinataire, mettre à jour le secret GitHub Actions `ALERT_EMAILS` et relancer le workflow `infra-deploy.yml` (ou attendre le prochain merge sur `main`).
 
 Aucune modification de code nécessaire.
 
@@ -223,4 +225,4 @@ Résultat attendu : `verificationStatus = VERIFIED` pour chaque canal actif.
 
 ### `TF_VAR_alert_emails` non reconnu
 
-Vérifier que la variable GitHub Actions `ALERT_EMAILS` est bien créée en tant que **Variable** (pas Secret) et que sa valeur est un JSON array valide sans espace : `["email1@x.com","email2@x.com"]`.
+Vérifier que `ALERT_EMAILS` est bien créé en tant que **Secret** GitHub Actions (le workflow lit `secrets.ALERT_EMAILS`) et que sa valeur est un JSON array valide sans espace : `["email1@x.com","email2@x.com"]`.
