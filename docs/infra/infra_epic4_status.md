@@ -7,7 +7,7 @@
   - Transition NEARLINE **désactivée** (`null`) — conflit avec delete à 30j (NEARLINE facturation min 30j)
   - **Purge automatique par préfixe** : france_travail/apec/jooble à **30j** (~4 semaines), sirene/geo à **31j** (1 snapshot mensuel)
   - Suppression globale à 365j (filet de sécurité)
-- ✅ **INFRA-03** : Module datasets raw/staging/marts (`infra/modules/warehouse`) et datasets créés dans GCP. 3 External Tables BigQuery définies : `sirene_etablissements`, `sirene_unites_legales`, `france_travail_offres` — pointent sur les Parquet GCS, aucun stockage BQ facturé pour les données raw. Activation conditionnée par `var.create_external_tables` (passé `true` en CI après première ingestion).
+- ✅ **INFRA-03** : Module datasets `raw`/`staging`/`intermediate`/`marts` (`infra/modules/warehouse`) et datasets créés dans GCP. **8 External Tables BigQuery** définies : `france_travail_offres`, `apec_offres`, `jooble_offres`, `sirene_etablissements`, `sirene_unites_legales`, `geo_communes`, `geo_departements`, `geo_regions` — pointent sur les Parquet GCS, aucun stockage BQ facturé pour les données raw. Activation conditionnée par `var.create_external_tables` (passé `true` en CI après première ingestion).
 - ✅ **INFRA-04** : Module compute Cloud Run Job (`infra/modules/compute`).
   - **Cloud Run Job ingestion** (`datatalent-ingestion-job`) : **ACTIF** en CI (`TF_VAR_create_compute_job=true`)
   - **Cloud Run Job dbt** (`datatalent-dbt-job`) : **ACTIF** en CI (`TF_VAR_create_dbt_job=true`)
@@ -22,7 +22,8 @@
   - Scheduler conditionné par `var.create_compute_job` (actif)
 - ✅ **INFRA-06** : Module secrets (`infra/modules/secrets`) + bindings `secretAccessor` pour `ingestion-sa`.
 - ✅ **INFRA-07** : IAM complet — IAM datasets BQ + bucket raw + BQ jobUser + Artifact Registry pour tous les SA. `roles/storage.objectViewer` pour `dbt-sa` (requis pour External Tables). Voir [docs/infra/iam_roles.md](iam_roles.md).
-- 🟡 **INFRA-08** : Non implémenté (`docs/cost_estimation.md` à créer). Estimation cible : < 5€/mois hors free tier GCP.
+- ✅ **INFRA-08** : Suivi des coûts opérationnel via **export billing BigQuery** (opt-in `billing_export_dataset_id`) → 4 marts dbt (`mart_couts__mensuel/__annuel`, `mart_couts_ressource__mensuel/__annuel`). Voir [docs/infra/billing_cost_setup.md](billing_cost_setup.md). Estimation cible : < 5€/mois hors free tier GCP.
+- ✅ **Monitoring** (hors périmètre Epic 4 initial) : module `monitoring` (opt-in `create_monitoring`) — alert policies échec Cloud Run Job + canaux de notification email. Voir [docs/infra/monitoring_setup.md](monitoring_setup.md).
 - 🟡 **INFRA-09** : Partiel — workflow IaC (`.github/workflows/infra-deploy.yml`) avec WIF, plan PR, apply main, gate ingestion (`docker build`) + gate dbt (`parse`/`compile`) avant Terraform, puis `push-images` (ingestion + dbt). Restent : lint Python et `dbt run/test` sur merge `main`.
 - ✅ **INFRA-10** : Partiellement couvert (structure repo + `.gitignore` + `.env.example` créés ; branch protection à configurer sur GitHub UI).
 
@@ -159,7 +160,7 @@ Cible : < 5€/mois hors free tier GCP avec les optimisations en place.
 - `terraform apply` exécuté avec succès via CI (push main).
 - Outputs Terraform confirmés :
   - Bucket raw : `${TF_VAR_project_prefix}-${TF_VAR_environment}-${TF_VAR_project_id}-raw`
-  - Datasets : `raw`, `staging`, `marts`
+  - Datasets : `raw`, `staging`, `intermediate`, `marts`
   - Cloud Run Jobs : `datatalent-ingestion-job`, `datatalent-dbt-job`
   - Schedulers : `datatalent-ingestion-weekly`, `datatalent-ingestion-monthly`, `datatalent-dbt`
   - Artifact Registry : repo `datatalent` (region `${TF_VAR_region}`)
@@ -173,4 +174,4 @@ Cible : < 5€/mois hors free tier GCP avec les optimisations en place.
 
 ---
 
-**Dernière mise à jour** : Mai 2026
+**Dernière mise à jour** : Juin 2026

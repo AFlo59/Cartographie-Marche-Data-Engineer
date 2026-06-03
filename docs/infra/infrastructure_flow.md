@@ -100,7 +100,7 @@ terraform plan/apply
 Un step d'import automatique (`import_if_needed`) adopte les ressources existantes dans le state avant l'apply, évitant les erreurs `409 already exists` :
 
 - `module.storage.google_storage_bucket.raw`
-- `module.warehouse.google_bigquery_dataset.*` (raw, staging, marts)
+- `module.warehouse.google_bigquery_dataset.*` (raw, staging, intermediate, marts)
 - `module.secrets.google_secret_manager_secret.secrets["*"]`
 - `module.compute.google_artifact_registry_repository.datatalent`
 - `module.compute.google_cloud_run_v2_job.ingestion[0]`
@@ -208,12 +208,13 @@ Push main
     │     └─ Suppression globale à 365j             │
     │                                               │
     │  BigQuery                                     │
-    │  ├─ Dataset raw (External Tables GCS)         │
-    │  │  ├─ sirene_etablissements                  │
-    │  │  ├─ sirene_unites_legales                  │
-    │  │  └─ france_travail_offres                  │
-    │  ├─ Dataset staging (tables BQ réelles)       │
-    │  └─ Dataset marts  (tables BQ réelles)        │
+    │  ├─ Dataset raw (8 External Tables GCS)       │
+    │  │  ├─ france_travail / apec / jooble_offres  │
+    │  │  ├─ sirene_etablissements / unites_legales │
+    │  │  └─ geo_communes / departements / regions  │
+    │  ├─ Dataset staging      (views dbt)          │
+    │  ├─ Dataset intermediate (tables incremental) │
+    │  └─ Dataset marts (tables dims/faits + views) │
     │                                               │
     │  Artifact Registry                            │
     │  └─ repo datatalent (Docker)                  │
@@ -236,13 +237,17 @@ Push main
     │     (0 9 * * 1 — lundi 9h)                   │
     │     déclenche datatalent-dbt-job              │
     │                                               │
-    │  Secret Manager                               │
+    │  Secret Manager (4 secrets)                   │
     │  ├─ FT_CLIENT_ID                              │
     │  ├─ FT_CLIENT_SECRET                          │
+    │  ├─ JOOBLE_API_KEY                            │
     │  └─ DATAGOUV_API_KEY                          │
     │                                               │
     │  Cloud Logging                                │
     │  └─ Bucket _Default : rétention 60j           │
+    │                                               │
+    │  Cloud Monitoring (opt-in)                    │
+    │  └─ Alert policies échec job + canaux email   │
     │                                               │
     └───────────────────────────────────────────────┘
 ```
@@ -258,9 +263,9 @@ Push main
 | `infra/main.tf` | Logique principale, wiring des modules |
 | `infra/versions.tf` | Providers + backend GCS (bucket passé dynamiquement) |
 | `infra/modules/compute/main.tf` | AR repo + Cloud Run Jobs + time_sleep 90s IAM propagation + log retention |
-| `infra/modules/storage/main.tf` | Bucket raw + lifecycle (Nearline, purge par préfixe) |
+| `infra/modules/storage/main.tf` | Bucket raw + lifecycle (purge par préfixe, NEARLINE désactivé) |
 | `infra/modules/warehouse/main.tf` | Datasets BQ + External Tables |
-| `infra/modules/scheduler/main.tf` | Cloud Scheduler (5 jobs) |
+| `infra/modules/scheduler/main.tf` | Cloud Scheduler (3 jobs : weekly + monthly + dbt) |
 | `infra/modules/secrets/main.tf` | Secret Manager containers + IAM accessor |
 | `infra/terraform.tfvars.example` | Template vars locales (ne pas commiter `terraform.tfvars`) |
 | `.env.example` | Template variables d'environnement (copier vers `.env`) |
@@ -367,5 +372,5 @@ Le SA WIF n'a pas `roles/logging.configWriter`. Voir [docs/infra/iam_roles.md](i
 
 ---
 
-**Dernière mise à jour** : Mai 2026
+**Dernière mise à jour** : Juin 2026
 **Voir aussi** : [docs/cicd/deployment_orchestration.md](../cicd/deployment_orchestration.md)

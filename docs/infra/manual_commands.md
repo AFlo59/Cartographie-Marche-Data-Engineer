@@ -132,14 +132,16 @@ RAW_BUCKET="${INGESTION_RAW_BUCKET}"
 terraform import module.storage.google_storage_bucket.raw ${RAW_BUCKET}
 
 # Datasets BigQuery
-terraform import module.warehouse.google_bigquery_dataset.raw  projects/${GCP_PROJECT_ID}/datasets/raw
-terraform import module.warehouse.google_bigquery_dataset.staging projects/${GCP_PROJECT_ID}/datasets/staging
-terraform import module.warehouse.google_bigquery_dataset.marts  projects/${GCP_PROJECT_ID}/datasets/marts
+terraform import module.warehouse.google_bigquery_dataset.raw          projects/${GCP_PROJECT_ID}/datasets/raw
+terraform import module.warehouse.google_bigquery_dataset.staging      projects/${GCP_PROJECT_ID}/datasets/staging
+terraform import module.warehouse.google_bigquery_dataset.intermediate projects/${GCP_PROJECT_ID}/datasets/intermediate
+terraform import module.warehouse.google_bigquery_dataset.marts        projects/${GCP_PROJECT_ID}/datasets/marts
 
-# Secrets Manager
+# Secrets Manager (4 secrets)
 terraform import 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_ID"]'     projects/${GCP_PROJECT_ID}/secrets/FT_CLIENT_ID
 terraform import 'module.secrets.google_secret_manager_secret.secrets["FT_CLIENT_SECRET"]' projects/${GCP_PROJECT_ID}/secrets/FT_CLIENT_SECRET
 terraform import 'module.secrets.google_secret_manager_secret.secrets["DATAGOUV_API_KEY"]' projects/${GCP_PROJECT_ID}/secrets/DATAGOUV_API_KEY
+terraform import 'module.secrets.google_secret_manager_secret.secrets["JOOBLE_API_KEY"]'   projects/${GCP_PROJECT_ID}/secrets/JOOBLE_API_KEY
 
 # Artifact Registry
 terraform import module.compute.google_artifact_registry_repository.datatalent \

@@ -19,7 +19,7 @@ Obtenir un projet GCP prêt, une exécution Terraform opérationnelle, puis un m
 
 Note de périmètre :
 
-- ce guide couvre l'infrastructure GCP actuelle (`storage`, `warehouse`, `compute`, `scheduler`, `secrets`, IAM associé),
+- ce guide couvre l'infrastructure GCP actuelle (`storage`, `warehouse`, `compute`, `scheduler`, `secrets`, `monitoring`, IAM associé),
 - il ne remplace pas le backlog complet INFRA-09 côté qualité Python et dbt, encore partiellement à compléter,
 - côté structure repo, le projet dbt est dans `dbt/transformation/`.
 

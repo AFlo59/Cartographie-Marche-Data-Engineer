@@ -42,7 +42,7 @@ bq ls --project_id=${PROJECT_ID}
 Dans le `.env` racine (ou variables exportées), vérifier au minimum :
 
 - `GCP_PROJECT_ID`
-- `GCP_LOCATION` (ex: `EU`)
+- `GCP_LOCATION` (ex: `US` — location des datasets BigQuery du projet)
 - `DBT_BIGQUERY_PROJECT`
 - `DBT_BIGQUERY_DATASET`
 - `DBT_TARGET` (`dev` ou `ci`)
