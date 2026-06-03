@@ -208,12 +208,13 @@ Push main
     │     └─ Suppression globale à 365j             │
     │                                               │
     │  BigQuery                                     │
-    │  ├─ Dataset raw (External Tables GCS)         │
-    │  │  ├─ sirene_etablissements                  │
-    │  │  ├─ sirene_unites_legales                  │
-    │  │  └─ france_travail_offres                  │
-    │  ├─ Dataset staging (tables BQ réelles)       │
-    │  └─ Dataset marts  (tables BQ réelles)        │
+    │  ├─ Dataset raw (8 External Tables GCS)       │
+    │  │  ├─ france_travail / apec / jooble_offres  │
+    │  │  ├─ sirene_etablissements / unites_legales │
+    │  │  └─ geo_communes / departements / regions  │
+    │  ├─ Dataset staging      (views dbt)          │
+    │  ├─ Dataset intermediate (tables incremental) │
+    │  └─ Dataset marts (tables dims/faits + views) │
     │                                               │
     │  Artifact Registry                            │
     │  └─ repo datatalent (Docker)                  │

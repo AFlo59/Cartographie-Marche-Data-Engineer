@@ -9,7 +9,7 @@ Ce document décrit l'enchaînement global des composants du projet sans répét
 3. Les secrets runtime sont versionnés dans Secret Manager.
 4. Cloud Scheduler déclenche le Cloud Run Job d'ingestion.
 5. Les données brutes arrivent dans **GCS (bucket raw)**. BigQuery y accède via des **External Tables** (pas de copie ni de stockage BQ facturé pour la couche raw).
-6. dbt transforme les données via les External Tables → `staging` (tables BQ réelles) → `marts` (tables BQ réelles).
+6. dbt transforme les données via les External Tables → `staging` (views) → `intermediate` (tables incremental) → `marts` (tables dims/faits + views).
 7. La restitution est **externe au projet** : le Looker Studio d'un collègue consomme `marts` en lecture seule (aucun outil BI provisionné ici).
 
 ## Décision d'architecture ingestion (recommandée)

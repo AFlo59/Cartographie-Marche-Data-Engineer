@@ -8,22 +8,22 @@ Pipeline de données end-to-end : cartographie du marché Data Engineer en Franc
 APIs sources                GCS (raw)            BigQuery
 ─────────────               ─────────────────    ────────────────────────────────────
 France Travail  ──┐                              raw          (external tables Parquet)
-APEC            ──┼──> ingestion Python ──>  bucket  ──>  staging      (tables dbt — 1 par source)
+APEC            ──┼──> ingestion Python ──>  bucket  ──>  staging      (views dbt — 1 par source)
 Jooble          ──┤         Cloud Run Job        raw          intermediate (incremental, gold layer)
-INSEE Sirene    ──┤                                           marts        (views dashboard)
+INSEE Sirene    ──┤                                           marts        (tables dims/faits + views)
 API Geo         ──┘
 ```
 
-### Flux d'exécution hebdomadaire (lundi)
+### Flux d'exécution (Cloud Scheduler)
 
-| Heure  | Job                      | Description                                        |
-| ------ | ------------------------ | -------------------------------------------------- |
-| 06h00  | Ingestion France Travail | Cloud Run Job — offres 7 derniers jours            |
-| 07h00  | Ingestion APEC           | Cloud Run Job — offres 7 derniers jours            |
-| 08h00  | Ingestion Jooble         | Cloud Run Job — offres 7 derniers jours            |
-| 09h00  | dbt run + test           | Cloud Run Job — staging → intermediate → marts     |
+Chaque scheduler déclenche **une seule** exécution du Cloud Run Job ; les sources d'un
+groupe sont enchaînées **en série** dans cette exécution (cf. `src/ingestion/main.py`).
 
-Ingestions mensuelles (1er du mois) : Sirene 03h00, Geo 04h00.
+| Scheduler                      | Cron (Europe/Paris) | Job déclenché        | Sources (en série)                       |
+| ------------------------------ | ------------------- | -------------------- | ---------------------------------------- |
+| `datatalent-ingestion-weekly`  | `0 6 * * 1` (lun. 6h) | ingestion (`weekly`)  | france_travail → apec → jooble           |
+| `datatalent-ingestion-monthly` | `0 3 1 * *` (1er 3h)  | ingestion (`monthly`) | sirene → geo                             |
+| `datatalent-dbt`               | `0 9 * * 1` (lun. 9h) | dbt                   | dbt run + test (staging → intermediate → marts) |
 
 ## Stack technique
 

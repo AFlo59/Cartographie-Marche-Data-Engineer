@@ -94,7 +94,7 @@ Résultat attendu : une ligne avec `roles/monitoring.admin` et l'email du SA.
 
 ---
 
-## Étape 3 — Configurer les variables GitHub Actions
+## Étape 3 — Configurer les secrets GitHub Actions
 
 🔧 Manuel (GitHub UI)
 
