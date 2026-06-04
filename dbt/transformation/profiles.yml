@@ -6,7 +6,7 @@ datatalent:
       method: oauth
       project: "{{ env_var('DBT_BIGQUERY_PROJECT', env_var('GCP_PROJECT_ID')) }}"
       dataset: "{{ env_var('DBT_BIGQUERY_DATASET', 'staging') }}"
-      location: "{{ env_var('DBT_BIGQUERY_LOCATION', env_var('GCP_LOCATION', 'EU')) }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', env_var('GCP_LOCATION', 'US')) }}"
       priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'interactive') }}"
       threads: "{{ env_var('DBT_THREADS', '4') | int }}"
       job_execution_timeout_seconds: "{{ env_var('DBT_BIGQUERY_TIMEOUT_SECONDS', '300') | int }}"
@@ -17,7 +17,7 @@ datatalent:
       method: oauth
       project: "{{ env_var('DBT_BIGQUERY_PROJECT', env_var('GCP_PROJECT_ID')) }}"
       dataset: "{{ env_var('DBT_BIGQUERY_DATASET', 'staging') }}"
-      location: "{{ env_var('DBT_BIGQUERY_LOCATION', env_var('GCP_LOCATION', 'EU')) }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', env_var('GCP_LOCATION', 'US')) }}"
       priority: "{{ env_var('DBT_BIGQUERY_PRIORITY', 'interactive') }}"
       threads: "{{ env_var('DBT_THREADS', '4') | int }}"
       job_execution_timeout_seconds: "{{ env_var('DBT_BIGQUERY_TIMEOUT_SECONDS', '300') | int }}"
