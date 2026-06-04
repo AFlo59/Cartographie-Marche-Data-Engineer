@@ -70,7 +70,7 @@ graph TD
 
     %% Visualisation (externe au projet)
     subgraph VISUAL ["Visualisation (externe)"]
-        LS[Looker Studio collègue<br/>lecture seule]
+        LS[Looker Studio]
     end
 
     BQ_MRT --> |Query lecture seule| LS
