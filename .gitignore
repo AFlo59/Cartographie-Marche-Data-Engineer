@@ -25,6 +25,8 @@ override.tf.json
 # dbt
 target/
 dbt_packages/
+dbt_internal_packages/   # généré par dbt-fusion (macros adapter/bigquery déballées) — non versionné
+package-lock.yml         # lock de packages régénéré par dbt deps — non versionné ici (deps refait au build Docker)
 logs/
 
 # OS / Editor
