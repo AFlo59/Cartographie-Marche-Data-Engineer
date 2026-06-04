@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Build uniquement — vérifie que le Dockerfile ingestion est valide
       # Le push vers AR est fait dans le job push-images, après terraform apply
@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Auth requis avant parse/compile : dbt-bigquery 1.8+ tente l'auth même sans run
       - name: Auth GCP via Workload Identity Federation
@@ -169,7 +169,7 @@ jobs:
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # ── 2. Vérifier les secrets CI requis ───────────────────────────────────
       - name: Check required CI inputs
@@ -528,7 +528,7 @@ jobs:
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # ── 2. Auth GCP via WIF ────────────────────────────────────────────────
       - name: Auth GCP via Workload Identity Federation
