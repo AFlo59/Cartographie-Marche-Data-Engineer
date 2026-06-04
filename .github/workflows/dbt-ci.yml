@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Auth requis avant parse/compile : dbt-bigquery 1.8+ tente l'auth même sans run
       - name: Auth GCP via Workload Identity Federation
